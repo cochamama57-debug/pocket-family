@@ -4,6 +4,9 @@ node_modules/
 .vercel/
 .DS_Store
 
+# テストの画面写真をうっかり入れない
+/*.png
+
 # 公開用：曲の音声（作者の作品）と、Claude Security の点検結果は入れない
 public/songs/*.mp3
 public/events/*.mp3
