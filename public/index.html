@@ -120,10 +120,37 @@
   .fav-row button.addit { background: var(--mic) !important; color: #fff !important; border-color: var(--mic) !important; font-weight: 700; }
   .song-list button { width: 100%; text-align: left; font-size: 20px; background: transparent; border: 0; padding: 12px 14px; color: var(--ink); min-height: 56px; }
   .song-list .tag { display: inline-block; font-size: 14px; color: #fff; background: #8a5cc2; border-radius: 999px; padding: 0 10px; margin-left: 8px; vertical-align: 2px; }
-  .player-char { display: block; width: 150px; height: 150px; object-fit: contain; margin: 4px auto 0; transform-origin: 50% 90%; }
-  .player-char.dance { animation: dance .9s ease-in-out infinite; }
-  @media (prefers-reduced-motion: reduce) { .player-char { animation: none !important; } }
-  @keyframes dance { 0%, 100% { transform: rotate(-6deg) translateY(0); } 25% { transform: rotate(0) translateY(-10px); } 50% { transform: rotate(6deg) translateY(0); } 75% { transform: rotate(0) translateY(-10px); } }
+  /* 曲を聞くときの舞台：曲の気分で、色・動き・まわりの飾りが変わる */
+  .player-stage { position: relative; height: 176px; margin: 4px 0 0; border-radius: 20px; overflow: hidden; transition: background 1.2s; background: linear-gradient(#fff8ee, #fdf0dc); }
+  .player-stage[data-mood="dance"] { background: radial-gradient(120% 90% at 50% 0%, #fbe7ff 0%, #ead9ff 55%, #dccbfa 100%); }
+  .player-stage[data-mood="morning"] { background: linear-gradient(#fff6d6 0%, #ffe9c2 60%, #ffdcb0 100%); }
+  .player-stage[data-mood="comfort"] { background: linear-gradient(#e9eff7 0%, #dfe7f2 70%, #d6e0ee 100%); }
+  .player-stage[data-mood="sleep"] { background: linear-gradient(#2f3a63 0%, #45507e 70%, #5a628f 100%); }
+  .player-stage[data-mood="calm"] { background: linear-gradient(#e6f6f3 0%, #d5efea 70%, #c6e7e1 100%); }
+  .player-char { position: absolute; left: 50%; bottom: 6px; width: 150px; height: 150px; margin-left: -75px; object-fit: contain; transform-origin: 50% 90%; will-change: transform; }
+  .player-char.idle { animation: bob 3.2s ease-in-out infinite; }
+  .stage-fx { position: absolute; inset: 0; pointer-events: none; }
+  .fx { position: absolute; line-height: 1; pointer-events: none; will-change: transform, opacity; }
+  .fx.note { font-size: 24px; font-weight: 700; animation: fxRise 2.4s ease-out forwards; }
+  .fx.spark { width: 10px; height: 10px; border-radius: 50%; background: #fff; box-shadow: 0 0 10px 3px rgba(255,255,255,.9); animation: fxTwinkle 1.4s ease-in-out forwards; }
+  .fx.petal { width: 12px; height: 8px; border-radius: 12px 0; background: #ffb3c6; animation: fxFall 5s linear forwards; }
+  .fx.sun { width: 90px; height: 90px; border-radius: 50%; background: radial-gradient(#fff3b0 0%, rgba(255,214,102,.7) 45%, rgba(255,214,102,0) 70%); animation: fxSun 3s ease-in-out forwards; }
+  .fx.drop { width: 7px; height: 11px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: rgba(120,160,215,.55); animation: fxDrop 3.2s ease-in forwards; }
+  .fx.heart { font-size: 22px; color: #f08aa6; animation: fxRise 3.6s ease-out forwards; }
+  .fx.star { font-size: 16px; color: #ffe9a8; animation: fxTwinkle 2.6s ease-in-out forwards; }
+  .fx.zz { font-size: 20px; font-weight: 700; color: #cfd6ff; animation: fxZ 3.4s ease-out forwards; }
+  .fx.bubble { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(255,255,255,.95); background: rgba(255,255,255,.25); animation: fxRise 4.2s ease-out forwards; }
+  .fx.rainbow { left: 50%; bottom: -150px; width: 300px; height: 300px; margin-left: -150px; border-radius: 50%; background: radial-gradient(circle, transparent 54%, rgba(155,120,220,.45) 55%, rgba(110,160,235,.45) 59%, rgba(110,200,170,.45) 63%, rgba(250,220,110,.5) 67%, rgba(250,160,110,.5) 71%, rgba(240,110,120,.45) 75%, transparent 76%); animation: fxRainbow 9s ease-in-out forwards; }
+  .fx.ball { top: -14px; width: 34px; height: 34px; margin-left: -17px; border-radius: 50%; background: repeating-conic-gradient(#fff 0 15deg, #c9c3e6 15deg 30deg); box-shadow: 0 0 14px 4px rgba(255,255,255,.8); animation: fxBall 4s ease-in-out forwards; }
+  @keyframes fxRise { 0% { opacity: 0; transform: translate(0, 0) scale(.6); } 15% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--dx, 0px), -120px) scale(1.1) rotate(var(--rot, 0deg)); } }
+  @keyframes fxTwinkle { 0%, 100% { opacity: 0; transform: scale(.3); } 40% { opacity: 1; transform: scale(1); } }
+  @keyframes fxFall { 0% { opacity: 0; transform: translate(0, 0) rotate(0); } 10% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--dx, 30px), 200px) rotate(540deg); } }
+  @keyframes fxDrop { 0% { opacity: 0; transform: translateY(0); } 15% { opacity: 1; } 100% { opacity: 0; transform: translateY(170px); } }
+  @keyframes fxZ { 0% { opacity: 0; transform: translate(0, 0) scale(.6); } 20% { opacity: 1; } 100% { opacity: 0; transform: translate(30px, -70px) scale(1.2); } }
+  @keyframes fxSun { 0%, 100% { opacity: 0; transform: scale(.6); } 50% { opacity: 1; transform: scale(1.1); } }
+  @keyframes fxRainbow { 0% { opacity: 0; transform: scale(.85); } 25%, 80% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1); } }
+  @keyframes fxBall { 0% { opacity: 0; transform: translateY(-20px) rotate(0); } 15%, 85% { opacity: 1; transform: translateY(22px) rotate(180deg); } 100% { opacity: 0; transform: translateY(-20px) rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .player-char, .fx { animation: none !important; } .stage-fx { display: none; } }
   .player-char.cheer { animation: hop .6s ease-in-out 4; }
   .player-title { text-align: center; font-size: 22px; font-weight: 700; margin: 6px 0 2px; }
   .player-note { text-align: center; color: var(--sub); font-size: 15px; margin: 0 0 8px; }
@@ -388,7 +415,10 @@
       <h2></h2>
       <button type="button" class="close-btn" id="playerClose">とじる</button>
     </div>
-    <img class="player-char" id="playerChar" alt="">
+    <div class="player-stage" id="playerStage" data-mood="listen">
+      <div class="stage-fx" id="stageFx" aria-hidden="true"></div>
+      <img class="player-char" id="playerChar" alt="">
+    </div>
     <div class="player-title" id="playerTitle"></div>
     <p class="player-note" id="playerNote"></p>
     <div class="yt-wrap" id="ytWrap" hidden><div id="ytBox"></div></div>
@@ -1322,16 +1352,186 @@
   });
   const audio = $("audio"), playBtn = $("playBtn"), playerChar = $("playerChar");
   let currentSong = null;
-  let singTimer = null;
+  // ---- 曲に合わせた動き ----
+  // 曲の札（気分）で、踊り方・顔・舞台の色・まわりの飾りが変わる。
+  // 速さ（bpm）と盛り上がり（energy：0.49秒ごとの音の大きさ 0〜9）は songs.json にあり、拍に合わせて動く。
+  const MOOD_OF_TAG = { "踊ろう": "dance", "おはよう": "morning", "寄り添い": "comfort", "おやすみ": "sleep", "穏やか": "calm" };
+  const DEFAULT_BPM = { dance: 120, morning: 96, comfort: 70, sleep: 66, calm: 66, listen: 84 };
+  const reduceMotion = (() => { try { return matchMedia("(prefers-reduced-motion: reduce)").matches; } catch { return false; } })();
+  const moodOf = (sg) => MOOD_OF_TAG[sg && sg.tag] || "listen";
+  const stageEl = $("playerStage"), fxEl = $("stageFx");
+  let mv = null;
+  function prepareMotion(sg) {
+    const m = (sg && sg.motion) || {};
+    const mood = moodOf(sg);
+    const num = (v, lo, hi, d) => (typeof v === "number" && v >= lo && v <= hi ? v : d);
+    mv = {
+      mood,
+      bpm: num(m.bpm, 40, 200, DEFAULT_BPM[mood]),
+      offset: num(m.offset, 0, 5, 0),
+      step: num(m.step, 0.1, 2, 0.5),
+      energy: typeof m.energy === "string" && /^[0-9]+$/.test(m.energy) ? m.energy : "",
+      level: typeof m.level === "string" && /^[0-9]+$/.test(m.level) ? m.level : "",
+      eS: 0.4, L: 0.3, lastBeat: -99, lastT: 0, t0: performance.now(), raf: 0, rainbow: false, phraseFace: "normal",
+    };
+    stageEl.dataset.mood = mood;
+    fxEl.textContent = "";
+  }
+  function songTime() {
+    if (currentSong && currentSong.youtube) {
+      try { const t = ytPlayer && ytPlayer.getCurrentTime && ytPlayer.getCurrentTime(); if (typeof t === "number" && t > 0) return t; } catch {}
+      return (performance.now() - mv.t0) / 1000;
+    }
+    return audio.currentTime || 0;
+  }
+  // energy＝その瞬間の音の大きさ（動きの大きさに使う）／level＝前後4秒をならした曲の場面（0＝前奏・終わり、9＝いちばん盛り上がるサビ）
+  function curveAt(str, t, d) {
+    if (!str) return d;
+    const i = Math.min(Math.max(Math.floor(t / mv.step), 0), str.length - 1);
+    return (str.charCodeAt(i) - 48) / 9;
+  }
+  const energyAt = (t) => curveAt(mv.energy, t, 0.6);
+  const levelAt = (t) => curveAt(mv.level, t, 0.5);
+  function songLength() {
+    if (!currentSong || currentSong.youtube) return 0;
+    return audio.duration && isFinite(audio.duration) ? audio.duration : 0;
+  }
+  // まわりの飾りを1つ出す
+  function fx(kind, opt = {}) {
+    if (reduceMotion || fxEl.childElementCount > 16) return;
+    const d = document.createElement("span");
+    d.className = "fx " + kind;
+    if (opt.text) d.textContent = opt.text;
+    if (opt.color) d.style.color = opt.color;
+    if (opt.x != null) d.style.left = opt.x + "%";
+    if (opt.y != null) d.style.top = opt.y + "%";
+    d.style.setProperty("--dx", Math.round((Math.random() - 0.5) * 60) + "px");
+    d.style.setProperty("--rot", Math.round((Math.random() - 0.5) * 40) + "deg");
+    d.addEventListener("animationend", () => d.remove());
+    setTimeout(() => d.remove(), 10000);
+    fxEl.appendChild(d);
+  }
+  const rndIn = (a, b) => a + Math.random() * (b - a);
+  const sideX = () => (Math.random() < 0.5 ? rndIn(4, 28) : rndIn(66, 90));
+  const NOTE_COLORS = ["#8a5cc2", "#e0607e", "#3d8bd9", "#e8833a", "#2fa37a"];
+  // 1拍ごとに：顔を決める・飾りを出す
+  function onBeat(bi, e, t) {
+    const L = mv.L, m = mv.mood, ph8 = ((bi % 8) + 8) % 8, ph16 = ((bi % 16) + 16) % 16;
+    if (m === "dance") {
+      if (Math.random() < 0.25 + e * 0.6) fx("note", { text: Math.random() < 0.5 ? "♪" : "♫", color: NOTE_COLORS[bi % 5], x: sideX(), y: rndIn(45, 70) });
+      if (L > 0.7 && ph16 === 0) { fx("ball", { x: 16 }); fx("ball", { x: 84 }); }
+      if (e > 0.6 && Math.random() < 0.5) fx("spark", { x: rndIn(5, 95), y: rndIn(5, 45) });
+    } else if (m === "morning") {
+      if (ph16 === 0) fx("sun", { x: rndIn(4, 14), y: rndIn(2, 10) });
+      if (L > 0.6 && Math.random() < 0.5) fx("petal", { x: rndIn(5, 90), y: -5 });
+      else if (Math.random() < 0.15) fx("note", { text: "♪", color: "#e8833a", x: sideX(), y: rndIn(50, 70) });
+    } else if (m === "comfort") {
+      if (L < 0.65 && Math.random() < 0.4) fx("drop", { x: rndIn(5, 95), y: -6 });
+      if (L >= 0.65 && Math.random() < 0.35) fx("heart", { text: "♡", x: sideX(), y: rndIn(55, 75) });
+      const len = songLength();
+      if (!mv.rainbow && len && t > len * 0.8) { mv.rainbow = true; fx("rainbow"); }
+    } else if (m === "sleep") {
+      if (Math.random() < 0.5) fx("star", { text: "✦", x: rndIn(4, 96), y: rndIn(4, 50) });
+      if (ph8 === 0) fx("zz", { text: "z", x: rndIn(58, 66), y: rndIn(20, 30) });
+    } else if (m === "calm") {
+      if (Math.random() < 0.4) fx("bubble", { x: rndIn(5, 95), y: rndIn(70, 90) });
+    } else if (Math.random() < 0.3) {
+      fx("note", { text: "♪", color: NOTE_COLORS[bi % 5], x: sideX(), y: rndIn(50, 70) });
+    }
+    // 8拍ごとに、その間の顔を決める（ゆっくりな曲で顔がちらつかないように）
+    if (ph8 === 0) {
+      if (m === "comfort") mv.phraseFace = L < 0.2 ? "sleepy" : L < 0.7 ? "normal" : "happy";
+      else if (m === "sleep") { const len = songLength(); mv.phraseFace = t < 8 ? "normal" : len && t > len * 0.8 ? "sleepy" : L > 0.7 ? "happy" : Math.floor(bi / 8) % 2 ? "sleepy" : "normal"; }
+      else if (m === "calm") mv.phraseFace = Math.random() < 0.5 ? "happy" : "normal";
+      else if (m === "morning") mv.phraseFace = ["normal", "wave", "happy", "waveR"][Math.floor(bi / 8) % 4];
+      else mv.phraseFace = Math.random() < 0.5 ? "happy" : "normal";
+    }
+  }
+  // 毎フレーム：体の動き（位置・傾き・大きさ）と顔
+  function poseAt(b, e, t) {
+    const L = mv.L, m = mv.mood, S = Math.sin, P = Math.PI, A = Math.abs;
+    const bi = Math.floor(b), ph = b - bi;
+    let x = 0, y = 0, r = 0, sx = 1, sy = 1, face = mv.phraseFace;
+    if (m === "dance") {
+      if (L < 0.15) {                                   // 前奏・終わり：左右にステップ
+        x = 14 * S(P * b); r = 6 * S(P * b); y = -4 * A(S(P * b));
+        face = bi % 2 ? "danceL" : "danceR";
+      } else {
+        const move = Math.floor(b / 8) % 4, q = ((b % 8) + 8) % 8;
+        if (move === 0) {                               // はずむ
+          const h = A(S(P * b)); y = -(6 + 16 * e) * h; sx = 1 + 0.07 * (1 - h); sy = 1 - 0.07 * (1 - h);
+          face = bi % 2 ? "danceL" : "danceR";
+        } else if (move === 1) {                        // 手をたたく（ばんざい）
+          const pop = Math.max(0, 1 - ph * 3); sx = sy = 1 + 0.07 * pop; y = -6 * A(S(P * b));
+          face = bi % 2 ? "happy" : "banzai";
+        } else if (move === 2) {                        // 肩をゆらす
+          r = (4 + 5 * e) * S(2 * P * b); x = 10 * S(P * b / 2);
+          face = Math.floor(b * 2) % 2 ? "danceL" : "danceR";
+        } else {                                        // くるっと回って、ハイポーズ
+          if (q < 2) { const k = q / 2; sx = Math.cos(2 * P * k); y = -14 * S(P * k); face = "happy"; }
+          else if (q < 4) { face = "banzai"; sx = sy = 1.06; }
+          else { x = 12 * S(P * b); r = 5 * S(P * b); face = bi % 2 ? "wave" : "waveR"; }
+        }
+      }
+    } else if (m === "morning") {
+      if (t < 4.5) {                                    // はじめに、のび〜
+        const k = Math.min(1, t / 3); sy = 1 + 0.08 * S(P * k); sx = 1 - 0.03 * S(P * k); face = "banzai";
+      } else if (L > 0.65) {                            // サビ：かるく、はずむ
+        y = -(4 + 8 * e) * A(S(P * b)); x = 8 * S(P * b / 2); r = 4 * S(P * b / 2);
+        face = Math.floor(b / 2) % 2 ? "danceL" : "danceR";
+      } else {                                          // ゆらゆら
+        x = 9 * S(P * b / 2); r = 4 * S(P * b / 2); y = -3 * A(S(P * b));
+      }
+    } else if (m === "comfort") {                       // ゆっくり、そばで揺れる。息をするように
+      x = 6 * S(P * b / 2); r = 3 * S(P * b / 2);
+      const br = 0.018 * S(P * b / 4); sx = 1 + br; sy = 1 + br;
+    } else if (m === "sleep") {                         // ゆりかご
+      r = 5 * S(P * b / 2); x = 5 * S(P * b / 2); y = 2 + 2 * S(P * b);
+      const br = 0.012 * S(P * b / 4); sy = 1 - br;
+    } else if (m === "calm") {                          // ふわふわ浮かぶ
+      y = -4 - 6 * S(P * b / 2); r = 2 * S(P * b / 4); x = 4 * S(P * b / 4);
+    } else {                                            // ふつうの曲：ゆらゆら
+      x = 8 * S(P * b / 2); r = 4 * S(P * b / 2); y = -2 * A(S(P * b));
+      if (L > 0.7) face = Math.floor(b / 2) % 2 ? "danceL" : "danceR";
+    }
+    return { x, y, r, sx, sy, face };
+  }
+  function tick() {
+    if (!mv || !mv.raf) return;
+    const t = songTime();
+    const dt = Math.min(0.1, Math.max(0, t - mv.lastT)); mv.lastT = t;
+    mv.eS += (energyAt(t) - mv.eS) * Math.min(1, dt * 2.5);
+    mv.L += (levelAt(t) - mv.L) * Math.min(1, dt * 1.5);
+    const b = (t - mv.offset) * mv.bpm / 60;
+    const bi = Math.floor(b);
+    if (bi !== mv.lastBeat) { mv.lastBeat = bi; onBeat(bi, mv.eS, t); }
+    const p = poseAt(b, mv.eS, t);
+    let face = p.face, mirror = 1;
+    if (face === "waveR") { face = "wave"; mirror = -1; }  // 反対の手でもふる
+    setFace(face, playerChar);
+    playerChar.style.transform = "translate(" + p.x.toFixed(1) + "px," + p.y.toFixed(1) + "px) rotate(" + p.r.toFixed(2) + "deg) scale(" + (p.sx * mirror).toFixed(3) + "," + p.sy.toFixed(3) + ")";
+    mv.raf = requestAnimationFrame(tick);
+  }
+  function startMotion() {
+    if (!mv) prepareMotion(currentSong);
+    playerChar.classList.remove("idle");
+    if (reduceMotion) { setFace("happy", playerChar); return; }
+    if (mv.raf) return;
+    mv.lastT = songTime();
+    mv.raf = requestAnimationFrame(tick);
+  }
+  function stopMotion() {
+    if (mv && mv.raf) { cancelAnimationFrame(mv.raf); mv.raf = 0; }
+    playerChar.style.transform = "";
+  }
   function setPlaying(on) {
     playBtn.textContent = on ? "⏸ とめる" : "▶ 再生";
-    playerChar.classList.toggle("dance", on);
-    clearInterval(singTimer);
-    if (on && profile) {
-      let k = 0;
-      singTimer = setInterval(() => { k++; setFace(k % 2 ? "danceL" : "danceR", playerChar); }, 480);
-    } else if (profile) {
+    if (!profile) return;
+    if (on) startMotion();
+    else {
+      stopMotion();
       setFace("normal", playerChar);
+      if (!playerChar.classList.contains("cheer")) playerChar.classList.add("idle");
     }
   }
   function openPlayer(id) {
@@ -1340,6 +1540,8 @@
     stopMic();
     stopVoice();
     currentSong = sg;
+    stopMotion();
+    prepareMotion(sg);
     setFace("normal", playerChar);
     playerChar.classList.remove("cheer");
     $("playerTitle").textContent = sg.title;
@@ -1424,10 +1626,10 @@
   $("sangBtn").addEventListener("click", () => {
     if (!profile || !currentSong || $("sangBtn").disabled) return;
     $("sangBtn").disabled = true;
-    playerChar.classList.remove("dance");
+    stopMotion();
+    playerChar.classList.remove("idle");
     void playerChar.offsetWidth;
     playerChar.classList.add("cheer");
-    clearInterval(singTimer);
     setFace("banzai", playerChar);
     const listened = !!currentSong.youtube;
     const lines = listened ? LISTEN_LINES[profile.char] : SANG_LINES[profile.char];

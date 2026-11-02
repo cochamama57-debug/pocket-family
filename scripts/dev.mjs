@@ -42,6 +42,17 @@ http
     try {
       const data = await readFile(file);
       res.setHeader("Content-Type", types[path.extname(file)] || "application/octet-stream");
+      res.setHeader("Accept-Ranges", "bytes");
+      // 曲の途中へ飛べるように（本番の Vercel と同じく、範囲の取り出しに答える）
+      const m = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || "");
+      if (m && (m[1] || m[2])) {
+        const start = m[1] ? Number(m[1]) : Math.max(0, data.length - Number(m[2]));
+        const end = m[1] && m[2] ? Math.min(Number(m[2]), data.length - 1) : data.length - 1;
+        if (start > end || start >= data.length) { res.statusCode = 416; res.setHeader("Content-Range", "bytes */" + data.length); return res.end(); }
+        res.statusCode = 206;
+        res.setHeader("Content-Range", "bytes " + start + "-" + end + "/" + data.length);
+        return res.end(data.subarray(start, end + 1));
+      }
       res.end(data);
     } catch {
       res.statusCode = 404;
