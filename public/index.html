@@ -1059,7 +1059,7 @@
       const payload = {
         messages: history.slice(-60).map(m => ({ role: m.role, content: m.content })),
         profile: profile ? profileForServer() : null,
-        songs: SONGS.slice(0, 20).map(x => ({ id: x.id, title: x.title, tag: x.tag || "" })),
+        songs: SONGS.slice(0, 20).map(x => ({ id: x.id, title: x.title, tag: x.tag || "", kind: x.youtube ? "listen" : "sing" })),
       };
       if (photo) payload.image = { type: "image/jpeg", data: photo.data };
       const r = await fetch("/api/chat", {
@@ -1148,6 +1148,10 @@
       "ピピッ。きょうの歌も、大事な思い出にしておくね。",
     ],
   };
+  const LISTEN_LINES = {
+    chamu: ["いい曲だったね。どこが好きだった？", "聞かせてくれて、ありがとう。わたしも、なんだかほっとしたよ。"],
+    colon: ["ピピッ、いい曲だったね。どこが好きだった？", "いっしょに聞けて、うれしいな。胸のハートが、ぽかぽかしてるよ。"],
+  };
   async function loadSongs() {
     try {
       const r = await fetch("songs/songs.json", { cache: "no-cache" });
@@ -1205,6 +1209,7 @@
     $("ytNote").hidden = !isYt;
     $("playerCtrl").hidden = isYt;
     $("lyrics").hidden = isYt && !sg.lyrics;
+    $("sangBtn").textContent = isYt ? "聞いたよ" : "歌えた！";
     if (isYt) {
       audio.removeAttribute("src");
       $("ytNote").textContent = "動画の ▶ を押すと、曲が流れるよ";
@@ -1278,14 +1283,15 @@
     playerChar.classList.add("cheer");
     clearInterval(singTimer);
     setFace("banzai", playerChar);
-    const lines = SANG_LINES[profile.char];
+    const listened = !!currentSong.youtube;
+    const lines = listened ? LISTEN_LINES[profile.char] : SANG_LINES[profile.char];
     const line = lines[Math.floor(Math.random() * lines.length)];
     const title = currentSong.title;
     setTimeout(() => {
       closePlayer();
-      history.push({ role: "user", content: "（いっしょに『" + title + "』を歌った）" });
+      history.push({ role: "user", content: listened ? "（『" + title + "』を聞いた）" : "（いっしょに『" + title + "』を歌った）" });
       save();
-      bubble("me", "🎵 『" + title + "』を歌ったよ");
+      bubble("me", "🎵 『" + title + "』を" + (listened ? "聞いたよ" : "歌ったよ"));
       sayScripted(line);
       afterActivity("sing");
       showFace("happy", 2600);
@@ -1304,7 +1310,7 @@
     b.type = "button";
     b.className = "song-btn";
     const s1 = document.createElement("span"); s1.className = "nb"; s1.textContent = "🎵 『" + sg.title + "』";
-    const s2 = document.createElement("span"); s2.className = "nb"; s2.textContent = "をかける";
+    const s2 = document.createElement("span"); s2.className = "nb"; s2.textContent = sg.youtube ? "を聞いてみる" : "をかける";
     b.append(s1, s2);
     b.addEventListener("click", () => openPlayer(sg.id));
     row.querySelector(".bubble").appendChild(b);
