@@ -113,6 +113,9 @@
     color: var(--ink);
   }
   .tool .ico { font-size: 26px; line-height: 1; }
+  .tool.help-btn { flex: none; flex-direction: column; gap: 0; width: 64px; padding: 0; color: var(--mic); border-color: var(--mic); }
+  .tool.help-btn .q { font-size: 22px; line-height: 1; }
+  .tool.help-btn .hl { font-size: 12px; line-height: 1.2; }
   .tool.mic { flex: 1.4; background: var(--mic); border-color: var(--mic); color: #fff; }
   .tool.mic.listening { background: #c0392b; border-color: #c0392b; animation: pulse 1.2s ease-in-out infinite; }
   @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(192,57,43,.45); } 50% { box-shadow: 0 0 0 8px rgba(192,57,43,0); } }
@@ -129,7 +132,7 @@
   .guide .more { font-size: 14px; color: var(--sub); background: transparent; border: 0; padding: 4px 0; min-height: 32px; text-decoration: underline; }
   .guide .help { display: block; font-size: 15px; color: var(--sub); }
   .guide .tip { display: block; font-size: 16px; color: var(--ink); margin-top: 2px; }
-  .guide .more { margin-right: 12px; }
+  .guide .more { margin-right: 12px; text-align: left; }
   .guide .links { display: block; }
   .guide .close { flex: none; align-self: flex-start; font-size: 14px; line-height: 1.2; color: var(--sub); background: #fff; border: 1px solid var(--line); border-radius: 10px; min-width: 52px; min-height: 52px; padding: 4px; }
   .kbd { flex: none; width: 64px; }
@@ -238,6 +241,7 @@
     </div>
     <div class="tools">
       <button class="tool mic" id="mic" type="button"><span class="ico" aria-hidden="true"><svg class="micsvg" viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="2.5" width="7" height="12" rx="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 11.5a7 7 0 0 0 14 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="18.5" x2="12" y2="22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><span id="micLabel">話す</span></button>
+      <button class="tool help-btn" id="micHelp" type="button" aria-label="マイクの使い方"><span class="q">？</span><span class="hl">使い方</span></button>
       <button class="tool" id="photo" type="button"><span class="ico" aria-hidden="true">📷</span>写真</button>
     </div>
     <input class="sr" id="photoInput" type="file" accept="image/*" tabindex="-1" aria-hidden="true">
@@ -397,8 +401,8 @@
     const where = isAndroid ? "右上" : "右下";
     if (isAndroid) kbdMic.setAttribute("transform", "translate(0,-55)"); // Androidのキーボードは右上にマイクが多い
     else kbdMic.removeAttribute("transform"); // iPhoneは右下
-    guideText.innerHTML = 'キーボードの<b>' + where + 'の</b>  を押して話してね'
-      + '<span class="tip"><span class="nb">スマホを口に近づけて、</span><span class="nb">ゆっくり話してね</span></span>'
+    guideText.innerHTML = 'キーボードの<b>' + where + 'の</b> <span class="micbox"><svg class="micsvg" viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="2.5" width="7" height="12" rx="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 11.5a7 7 0 0 0 14 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="18.5" x2="12" y2="22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span> を<span class="nb">押して話してね</span>'
+      + '<span class="tip"><span class="nb">スマホを</span><span class="nb">口に近づけて、</span><span class="nb">ゆっくり</span><span class="nb">話してね</span></span>'
       + (isAndroid ? '' : '<span class="help" id="guideHelp" hidden>設定 → 一般 → キーボード →「音声入力」をオンにしてね</span>')
       + '<span class="links">' + (isAndroid ? '' : '<button type="button" class="more" id="guideMore">マイクが見つからないとき</button>') + '<button type="button" class="more" id="guideOff">次から出さない</button></span>';
     const more = $("guideMore");
@@ -412,7 +416,14 @@
   }
   function hideGuide() { guide.hidden = true; }
   guideClose.addEventListener("click", () => { hideGuide(); input.focus(); });
-  input.addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== input && document.activeElement !== micBtn) hideGuide(); }, 300));
+  // ナビボタン：いつでもナビを出す（「次から出さない」にしていても）
+  $("micHelp").addEventListener("click", () => {
+    stopMic();
+    input.focus();
+    showGuide();
+    setTimeout(() => { log.scrollTop = log.scrollHeight; }, 300);
+  });
+  input.addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== input && document.activeElement !== micBtn && document.activeElement !== $("micHelp")) hideGuide(); }, 300));
 
   const SR = useKeyboardMic ? null : (window.SpeechRecognition || window.webkitSpeechRecognition);
   let rec = null, listening = false, baseText = "", heard = "";
