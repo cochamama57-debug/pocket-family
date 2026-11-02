@@ -1209,7 +1209,7 @@
     $("ytNote").hidden = !isYt;
     $("playerCtrl").hidden = isYt;
     $("lyrics").hidden = isYt && !sg.lyrics;
-    $("sangBtn").textContent = isYt ? "聞いたよ" : "歌えた！";
+    $("sangBtn").textContent = isYt ? "聞いたよ・歌ったよ" : "歌えた！";
     if (isYt) {
       audio.removeAttribute("src");
       $("ytNote").textContent = "動画の ▶ を押すと、曲が流れるよ";
@@ -1289,9 +1289,9 @@
     const title = currentSong.title;
     setTimeout(() => {
       closePlayer();
-      history.push({ role: "user", content: listened ? "（『" + title + "』を聞いた）" : "（いっしょに『" + title + "』を歌った）" });
+      history.push({ role: "user", content: listened ? "（『" + title + "』をいっしょに楽しんだ）" : "（いっしょに『" + title + "』を歌った）" });
       save();
-      bubble("me", "🎵 『" + title + "』を" + (listened ? "聞いたよ" : "歌ったよ"));
+      bubble("me", "🎵 『" + title + "』を" + (listened ? "楽しんだよ" : "歌ったよ"));
       sayScripted(line);
       afterActivity("sing");
       showFace("happy", 2600);
