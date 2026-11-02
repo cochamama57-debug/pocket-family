@@ -127,8 +127,11 @@
   .micsvg { width: 1.15em; height: 1.15em; vertical-align: -0.2em; }
   .guide .micbox { display: inline-block; border: 2px solid #b3261e; border-radius: 6px; padding: 0 2px; color: #222; background: #fff; }
   .guide .more { font-size: 14px; color: var(--sub); background: transparent; border: 0; padding: 4px 0; min-height: 32px; text-decoration: underline; }
-  .guide .help { font-size: 15px; color: var(--sub); }
-  .guide .close { flex: none; align-self: flex-start; font-size: 15px; color: var(--sub); background: transparent; border: 0; min-width: 44px; min-height: 44px; }
+  .guide .help { display: block; font-size: 15px; color: var(--sub); }
+  .guide .tip { display: block; font-size: 16px; color: var(--ink); margin-top: 2px; }
+  .guide .more { margin-right: 12px; }
+  .guide .links { display: block; }
+  .guide .close { flex: none; align-self: flex-start; font-size: 14px; line-height: 1.2; color: var(--sub); background: #fff; border: 1px solid var(--line); border-radius: 10px; min-width: 52px; min-height: 52px; padding: 4px; }
   .kbd { flex: none; width: 64px; }
   .kbd svg { width: 100%; height: auto; display: block; }
   .kbd .hot { animation: hot 1s ease-in-out infinite; }
@@ -231,7 +234,7 @@
         </svg>
       </div>
       <div id="guideText"></div>
-      <button class="close" type="button" id="guideClose" aria-label="案内をとじる">✕</button>
+      <button class="close" type="button" id="guideClose" aria-label="案内をとじる">✕<br>とじる</button>
     </div>
     <div class="tools">
       <button class="tool mic" id="mic" type="button"><span class="ico" aria-hidden="true"><svg class="micsvg" viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="2.5" width="7" height="12" rx="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 11.5a7 7 0 0 0 14 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="18.5" x2="12" y2="22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><span id="micLabel">話す</span></button>
@@ -388,17 +391,23 @@
   // iPhoneはページの中の音声認識が不安定なので使わない（キーボードのマイクを使う）
   let useKeyboardMic = isIOS;
 
+  const GUIDE_OFF_KEY = "pf.guide.off";
+  function guideOff() { try { return localStorage.getItem(GUIDE_OFF_KEY) === "1"; } catch { return false; } }
   function showGuide() {
-    if (isAndroid) {
-      kbdMic.setAttribute("transform", "translate(0,-55)"); // Androidのキーボードは右上にマイクが多い
-      guideText.innerHTML = 'キーボードの<b>右上の</b> <span class="micbox"><svg class="micsvg" viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="2.5" width="7" height="12" rx="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 11.5a7 7 0 0 0 14 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="18.5" x2="12" y2="22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span> を押して話してね';
-    } else {
-      kbdMic.removeAttribute("transform"); // iPhoneは右下
-      guideText.innerHTML = 'キーボードの<b>右下の</b> <span class="micbox"><svg class="micsvg" viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="2.5" width="7" height="12" rx="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 11.5a7 7 0 0 0 14 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="18.5" x2="12" y2="22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span> を押して話してね'
-        + '<br><button type="button" class="more" id="guideMore">マイクが見つからないとき</button>'
-        + '<span class="help" id="guideHelp" hidden><br>設定 → 一般 → キーボード →「音声入力」をオンにしてね</span>';
-      $("guideMore").addEventListener("click", () => { $("guideHelp").hidden = false; $("guideMore").hidden = true; input.focus(); });
-    }
+    const where = isAndroid ? "右上" : "右下";
+    if (isAndroid) kbdMic.setAttribute("transform", "translate(0,-55)"); // Androidのキーボードは右上にマイクが多い
+    else kbdMic.removeAttribute("transform"); // iPhoneは右下
+    guideText.innerHTML = 'キーボードの<b>' + where + 'の</b>  を押して話してね'
+      + '<span class="tip"><span class="nb">スマホを口に近づけて、</span><span class="nb">ゆっくり話してね</span></span>'
+      + (isAndroid ? '' : '<span class="help" id="guideHelp" hidden>設定 → 一般 → キーボード →「音声入力」をオンにしてね</span>')
+      + '<span class="links">' + (isAndroid ? '' : '<button type="button" class="more" id="guideMore">マイクが見つからないとき</button>') + '<button type="button" class="more" id="guideOff">次から出さない</button></span>';
+    const more = $("guideMore");
+    if (more) more.addEventListener("click", () => { $("guideHelp").hidden = false; more.hidden = true; input.focus(); });
+    $("guideOff").addEventListener("click", () => {
+      try { localStorage.setItem(GUIDE_OFF_KEY, "1"); } catch {}
+      hideGuide();
+      input.focus();
+    });
     guide.hidden = false;
   }
   function hideGuide() { guide.hidden = true; }
@@ -456,7 +465,12 @@
     if (useKeyboardMic) {
       // キーボードを開いて、マイクの場所を案内する（押したその場でfocusしないとiPhoneでキーボードが開かない）
       input.focus();
-      showGuide();
+      if (guideOff()) {
+        statusEl.textContent = "キーボードのマイクで話してね";
+        setTimeout(() => { if (!sending) statusEl.textContent = "おしゃべりしよう"; }, 4000);
+      } else {
+        showGuide();
+      }
       setTimeout(() => { log.scrollTop = log.scrollHeight; }, 300);
       return;
     }
