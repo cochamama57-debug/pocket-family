@@ -124,6 +124,8 @@
     font-size: 19px; line-height: 1.45;
   }
   .guide b { color: #b3261e; }
+  .micsvg { width: 1.15em; height: 1.15em; vertical-align: -0.2em; }
+  .guide .micbox { display: inline-block; border: 2px solid #b3261e; border-radius: 6px; padding: 0 2px; color: #222; background: #fff; }
   .guide .more { font-size: 14px; color: var(--sub); background: transparent; border: 0; padding: 4px 0; min-height: 32px; text-decoration: underline; }
   .guide .help { font-size: 15px; color: var(--sub); }
   .guide .close { flex: none; align-self: flex-start; font-size: 15px; color: var(--sub); background: transparent; border: 0; min-width: 44px; min-height: 44px; }
@@ -217,13 +219,14 @@
         <svg viewBox="0 0 100 70">
           <rect x="1" y="1" width="98" height="68" rx="6" fill="#e9e6e1" stroke="#c9c3ba"/>
           <g fill="#fff">
-            <rect x="6" y="7" width="88" height="10" rx="2"/>
-            <rect x="6" y="21" width="88" height="10" rx="2"/>
-            <rect x="6" y="35" width="88" height="10" rx="2"/>
-            <rect x="26" y="49" width="48" height="10" rx="2"/>
+            <rect x="6" y="5" width="88" height="9" rx="2"/>
+            <rect x="6" y="17" width="88" height="9" rx="2"/>
+            <rect x="6" y="29" width="88" height="9" rx="2"/>
+            <rect x="6" y="41" width="88" height="9" rx="2"/>
           </g>
           <g id="kbdMic">
-            <circle class="hot" cx="86" cy="60" r="11" fill="#c0392b"/>
+            <circle class="hot" cx="88" cy="63" r="9" fill="#c0392b"/>
+            <g transform="translate(82,57) scale(0.5)" color="#fff"><rect x="8.5" y="2.5" width="7" height="12" rx="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 11.5a7 7 0 0 0 14 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="18.5" x2="12" y2="22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></g>
           </g>
         </svg>
       </div>
@@ -231,7 +234,7 @@
       <button class="close" type="button" id="guideClose" aria-label="案内をとじる">✕</button>
     </div>
     <div class="tools">
-      <button class="tool mic" id="mic" type="button"><span class="ico" aria-hidden="true">🎤</span><span id="micLabel">話す</span></button>
+      <button class="tool mic" id="mic" type="button"><span class="ico" aria-hidden="true"><svg class="micsvg" viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="2.5" width="7" height="12" rx="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 11.5a7 7 0 0 0 14 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="18.5" x2="12" y2="22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><span id="micLabel">話す</span></button>
       <button class="tool" id="photo" type="button"><span class="ico" aria-hidden="true">📷</span>写真</button>
     </div>
     <input class="sr" id="photoInput" type="file" accept="image/*" tabindex="-1" aria-hidden="true">
@@ -387,12 +390,12 @@
 
   function showGuide() {
     if (isAndroid) {
-      kbdMic.setAttribute("transform", "translate(0,-52)"); // Androidのキーボードは右上にマイクが多い
-      guideText.innerHTML = "キーボードの<b>右上の🎤</b>を押して話してね";
+      kbdMic.setAttribute("transform", "translate(0,-55)"); // Androidのキーボードは右上にマイクが多い
+      guideText.innerHTML = 'キーボードの<b>右上の</b> <span class="micbox"><svg class="micsvg" viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="2.5" width="7" height="12" rx="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 11.5a7 7 0 0 0 14 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="18.5" x2="12" y2="22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span> を押して話してね';
     } else {
       kbdMic.removeAttribute("transform"); // iPhoneは右下
-      guideText.innerHTML = "キーボードの<b>右下の🎤</b>を押して話してね"
-        + '<br><button type="button" class="more" id="guideMore">🎤が見つからないとき</button>'
+      guideText.innerHTML = 'キーボードの<b>右下の</b> <span class="micbox"><svg class="micsvg" viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="2.5" width="7" height="12" rx="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 11.5a7 7 0 0 0 14 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="18.5" x2="12" y2="22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span> を押して話してね'
+        + '<br><button type="button" class="more" id="guideMore">マイクが見つからないとき</button>'
         + '<span class="help" id="guideHelp" hidden><br>設定 → 一般 → キーボード →「音声入力」をオンにしてね</span>';
       $("guideMore").addEventListener("click", () => { $("guideHelp").hidden = false; $("guideMore").hidden = true; input.focus(); });
     }
