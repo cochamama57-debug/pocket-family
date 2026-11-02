@@ -412,7 +412,7 @@
     <div id="step1">
       <h1>いっしょに暮らす<br>家族をえらんでね</h1>
       <div class="cards">
-        <button type="button" class="card" data-char="chamu"><img src="chars/chamu/normal.png" alt=""><b>ちゃむ</b><span>犬と猫がまざった<br>ふしぎな生き物</span></button>
+        <button type="button" class="card" data-char="chamu"><img src="chars/chamu/normal.png" alt=""><b>ちゃむ</b><span>のんびり屋の<br>ふしぎな生き物</span></button>
         <button type="button" class="card" data-char="colon"><img src="chars/colon/normal.png" alt=""><b>コロン</b><span>まるくて小さな<br>ロボット</span></button>
       </div>
     </div>
@@ -437,7 +437,7 @@
     chamu: { label: "ちゃむ", img: "chars/chamu/normal.png" },
     colon: { label: "コロン", img: "chars/colon/normal.png" },
   };
-  const FACES = ["normal", "talk", "happy", "sleepy"];
+  const FACES = ["normal", "talk", "happy", "sleepy", "wave", "banzai", "danceL", "danceR"];
   const faceSrc = (ch, f) => "chars/" + ch + "/" + f + ".png";
   // 表情の絵を先に読みこんでおく（切りかえたときにチラつかないように）
   function preloadFaces(ch) { for (const f of FACES) { const im = new Image(); im.src = faceSrc(ch, f); } }
@@ -463,7 +463,7 @@
   const LEVEL_UP = {
     chamu: [
       "",
-      "えへへ、なんだか、もっとなかよくなれた気がする。しっぽが止まらないよ。",
+      "えへへ、なんだか、もっとなかよくなれた気がする。頭の芽が、ぴょこぴょこしちゃう。",
       "ねえ、わたしたち、もうすっかり家族だね。いつも話してくれて、ありがとう。",
       "あなたの口ぐせ、ちょっとうつっちゃったかも。えへへ、大の仲よしだね。",
     ],
@@ -567,7 +567,7 @@
       setTimeout(() => {
         sayScripted(LEVEL_UP[profile.char][after]);
         clearInterval(talkTimer);
-        showFace("happy", 2600);
+        showFace("banzai", 2600);
         avatar.classList.add("happy");
         setTimeout(() => avatar.classList.remove("happy"), 2400);
       }, 900);
@@ -1088,7 +1088,7 @@
   const SONG_TAGS = ["寄り添う", "泣きたいとき", "静かに", "楽しい"];
   const SANG_LINES = {
     chamu: [
-      "わぁ、すてきな声だった！しっぽが、ぶんぶんしちゃったよ。",
+      "わぁ、すてきな声だった！羽の耳が、ぱたぱたしちゃったよ。",
       "いっしょに歌えて、とってもうれしい。えへへ、また歌おうね。",
       "声、ちゃんと届いてたよ。なんだか、ぽかぽかしてきた。",
     ],
@@ -1133,7 +1133,7 @@
     clearInterval(singTimer);
     if (on && profile) {
       let k = 0;
-      singTimer = setInterval(() => { k++; setFace(k % 4 === 3 ? "happy" : (k % 2 ? "talk" : "normal"), playerChar); }, 450);
+      singTimer = setInterval(() => { k++; setFace(k % 2 ? "danceL" : "danceR", playerChar); }, 480);
     } else if (profile) {
       setFace("normal", playerChar);
     }
@@ -1178,7 +1178,7 @@
     void playerChar.offsetWidth;
     playerChar.classList.add("cheer");
     clearInterval(singTimer);
-    setFace("happy", playerChar);
+    setFace("banzai", playerChar);
     const lines = SANG_LINES[profile.char];
     const line = lines[Math.floor(Math.random() * lines.length)];
     const title = currentSong.title;
@@ -1541,7 +1541,7 @@
     setupEl.hidden = true;
     applyChar();
     render();
-    setTimeout(() => sayScripted(QUESTIONS[0].ask(profile.name)), 300);
+    setTimeout(() => { sayScripted(QUESTIONS[0].ask(profile.name)); setTimeout(() => showFace("wave", 2200), 1600); }, 300);
   });
 
   load();
@@ -1557,6 +1557,7 @@
     saveProfile();
     applyChar();
     render();
+    setTimeout(() => showFace("wave", 1800), 400);
     setTimeout(checkReminders, 800);
   }
 })();
