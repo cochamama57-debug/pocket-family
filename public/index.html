@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#fff7ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ポケットファミリー">
+<title>AIポケットファミリー</title>
+<style>
+  :root {
+    --bg: #fff7ec;
+    --ink: #3a2e24;
+    --sub: #7a6a5c;
+    --me: #ffd9a8;
+    --her: #ffffff;
+    --line: #ecdcc6;
+    --accent: #e8743b;
+    --accent-ink: #ffffff;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+    font-size: 19px;
+    line-height: 1.6;
+    -webkit-text-size-adjust: 100%;
+  }
+  .app {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    max-width: 640px;
+    margin: 0 auto;
+    padding: env(safe-area-inset-top, 0px) 16px 0;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0 8px;
+    border-bottom: 1px solid var(--line);
+  }
+  .avatar { width: 84px; height: 84px; flex: none; }
+  .avatar svg { width: 100%; height: 100%; overflow: visible; }
+  .who { flex: 1; min-width: 0; }
+  .who .name { font-size: 22px; font-weight: 700; }
+  .who .status { font-size: 15px; color: var(--sub); }
+  .reset {
+    flex: none;
+    font: inherit;
+    font-size: 14px;
+    color: var(--sub);
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 8px 12px;
+    min-height: 44px;
+  }
+  .reset.armed { color: #b3261e; border-color: #e7a19b; }
+
+  .log {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 0;
+    -webkit-overflow-scrolling: touch;
+  }
+  .msg { display: flex; margin: 10px 0; }
+  .msg .bubble {
+    max-width: 82%;
+    padding: 10px 14px;
+    border-radius: 18px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    line-break: strict;
+  }
+  .msg.her .bubble { background: var(--her); border: 1px solid var(--line); border-top-left-radius: 6px; }
+  .msg.me { justify-content: flex-end; }
+  .msg.me .bubble { background: var(--me); border-top-right-radius: 6px; }
+  .msg.note .bubble { background: transparent; color: var(--sub); font-size: 16px; text-align: center; max-width: 100%; margin: 0 auto; }
+  .typing .bubble { color: var(--sub); }
+  .typing .dots span { animation: blink 1.2s infinite; }
+  .typing .dots span:nth-child(2) { animation-delay: .2s; }
+  .typing .dots span:nth-child(3) { animation-delay: .4s; }
+  @keyframes blink { 0%, 80%, 100% { opacity: .2; } 40% { opacity: 1; } }
+
+  form {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    padding: 10px 0 calc(10px + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--line);
+    background: var(--bg);
+  }
+  textarea {
+    flex: 1;
+    font: inherit;
+    font-size: 19px; /* 16px以上でiPhoneの自動拡大を防ぐ */
+    line-height: 1.5;
+    padding: 10px 12px;
+    border: 2px solid var(--line);
+    border-radius: 14px;
+    background: #fff;
+    color: var(--ink);
+    resize: none;
+    min-height: 52px;
+    max-height: 140px;
+  }
+  textarea:focus { outline: none; border-color: var(--accent); }
+  .send {
+    flex: none;
+    font: inherit;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent-ink);
+    background: var(--accent);
+    border: 0;
+    border-radius: 14px;
+    min-width: 76px;
+    min-height: 52px;
+    padding: 0 14px;
+  }
+  .send:disabled { opacity: .5; }
+  .hint { font-size: 14px; color: var(--sub); text-align: center; margin: 0 0 4px; }
+  .nb { display: inline-block; }
+  footer { text-align: center; font-size: 12px; color: var(--sub); padding-bottom: 4px; }
+  footer small { display: block; font-size: 11px; }
+
+  /* コロンの動き */
+  .colon-body { transform-origin: 60px 100px; animation: idle 3.2s ease-in-out infinite; }
+  .talking .colon-body { animation: talk .45s ease-in-out infinite; }
+  .eye { transform-box: fill-box; transform-origin: center; animation: eyeblink 4.5s infinite; }
+  .antenna-ball { animation: glow 2.4s ease-in-out infinite; }
+  @keyframes idle { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+  @keyframes talk { 0%, 100% { transform: translateY(0) scale(1, 1); } 50% { transform: translateY(-4px) scale(1.03, .97); } }
+  @keyframes eyeblink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
+  @keyframes glow { 0%, 100% { fill: #ffcf5a; } 50% { fill: #ffe9a8; } }
+  @media (prefers-reduced-motion: reduce) {
+    .colon-body, .eye, .antenna-ball { animation: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="avatar" id="avatar" aria-hidden="true">
+      <!-- 仮のキャラ：まるいロボット「コロン」（あとで絵に差し替え） -->
+      <svg viewBox="0 0 120 120">
+        <g class="colon-body">
+          <line x1="60" y1="22" x2="60" y2="8" stroke="#8a9bb0" stroke-width="3" stroke-linecap="round"/>
+          <circle class="antenna-ball" cx="60" cy="7" r="6" fill="#ffcf5a"/>
+          <circle cx="60" cy="64" r="44" fill="#bfe3f2" stroke="#7fb6cf" stroke-width="3"/>
+          <ellipse cx="60" cy="66" rx="31" ry="24" fill="#f4fbff"/>
+          <ellipse class="eye" cx="48" cy="62" rx="5" ry="7" fill="#33414f"/>
+          <ellipse class="eye" cx="72" cy="62" rx="5" ry="7" fill="#33414f"/>
+          <circle cx="38" cy="74" r="5" fill="#ffb4a8" opacity=".7"/>
+          <circle cx="82" cy="74" r="5" fill="#ffb4a8" opacity=".7"/>
+          <path d="M53 75 Q60 81 67 75" fill="none" stroke="#33414f" stroke-width="3" stroke-linecap="round"/>
+        </g>
+      </svg>
+    </div>
+    <div class="who">
+      <div class="name">コロン</div>
+      <div class="status" id="status">おしゃべりしよう</div>
+    </div>
+    <button class="reset" id="reset" type="button">はじめから</button>
+  </header>
+
+  <main class="log" id="log" aria-live="polite"></main>
+
+  <form id="form" autocomplete="off">
+    <textarea id="input" rows="1" maxlength="400" placeholder="ここに書いてね" enterkeyhint="send" aria-label="コロンに話しかける"></textarea>
+    <button class="send" id="send" type="submit">送る</button>
+  </form>
+  <p class="hint"><span class="nb">声で話すときは、</span><span class="nb">キーボードの</span><span class="nb">マイクを押してね</span></p>
+  <footer>AIポケットファミリー<small>© 2026 nekomori*I’ll</small></footer>
+</div>
+
+<script>
+(() => {
+  const STORE_KEY = "pf.chat.v1";
+  const MAX_KEEP = 60;
+  const GREETING = "こんにちは。わたし、コロンだよ。きょうは、どんな一日だった？";
+
+  const log = document.getElementById("log");
+  const form = document.getElementById("form");
+  const input = document.getElementById("input");
+  const send = document.getElementById("send");
+  const avatar = document.getElementById("avatar");
+  const statusEl = document.getElementById("status");
+  const resetBtn = document.getElementById("reset");
+
+  let history = [];
+  let canSave = true;
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORE_KEY);
+      const data = raw ? JSON.parse(raw) : null;
+      if (Array.isArray(data)) {
+        history = data.filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string");
+      }
+    } catch { history = []; }
+  }
+  function save() {
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify(history.slice(-MAX_KEEP)));
+    } catch {
+      if (canSave) {
+        canSave = false;
+        addNote("この画面では、お話を残しておけないみたい。閉じると消えてしまうよ。");
+      }
+    }
+  }
+
+  function bubble(cls, text) {
+    const row = document.createElement("div");
+    row.className = "msg " + cls;
+    const b = document.createElement("div");
+    b.className = "bubble";
+    b.textContent = text; // 文字はそのまま表示（HTMLとして扱わない）
+    row.appendChild(b);
+    log.appendChild(row);
+    log.scrollTop = log.scrollHeight;
+    return row;
+  }
+  const addNote = (t) => bubble("note", t);
+
+  function render() {
+    log.textContent = "";
+    bubble("her", GREETING);
+    for (const m of history) bubble(m.role === "user" ? "me" : "her", m.content);
+  }
+
+  function setBusy(on) {
+    send.disabled = on;
+    avatar.classList.toggle("talking", on);
+    statusEl.textContent = on ? "かんがえ中…" : "おしゃべりしよう";
+  }
+
+  function autoGrow() {
+    input.style.height = "auto";
+    input.style.height = Math.min(input.scrollHeight, 140) + "px";
+  }
+  input.addEventListener("input", autoGrow);
+
+  let sending = false;
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (sending) return;
+    const text = input.value.trim();
+    if (!text) { input.focus(); return; }
+
+    sending = true;
+    setBusy(true);
+    input.value = "";
+    autoGrow();
+    history.push({ role: "user", content: text });
+    save();
+    bubble("me", text);
+
+    const typing = bubble("her typing", "");
+    typing.querySelector(".bubble").innerHTML = '<span class="dots"><span>・</span><span>・</span><span>・</span></span>';
+
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 45000);
+    try {
+      const r = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: [{ role: "assistant", content: GREETING }, ...history] }),
+        signal: ctrl.signal,
+      });
+      let data = {};
+      try { data = await r.json(); } catch {}
+      typing.remove();
+      if (r.ok && data.reply) {
+        history.push({ role: "assistant", content: data.reply });
+        save();
+        bubble("her", data.reply);
+      } else {
+        // 失敗したら、送った言葉を入力欄に戻す
+        history.pop();
+        save();
+        log.lastElementChild?.remove();
+        input.value = text;
+        autoGrow();
+        addNote(data.message || "うまく届かなかったみたい。もう一度送ってみてね。");
+      }
+    } catch {
+      typing.remove();
+      history.pop();
+      save();
+      log.lastElementChild?.remove();
+      input.value = text;
+      autoGrow();
+      addNote("電波がとどかなかったみたい。もう一度送ってみてね。");
+    } finally {
+      clearTimeout(timer);
+      sending = false;
+      setBusy(false);
+    }
+  });
+
+  // Enterで改行、送るのはボタン（スマホで誤送信しにくく）
+  // ただしPCで Ctrl/⌘+Enter は送信
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); form.requestSubmit(); }
+  });
+
+  // はじめから（2回押し）
+  let armTimer = null;
+  resetBtn.addEventListener("click", () => {
+    if (!resetBtn.classList.contains("armed")) {
+      resetBtn.classList.add("armed");
+      resetBtn.textContent = "もう一度押すと消えます";
+      clearTimeout(armTimer);
+      armTimer = setTimeout(() => { resetBtn.classList.remove("armed"); resetBtn.textContent = "はじめから"; }, 4000);
+      return;
+    }
+    clearTimeout(armTimer);
+    resetBtn.classList.remove("armed");
+    resetBtn.textContent = "はじめから";
+    history = [];
+    save();
+    render();
+  });
+
+  load();
+  render();
+})();
+</script>
+</body>
+</html>
