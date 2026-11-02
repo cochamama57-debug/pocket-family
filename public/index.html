@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="theme-color" content="#fff7ec">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ポケットファミリー">
@@ -39,7 +39,7 @@
     height: 100dvh;
     max-width: 640px;
     margin: 0 auto;
-    padding: env(safe-area-inset-top, 0px) 14px 0;
+    padding: env(safe-area-inset-top, 0px) calc(14px + env(safe-area-inset-right, 0px)) 0 calc(14px + env(safe-area-inset-left, 0px));
   }
   header {
     display: flex;
@@ -177,7 +177,7 @@
   @keyframes blink { 0%, 80%, 100% { opacity: .2; } 40% { opacity: 1; } }
 
   .composer {
-    padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px));
+    padding: 8px 0;
     border-top: 1px solid var(--line);
     background: var(--bg);
   }
@@ -215,7 +215,7 @@
   .guide b { color: #b3261e; }
   .micsvg { width: 1.15em; height: 1.15em; vertical-align: -0.2em; }
   .guide .micbox { display: inline-block; border: 2px solid #b3261e; border-radius: 6px; padding: 0 2px; color: #222; background: #fff; }
-  .guide .more { font-size: 14px; color: var(--sub); background: transparent; border: 0; padding: 4px 0; min-height: 32px; text-decoration: underline; }
+  .guide .more { font-size: 14px; color: var(--sub); background: transparent; border: 0; padding: 4px 0; min-height: 44px; text-decoration: underline; }
   .guide .help { display: block; font-size: 15px; color: var(--sub); }
   .guide .tip { display: block; font-size: 16px; color: var(--ink); margin-top: 2px; }
   .guide .more { margin-right: 12px; text-align: left; }
@@ -254,7 +254,7 @@
   }
   .send:disabled, .tool:disabled { opacity: .5; }
   .nb { display: inline-block; }
-  footer { text-align: center; font-size: 12px; color: var(--sub); padding: 2px 0 4px; }
+  footer { text-align: center; font-size: 12px; color: var(--sub); padding: 2px 0 calc(4px + env(safe-area-inset-bottom, 0px)); }
   footer small { display: block; font-size: 11px; }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
@@ -312,7 +312,7 @@
     </div>
     <input class="sr" id="photoInput" type="file" accept="image/*" tabindex="-1" aria-hidden="true">
     <div class="row">
-      <textarea id="input" rows="1" maxlength="400" placeholder="ここに書いてね" enterkeyhint="send" aria-label="話しかける"></textarea>
+      <textarea id="input" rows="1" maxlength="400" placeholder="ここに書いてね" enterkeyhint="enter" aria-label="話しかける"></textarea>
       <button class="send" id="send" type="submit">送る</button>
     </div>
   </form>
@@ -448,6 +448,7 @@
     { key: "song", ask: () => "教えてくれて、\nありがとう。\nあとひとつだけ。\n好きな歌はある？" },
   ];
   const SKIPPED = "（答えずに次へ）";
+  let askPending = false;
 
   // ---- 育つ（仲よし度・思い出ノート・話し方のくせ） ----
   const STAGE_NAMES = ["はじめまして", "なかよし", "家族", "大の仲よし"];
@@ -484,8 +485,9 @@
     if (!Number.isInteger(g.talks)) g.talks = 0;
     if (!Number.isInteger(g.sung)) g.sung = 0;
     if (!Number.isInteger(g.sinceMemory)) g.sinceMemory = 0;
-    if (!Array.isArray(g.notes)) g.notes = [];
-    if (!Array.isArray(g.habits)) g.habits = [];
+    g.days = g.days.filter(x => typeof x === "string");
+    g.notes = Array.isArray(g.notes) ? g.notes.filter(x => typeof x === "string") : [];
+    g.habits = Array.isArray(g.habits) ? g.habits.filter(x => typeof x === "string") : [];
     return g;
   }
   function points() {
@@ -520,6 +522,7 @@
   }
   function pets() {
     if (!Array.isArray(profile.pets)) profile.pets = [];
+    profile.pets = profile.pets.filter(x => x && typeof x.kind === "string");
     return profile.pets;
   }
   let memoryBusy = false;
@@ -604,6 +607,7 @@
       const p = JSON.parse(localStorage.getItem(PROFILE_KEY) || "null");
       if (p && CHARS[p.char] && typeof p.name === "string") {
         p.answers = p.answers && typeof p.answers === "object" ? p.answers : {};
+        for (const k of ["call", "wish", "song"]) if (typeof p.answers[k] !== "string") delete p.answers[k];
         p.step = Number.isInteger(p.step) ? p.step : QUESTIONS.length;
         profile = p;
       }
@@ -661,6 +665,7 @@
   }
   function showFace(f, ms) {
     clearTimeout(faceTimer);
+    clearInterval(talkTimer);
     faceLock = f;
     setFace(f);
     faceTimer = setTimeout(() => { faceLock = null; setFace(baseFace()); }, ms);
@@ -947,6 +952,11 @@
     if (!text && photo) text = PHOTO_TEXT;
 
     // 最初の会話（質問への答えを、最初の思い出として残す）
+    if (profile && profile.step < QUESTIONS.length && askPending) return;
+    if (profile && profile.step < QUESTIONS.length && photo) {
+      addNote("写真は、このあと見せてね。まずは質問に答えてくれると、うれしいな。");
+      return;
+    }
     if (profile && profile.step < QUESTIONS.length) {
       const q = QUESTIONS[profile.step];
       profile.answers[q.key] = text === SKIPPED ? "" : text.slice(0, 100);
@@ -955,13 +965,14 @@
       if (text !== SKIPPED) input.value = "";
       autoGrow();
       hideGuide();
-      history.push({ role: "user", content: text === SKIPPED ? "（とばした）" : text });
+      history.push({ role: "user", content: text === SKIPPED ? "（とばした）" : text.slice(0, 400) });
       save();
       bubble("me", text === SKIPPED ? "（とばした）" : text);
       $("skip").hidden = profile.step >= QUESTIONS.length;
       if (profile.step < QUESTIONS.length && !photo) {
         const next = profile.step;
-        setTimeout(() => { if (profile && QUESTIONS[next]) sayScripted(QUESTIONS[next].ask(profile.name)); }, 500);
+        askPending = true;
+        setTimeout(() => { askPending = false; if (profile && QUESTIONS[next]) sayScripted(QUESTIONS[next].ask(profile.name)); }, 500);
         return;
       }
       // 最後の答えのあとは、AIがそのまま返事をする（下へ続く）
@@ -976,7 +987,7 @@
     input.value = "";
     autoGrow();
     clearPhoto();
-    const entry = { role: "user", content: text, photo: photo ? true : undefined };
+    const entry = { role: "user", content: text.slice(0, 400), photo: photo ? true : undefined };
     history.push(entry);
     save();
     const myRow = bubble("me", text === PHOTO_TEXT ? "" : text, photo && photo.url);
@@ -986,7 +997,8 @@
 
     const fail = (msg) => {
       typing.remove();
-      history.pop();
+      const idx = history.lastIndexOf(entry);
+      if (idx >= 0) history.splice(idx, 1);
       save();
       myRow.remove();
       input.value = text === PHOTO_TEXT ? "" : text;
@@ -999,7 +1011,7 @@
     const timer = setTimeout(() => ctrl.abort(), 60000);
     try {
       const payload = {
-        messages: history.map(m => ({ role: m.role, content: m.content })),
+        messages: history.slice(-60).map(m => ({ role: m.role, content: m.content })),
         profile: profile ? profileForServer() : null,
         songs: SONGS.slice(0, 20).map(x => ({ id: x.id, title: x.title, tag: x.tag || "" })),
       };
@@ -1138,6 +1150,7 @@
     $("lyrics").textContent = sg.lyrics || "（歌詞はありません。曲に合わせて、自由に歌ってね）";
     $("lyrics").scrollTop = 0;
     audio.src = sg.file;
+    $("sangBtn").disabled = false;
     setPlaying(false);
     $("player").hidden = false;
   }
@@ -1159,7 +1172,8 @@
   }
   $("playerClose").addEventListener("click", closePlayer);
   $("sangBtn").addEventListener("click", () => {
-    if (!profile || !currentSong) return;
+    if (!profile || !currentSong || $("sangBtn").disabled) return;
+    $("sangBtn").disabled = true;
     playerChar.classList.remove("dance");
     void playerChar.offsetWidth;
     playerChar.classList.add("cheer");
@@ -1201,16 +1215,18 @@
   // ---- やさしいお知らせの音（コードで作る音。ファイルは使わない） ----
   // iPhoneは、画面に一度さわったあとでないと音が出せない
   let actx = null;
+  let chimeWaiting = false;
   function unlockAudio() {
     try {
       if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
-      if (actx.state === "suspended") actx.resume();
+      if (actx.state === "suspended") actx.resume().then(() => { if (chimeWaiting) { chimeWaiting = false; chime(); } });
+      else if (chimeWaiting) { chimeWaiting = false; chime(); }
     } catch {}
   }
   ["touchend", "click", "keydown"].forEach(ev => document.addEventListener(ev, unlockAudio, { passive: true }));
   function chime() {
     try { if (navigator.vibrate) navigator.vibrate([120, 80, 120]); } catch {}
-    if (!actx || actx.state !== "running") return;
+    if (!actx || actx.state !== "running") { chimeWaiting = true; return; }
     const t0 = actx.currentTime + 0.05;
     // ポローン、と2つの音（ド→ミ→ソのやわらかい鐘）
     [[1046.5, 0], [1318.5, 0.18], [1568.0, 0.36]].forEach(([f, dt]) => {
@@ -1228,11 +1244,26 @@
 
   // ---- 予定とお薬の時間 ----
   const uid = () => Math.random().toString(36).slice(2, 10);
-  function plans() { if (!Array.isArray(profile.plans)) profile.plans = []; return profile.plans; }
-  function meds() { if (!Array.isArray(profile.meds)) profile.meds = []; return profile.meds; }
+  const isHM = (v) => typeof v === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(v);
+  function plans() {
+    if (!Array.isArray(profile.plans)) profile.plans = [];
+    profile.plans = profile.plans.filter(x => x && typeof x.id === "string" && typeof x.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(x.date) && typeof x.text === "string" && (x.time === "" || isHM(x.time)));
+    return profile.plans;
+  }
+  function meds() {
+    if (!Array.isArray(profile.meds)) profile.meds = [];
+    profile.meds = profile.meds.filter(x => x && typeof x.id === "string" && isHM(x.time));
+    return profile.meds;
+  }
   function remindState() {
     const t = today();
-    if (!profile.remind || profile.remind.date !== t) profile.remind = { date: t, medsSaid: [], medsDone: [], plansSaid: [], soonSaid: [] };
+    const r = profile.remind;
+    const okList = (v) => Array.isArray(v) ? v.filter(x => typeof x === "string") : [];
+    if (!r || typeof r !== "object" || r.date !== t) {
+      profile.remind = { date: t, medsSaid: [], medsDone: [], plansSaid: [], soonSaid: [] };
+    } else {
+      for (const k of ["medsSaid", "medsDone", "plansSaid", "soonSaid"]) r[k] = okList(r[k]);
+    }
     return profile.remind;
   }
   const nowHM = () => { const d = new Date(); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); };
@@ -1373,11 +1404,12 @@
     e.preventDefault();
     if (!profile || !/^\d{2}:\d{2}$/.test($("medTime").value)) return;
     if (meds().length >= 10) return;
-    meds().push({ id: uid(), time: $("medTime").value, label: $("medLabel").value.replace(/\s+/g, " ").trim().slice(0, 16) });
+    const added = { id: uid(), time: $("medTime").value, label: $("medLabel").value.replace(/\s+/g, " ").trim().slice(0, 16) };
+    meds().push(added);
     meds().sort((a, b) => a.time.localeCompare(b.time));
-    // 登録した時間がもう過ぎていたら、きょうはお知らせしない
-    const st = remindState(), last = meds()[meds().length - 1];
-    meds().forEach(m => { if (minutes(m.time) <= minutes(nowHM()) && !st.medsSaid.includes(m.id)) st.medsSaid.push(m.id); });
+    // 登録した時間がもう過ぎていたら、その薬だけ、きょうはお知らせしない
+    const st = remindState();
+    if (minutes(added.time) <= minutes(nowHM())) st.medsSaid.push(added.id);
     saveProfile();
     $("medTime").value = ""; $("medLabel").value = "";
     document.activeElement && document.activeElement.blur();

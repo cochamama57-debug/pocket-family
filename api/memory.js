@@ -2,7 +2,7 @@
 // 最近の会話を読んで、キャラが覚えておくこと（思い出）と、育ってきた話し方のくせを書き直す。
 // 結果は利用者のスマホの中にだけ保存される（サーバーには残さない）。
 import {
-  MODEL, CHARACTERS, cleanProfile, cleanText, cleanList, rateLimited, clientIp, readBody, reply, getClient, replyApiError,
+  MODEL, CHARACTERS, cleanProfile, cleanText, cleanList, fromOurPage, rateLimited, clientIp, readBody, reply, getClient, replyApiError,
 } from "../lib/shared.js";
 
 const RATE_MAX = 6; // 1分に6回まで（同じ接続元）
@@ -50,6 +50,7 @@ function transcript(raw, name) {
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return reply(res, 405, { error: "method" });
+  if (!fromOurPage(req)) return reply(res, 403, { error: "forbidden" });
   if (rateLimited("memory:" + clientIp(req), RATE_MAX)) return reply(res, 429, { error: "busy" });
 
   const body = readBody(req);

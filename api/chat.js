@@ -1,7 +1,7 @@
 // AIポケットファミリー: おしゃべりの中継（サーバー側）
 // APIキーはサーバーの環境変数 ANTHROPIC_API_KEY だけに置く。画面には出さない。
 import {
-  MODEL, CHARACTERS, cleanProfile, profileBlock, cleanText, nowBlock, rateLimited, clientIp, readBody, reply, getClient, replyApiError,
+  MODEL, CHARACTERS, cleanProfile, profileBlock, cleanText, nowBlock, validDate, fromOurPage, rateLimited, clientIp, readBody, reply, getClient, replyApiError,
 } from "../lib/shared.js";
 
 // いっしょに歌える曲（オーナーの自作曲）。曲の一覧は画面側から受け取る
@@ -33,7 +33,8 @@ const PLAN_RULE = `予定のお手伝い:
 function takePlan(text) {
   const m = text.match(/\[\[予定:(\d{4}-\d{2}-\d{2})\|(\d{2}:\d{2})?\|([^\]]{1,30})\]\]/);
   const clean = text.replace(/\[\[予定:[^\]]*\]\]/g, "").trim();
-  return { clean, plan: m ? { date: m[1], time: m[2] || "", text: cleanText(m[3], 30) } : null };
+  const ok = m && validDate(m[1]) && (!m[2] || /^([01]\d|2[0-3]):[0-5]\d$/.test(m[2]));
+  return { clean, plan: ok ? { date: m[1], time: m[2] || "", text: cleanText(m[3], 30) } : null };
 }
 function takeSong(text, songs) {
   const m = text.match(/\[\[曲:([a-z0-9_-]{1,40})\]\]/);
@@ -81,11 +82,11 @@ function cleanHistory(raw) {
     if (typeof m.content !== "string") return null;
     const text = m.content.trim();
     if (!text) continue;
-    if (m.role === "user" && text.length > MAX_USER_CHARS) return null;
+    const capped = text.slice(0, m.role === "user" ? MAX_USER_CHARS : 1200);
     // 同じ役が続いたらまとめる（APIは交互を前提にする）
     const last = msgs[msgs.length - 1];
-    if (last && last.role === m.role) last.content += "\n" + text;
-    else msgs.push({ role: m.role, content: text });
+    if (last && last.role === m.role) last.content += "\n" + capped;
+    else msgs.push({ role: m.role, content: capped });
   }
   // 最初は user から
   while (msgs.length && msgs[0].role !== "user") msgs.shift();
@@ -101,6 +102,7 @@ function cleanHistory(raw) {
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return reply(res, 405, { error: "method" });
+  if (!fromOurPage(req)) return reply(res, 403, { error: "forbidden" });
 
   if (rateLimited("chat:" + clientIp(req), RATE_MAX)) {
     return reply(res, 429, { error: "busy", message: "ちょっと話しすぎちゃったみたい。少し休んでから、また話そうね。" });
@@ -138,7 +140,7 @@ export default async function handler(req, res) {
   try {
     const response = await getClient().beta.messages.create({
       model: MODEL,
-      max_tokens: 2000,
+      max_tokens: 1200, // 返事は短いので、上限を小さくして使いすぎを防ぐ
       output_config: { effort: "low" },
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
