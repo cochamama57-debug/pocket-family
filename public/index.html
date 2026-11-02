@@ -254,6 +254,20 @@
   }
   .send:disabled, .tool:disabled { opacity: .5; }
   .nb { display: inline-block; }
+  .foot { display: flex; align-items: center; gap: 8px; }
+  .foot footer { flex: 1; }
+  .help-btn-s { position: relative; flex: none; width: 52px; height: 52px; border-radius: 50%; border: 2px solid #e6a39b; background: #fff5f3; color: #b3261e; font-size: 13px; font-weight: 700; line-height: 1.1; padding: 0; margin-bottom: env(safe-area-inset-bottom, 0px); -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none; }
+  .help-btn-s svg { position: absolute; inset: -4px; width: 60px; height: 60px; transform: rotate(-90deg); pointer-events: none; }
+  .help-btn-s circle { fill: none; stroke: #c0392b; stroke-width: 5; stroke-dasharray: 170; stroke-dashoffset: 170; }
+  .foot-spacer { flex: none; width: 52px; }
+  .help-sheet { position: fixed; inset: 0; z-index: 30; background: #fff5f3; display: flex; align-items: center; justify-content: center; padding: 24px 16px calc(24px + env(safe-area-inset-bottom, 0px)); text-align: center; }
+  .help-sheet .box { max-width: 480px; width: 100%; }
+  .help-sheet h2 { font-size: 28px; margin: 0 0 8px; color: #8c1d18; }
+  .help-sheet p { font-size: 20px; margin: 0 0 16px; }
+  .help-count { font-size: 88px; font-weight: 700; color: #c0392b; line-height: 1.1; margin: 8px 0 16px; }
+  .help-stop { width: 100%; font-size: 26px; font-weight: 700; min-height: 72px; border-radius: 18px; border: 0; background: #555; color: #fff; }
+  .help-now { width: 100%; font-size: 20px; font-weight: 700; min-height: 56px; border-radius: 16px; border: 2px solid #c0392b; background: #fff; color: #c0392b; margin-top: 12px; }
+  .help-invite { display: inline-block; margin-top: 8px; font-size: 19px; font-weight: 700; color: #fff; background: #c0392b; border: 0; border-radius: 999px; min-height: 52px; padding: 0 20px; }
   footer { text-align: center; font-size: 12px; color: var(--sub); padding: 2px 0 calc(4px + env(safe-area-inset-bottom, 0px)); }
   footer small { display: block; font-size: 11px; }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
@@ -316,7 +330,21 @@
       <button class="send" id="send" type="submit">送る</button>
     </div>
   </form>
-  <footer>AIポケットファミリー<small>© 2026 nekomori*I’ll</small></footer>
+  <div class="foot">
+    <button type="button" class="help-btn-s" id="helpBtn" aria-label="助けて（長押し）">助けて<br><span style="font-size:10px;font-weight:400">長押し</span><svg viewBox="0 0 60 60" aria-hidden="true"><circle id="helpRing" cx="30" cy="30" r="27"/></svg></button>
+    <footer>AIポケットファミリー<small>© 2026 nekomori*I’ll</small></footer>
+    <span class="foot-spacer"></span>
+  </div>
+</div>
+
+<div class="help-sheet" id="helpSheet" hidden role="alertdialog" aria-live="assertive">
+  <div class="box">
+    <h2>家族に知らせます</h2>
+    <p id="helpMsg"></p>
+    <div class="help-count" id="helpCount">8</div>
+    <button type="button" class="help-stop" id="helpStop">いらない（止める）</button>
+    <button type="button" class="help-now" id="helpNow">すぐに知らせる</button>
+  </div>
 </div>
 
 <div class="sheet" id="songs" hidden>
@@ -1030,6 +1058,8 @@
         save();
         bubble("her", data.reply);
         talkFace(data.reply);
+        if (data.help === "now") setTimeout(() => startHelp("chat"), 600);
+        else if (data.help === "ask") helpInvite();
         if (data.plan && typeof data.plan === "object") {
           history[history.length - 1].remind = { type: "plan", plan: data.plan };
           save();
@@ -1423,6 +1453,87 @@
       if (tb.dataset.tab === "tabPlan") { if (!$("planDate").value) $("planDate").value = today(); renderPlanTab(); }
     });
   });
+
+  // ---- 助けて ----
+  // 小さなボタンを長押し（約2.5秒）か、会話で緊急と分かったときに、8秒数えて家族へ知らせる。
+  // 「いらない」で止められる。送る部分（LINE）は、準備ができてからつなぐ。
+  const HELP_HOLD_MS = 2500, HELP_WAIT = 8;
+  const helpBtn = $("helpBtn"), helpRing = $("helpRing");
+  let holdStart = 0, holdRaf = 0, helpTimer = null, helpLeft = 0, helpBusy = false;
+  function resetRing() { cancelAnimationFrame(holdRaf); helpRing.style.strokeDashoffset = 170; holdStart = 0; }
+  function holdTick() {
+    if (!holdStart) return;
+    const r = Math.min(1, (Date.now() - holdStart) / HELP_HOLD_MS);
+    helpRing.style.strokeDashoffset = String(170 * (1 - r));
+    if (r >= 1) { resetRing(); try { navigator.vibrate && navigator.vibrate(200); } catch {} startHelp("button"); return; }
+    holdRaf = requestAnimationFrame(holdTick);
+  }
+  helpBtn.addEventListener("pointerdown", (e) => { e.preventDefault(); if (helpBusy) return; holdStart = Date.now(); holdRaf = requestAnimationFrame(holdTick); });
+  ["pointerup", "pointerleave", "pointercancel"].forEach(ev => helpBtn.addEventListener(ev, resetRing));
+  helpBtn.addEventListener("contextmenu", (e) => e.preventDefault());
+  helpBtn.addEventListener("click", () => { if (!helpBusy) { statusEl.textContent = "助けてボタンは、長押ししてね"; setTimeout(() => { if (!sending) statusEl.textContent = "おしゃべりしよう"; }, 3000); } });
+
+  function helpMessage() {
+    // 家族に送る文章（名前・ペットを入れる。薬や住所は入れない）
+    const who = profile && profile.answers.call ? profile.answers.call.replace(/(って|と)?(呼んで|よんで).*$/, "").slice(0, 20) : "";
+    const pl = profile ? pets() : [];
+    const petText = pl.length ? "家に" + pl.map(x => x.kind + (x.name ? "の" + x.name : "")).join("、") + "がいます。" : "";
+    return (who ? who + "さん" : "利用者") + "から「助けて」の合図がありました。様子を見に行くか、連絡をしてください。" + petText;
+  }
+  function startHelp(source) {
+    if (helpBusy) return;
+    helpBusy = true;
+    stopMic();
+    unlockAudio();
+    helpLeft = HELP_WAIT;
+    $("helpCount").textContent = helpLeft;
+    $("helpMsg").innerHTML = '<span class="nb">いらないときは、</span><span class="nb">下のボタンを押してね</span>';
+    $("helpStop").hidden = false; $("helpNow").hidden = false;
+    $("helpSheet").hidden = false;
+    chime();
+    clearInterval(helpTimer);
+    helpTimer = setInterval(() => {
+      helpLeft--;
+      $("helpCount").textContent = Math.max(0, helpLeft);
+      if (helpLeft <= 0) { clearInterval(helpTimer); sendHelp(source); }
+    }, 1000);
+  }
+  function endHelp() { clearInterval(helpTimer); helpBusy = false; $("helpSheet").hidden = true; }
+  $("helpStop").addEventListener("click", () => {
+    endHelp();
+    sayScripted("うん、わかった。止めたよ。そばにいるからね。");
+  });
+  $("helpNow").addEventListener("click", () => { clearInterval(helpTimer); sendHelp("now"); });
+  async function sendHelp(source) {
+    $("helpStop").hidden = true; $("helpNow").hidden = true;
+    $("helpCount").textContent = "…";
+    $("helpMsg").textContent = "知らせています";
+    let ok = false, configured = true;
+    try {
+      const r = await fetch("/api/help", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: helpMessage(), source }) });
+      const data = await r.json().catch(() => ({}));
+      ok = r.ok && data.sent === true;
+      configured = data.configured !== false;
+    } catch {}
+    $("helpCount").textContent = ok ? "✓" : "!";
+    $("helpMsg").textContent = ok ? "家族に知らせたよ。" : (configured ? "うまく送れなかったみたい。電話できるなら、家族に電話してね。" : "まだ家族の連絡先が準備できていないよ（準備中）。");
+    setTimeout(() => {
+      endHelp();
+      sayScripted(ok ? "家族に知らせたよ。来てくれるまで、ここにいるからね。" : "知らせることができなかったよ。電話できそうなら、家族か119に電話してね。わたしは、ここにいるよ。");
+    }, 2500);
+  }
+  // 会話の中で「どちらか分からない」ときに出す、大きな助けてボタン
+  function helpInvite() {
+    const row = log.lastElementChild;
+    if (!row) return;
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "help-invite";
+    b.textContent = "家族に知らせる";
+    b.addEventListener("click", () => startHelp("invite"));
+    row.querySelector(".bubble").appendChild(b);
+    log.scrollTop = log.scrollHeight;
+  }
 
   // ---- 思い出ノート ----
   function fillList(ul, items, emptyText) {

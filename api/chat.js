@@ -30,6 +30,15 @@ function songBlock(songs) {
 const PLAN_RULE = `予定のお手伝い:
 - 相手が、これからの予定（日にちがわかるもの。例：「あした10時に歯医者」）を話したら、返事の中で「予定に入れておこうか？」とやさしく聞き、返事のいちばん最後の行に [[予定:YYYY-MM-DD|HH:MM|内容]] の形で書く（時間がわからなければ HH:MM の所は空にする。内容は短く）。記号は画面でボタンに変わる。記号のことは言葉で説明しない。
 - すでに登録されている予定や、過去のことには書かない。お薬の量や飲み方の予定は扱わない。`;
+const HELP_RULE = `「助けて」の見分け方（とても大事）:
+- 明らかな緊急（例：倒れた、動けない、息が苦しい、胸がすごく痛い、血が止まらない、だれかに襲われている）のときは、短く「すぐ家族に知らせるね」と言い、返事のいちばん最後の行に [[緊急]] と書く。
+- 本当に困っているのか、口ぐせなのか、分からないとき（例：「たすけて〜」だけ、ぐあいが悪そう、今夜・薬をためた等の具体的な話）は、「ほんとに困ってる？家族に知らせようか？」と一度だけやさしく聞き、最後の行に [[たすけてボタン]] と書く。
+- ふだんの口ぐせ・冗談（例：「宿題たすけて〜」「暑くて死ぬ〜」）は、ふつうに会話する。印は書かない。
+- 印のことは言葉で説明しない。キャラが成長しても、緊急の言葉を見のがさない。`;
+function takeHelp(text) {
+  const help = /\[\[緊急\]\]/.test(text) ? "now" : /\[\[たすけてボタン\]\]/.test(text) ? "ask" : null;
+  return { clean: text.replace(/\[\[(緊急|たすけてボタン)\]\]/g, "").trim(), help };
+}
 function takePlan(text) {
   const m = text.match(/\[\[予定:(\d{4}-\d{2}-\d{2})\|(\d{2}:\d{2})?\|([^\]]{1,30})\]\]/);
   const clean = text.replace(/\[\[予定:[^\]]*\]\]/g, "").trim();
@@ -147,6 +156,7 @@ export default async function handler(req, res) {
       system: [
         { type: "text", text: SYSTEM_PROMPT },
         { type: "text", text: CHARACTERS[profile.char], cache_control: { type: "ephemeral" } },
+        { type: "text", text: HELP_RULE },
         { type: "text", text: PLAN_RULE },
         { type: "text", text: songBlock(songs) },
         { type: "text", text: nowBlock() },
@@ -163,9 +173,10 @@ export default async function handler(req, res) {
       .map((b) => b.text)
       .join("")
       .trim();
-    const { clean: t1, plan } = takePlan(text);
+    const { clean: t0, help } = takeHelp(text);
+    const { clean: t1, plan } = takePlan(t0);
     const { clean, id } = takeSong(t1, songs);
-    return reply(res, 200, { reply: clean || "……うん、聞いてるよ。", song: id || undefined, plan: plan || undefined });
+    return reply(res, 200, { reply: clean || "……うん、聞いてるよ。", song: id || undefined, plan: plan || undefined, help: help || undefined });
   } catch (err) {
     return replyApiError(res, err);
   }

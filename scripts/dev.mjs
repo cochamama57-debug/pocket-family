@@ -4,7 +4,7 @@ import http from "node:http";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-const handlers = { chat: (await import("../api/chat.js")).default, memory: (await import("../api/memory.js")).default };
+const handlers = { chat: (await import("../api/chat.js")).default, memory: (await import("../api/memory.js")).default, help: (await import("../api/help.js")).default };
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "public");
 const types = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".png": "image/png", ".svg": "image/svg+xml" };
@@ -23,9 +23,10 @@ http
       if (process.env.PF_MOCK) {
         // 見た目の確認用：AIを呼ばずに決まった返事を返す
         res.setHeader("Content-Type", "application/json; charset=utf-8");
-        const mock = apiName === "memory"
+        const mock = apiName === "help" ? { sent: false, configured: false } : apiName === "memory"
           ? { notes: ["雨の日は家でのんびりすごす", "水の歌が好き"], habits: ["「のんびりいこうね」が合言葉"] }
           : { reply: "そっかぁ、きょうは雨だったんだね。おうちでゆっくりできた？", song: (JSON.parse(raw || "{}").songs || [])[0]?.id,
+            help: raw.includes("倒れた") ? "now" : raw.includes("たすけて") ? "ask" : undefined,
             plan: raw.includes("歯医者") ? { date: "2026-11-03", time: "10:00", text: "歯医者" } : undefined };
         return setTimeout(() => res.end(JSON.stringify(mock)), 800);
       }
