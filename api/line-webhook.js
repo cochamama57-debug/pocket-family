@@ -2,7 +2,10 @@
 // 家族が友だち追加したら案内を返し、6けたの番号が送られてきたら、その家族を端末に登録する。
 // LINEの署名を確かめて、本物の知らせだけを受け付ける。
 import { reply } from "../lib/shared.js";
-import { storeReady, redis } from "../lib/store.js";
+import { storeReady, redis, readDevice } from "../lib/store.js";
+import { honor } from "./help.js";
+
+const MAX_WRONG = 5; // 1時間に、まちがった番号を送れる回数（当てずっぽうを防ぐ）
 import { lineReady, verifySignature, replyText } from "../lib/line.js";
 
 async function rawBody(req) {
@@ -32,16 +35,27 @@ export default async function handler(req, res) {
       if (ev.type !== "message" || ev.message?.type !== "text") continue;
       const text = String(ev.message.text || "").replace(/[\s０-９]/g, (c) => (/\s/.test(c) ? "" : String.fromCharCode(c.charCodeAt(0) - 0xfee0)));
       if (!/^\d{6}$/.test(text)) { await replyText(ev.replyToken, HOW_TO); continue; }
-      const devId = await redis("GET", "code:" + text);
-      if (!devId) { await replyText(ev.replyToken, "その番号は見つかりませんでした。番号は30分で使えなくなります。アプリで新しい番号を出して、もう一度送ってください。"); continue; }
-      await redis("DEL", "code:" + text);
-      const raw2 = await redis("GET", "dev:" + devId);
-      const dev = raw2 ? JSON.parse(raw2) : null;
+      const tryKey = "codetry:" + userId;
+      const wrong = Number(await redis("GET", tryKey)) || 0;
+      if (wrong >= MAX_WRONG) { await replyText(ev.replyToken, "番号のまちがいが続いたので、しばらく受け付けを止めています。1時間ほどたってから、もう一度送ってください。"); continue; }
+      const devId = await redis("GETDEL", "code:" + text); // 取り出すと同時に消す（同じ番号は1回だけ）
+      if (!devId) {
+        const n = await redis("INCR", tryKey);
+        if (n === 1) await redis("EXPIRE", tryKey, "3600");
+        await replyText(ev.replyToken, "その番号は見つかりませんでした。番号は30分で使えなくなります。アプリで新しい番号を出して、もう一度送ってください。");
+        continue;
+      }
+      await redis("DEL", "devcode:" + devId);
+      const dev = await readDevice(devId);
       if (!dev) continue;
-      dev.family = Array.isArray(dev.family) ? dev.family : [];
-      if (!dev.family.includes(userId) && dev.family.length < 5) dev.family.push(userId);
-      await redis("SET", "dev:" + devId, JSON.stringify(dev));
-      const who = dev.name ? dev.name + "さん" : "ご家族";
+      const count = Number(await redis("SCARD", "fam:" + devId)) || 0;
+      if (count >= 5 && !(await redis("SISMEMBER", "fam:" + devId, userId))) {
+        await replyText(ev.replyToken, "登録できる家族は5人までです。アプリの「登録した家族を消す」で消してから、もう一度お願いします。");
+        continue;
+      }
+      await redis("SADD", "fam:" + devId, userId);
+      await redis("ZADD", "seen", String(dev.lastSeen || Date.now()), devId); // 見回りの対象に入れる
+      const who = dev.name ? honor(dev.name) : "ご家族";
       await replyText(ev.replyToken, "登録しました。" + who + "から「助けて」の合図があったときや、しばらくアプリを開いていないときに、ここでお知らせします。");
     } catch (err) {
       console.error("webhook event", err?.message);

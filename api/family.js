@@ -27,7 +27,6 @@ export default async function handler(req, res) {
 
     if (action === "hello") {
       dev.lastSeen = Date.now();
-      dev.alerted = false;
       dev.name = cleanText(body?.name, 12).replace(/[<>\[\]{}]/g, "");
       dev.pets = Array.isArray(body?.pets)
         ? body.pets.slice(0, 10).map((x) => ({ kind: PET_KINDS.has(x?.kind) ? x.kind : "ペット", name: cleanText(x?.name, 12).replace(/[<>\[\]{}]/g, "") }))
@@ -35,21 +34,29 @@ export default async function handler(req, res) {
       const q = Number(body?.quietDays);
       if (QUIET_CHOICES.has(q)) dev.quietDays = q;
       await saveDevice(body.id, dev);
+      await redis("DEL", "alerted:" + body.id); // 開いたので、次にまた知らせられるように
       // 「しばらく開いていない」を見つけやすくするため、最後に開いた時刻の順に並べておく
       await redis("ZADD", "seen", String(dev.lastSeen), body.id);
       return reply(res, 200, { configured: true, family: dev.family.length });
     }
     if (action === "code") {
-      const code = String(crypto.randomInt(0, 1000000)).padStart(6, "0");
-      await redis("SET", "code:" + code, body.id, "EX", "1800");
+      // 1台につき使える番号は1つだけ（前の番号は消す）。ほかの端末の番号とは重ならないようにする
+      const old = await redis("GET", "devcode:" + body.id);
+      if (old) await redis("DEL", "code:" + old);
+      let code = "";
+      for (let i = 0; i < 8 && !code; i++) {
+        const c = String(crypto.randomInt(0, 1000000)).padStart(6, "0");
+        if (await redis("SET", "code:" + c, body.id, "NX", "EX", "1800")) code = c;
+      }
+      if (!code) return reply(res, 502, { error: "store" });
+      await redis("SET", "devcode:" + body.id, code, "EX", "1800");
       return reply(res, 200, { configured: true, code, addUrl: process.env.PF_LINE_ADD_URL || "" });
     }
     if (action === "status") {
       return reply(res, 200, { configured: true, family: dev.family.length, addUrl: process.env.PF_LINE_ADD_URL || "", quietDays: dev.quietDays ?? 3 });
     }
     if (action === "unlink") {
-      dev.family = [];
-      await saveDevice(body.id, dev);
+      await redis("DEL", "fam:" + body.id);
       return reply(res, 200, { configured: true, family: 0 });
     }
     return reply(res, 400, { error: "bad_request" });

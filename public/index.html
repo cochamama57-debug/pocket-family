@@ -448,6 +448,9 @@
       <h3>家族への連絡（LINE）</h3>
       <p class="hint-s">「助けて」の合図や、しばらくアプリを開いていないときに、家族のLINEに知らせます。家族の連絡先を、ここに入れる必要はありません。</p>
       <div class="stat" id="famStatus">読みこみ中…</div>
+      <label style="display:grid;gap:4px;font-size:17px;margin:0 0 12px">家族へのお知らせに出す、あなたの名前
+        <input id="famName" maxlength="12" placeholder="例：はなこ" enterkeyhint="done" autocomplete="off" style="font:inherit;font-size:20px;padding:8px;border:2px solid var(--line);border-radius:12px;min-height:48px">
+      </label>
       <button type="button" class="big-btn" id="famCode" style="background:var(--mic)">家族に登録してもらう</button>
       <div class="stat" id="famCodeBox" hidden>
         <div>家族に、この番号を伝えてね</div>
@@ -1754,6 +1757,7 @@
   async function renderFamily() {
     $("famCodeBox").hidden = true;
     $("famQuiet").value = String(Number.isInteger(profile.quietDays) ? profile.quietDays : 3);
+    $("famName").value = callName();
     $("famStatus").textContent = "読みこみ中…";
     try {
       await familyCall("hello", { name: callName(), pets: helpPayload().pets, quietDays: Number($("famQuiet").value) });
@@ -1783,6 +1787,12 @@
       if (navigator.share) await navigator.share({ text });
       else { await navigator.clipboard.writeText(text); $("famStatus").textContent = "文章をコピーしたよ。LINEに貼って、家族に送ってね。"; }
     } catch {}
+  });
+  $("famName").addEventListener("change", () => {
+    profile.famName = $("famName").value.replace(/[<>\[\]{}]/g, "").trim().slice(0, 12);
+    $("famName").value = profile.famName || callName();
+    saveProfile();
+    hello(true);
   });
   $("famQuiet").addEventListener("change", () => {
     profile.quietDays = Number($("famQuiet").value);
@@ -1818,6 +1828,7 @@
 
   // 家族に送る文章の材料（名前とペットだけ。文章はサーバーで組み立てる。薬や住所は送らない）
   function callName() {
+    if (profile && typeof profile.famName === "string" && profile.famName.trim()) return profile.famName.trim().slice(0, 12);
     const raw = profile && profile.answers.call ? profile.answers.call : "";
     const m = raw.replace(/\s+/g, "").replace(/(って|と)?(呼んで|よんで|でいい|がいい|です|だよ|ね|よ|！|!|。)+.*$/, "");
     return m.slice(0, 12);
@@ -1852,9 +1863,18 @@
     clearInterval(helpTimer);
     // サーバーに「数え始めた」と知らせる（スマホが止まっても、サーバーが8秒後に送る）
     helpServer = familyConfigured === false ? null : helpPost(helpPayload(source, "start"), true);
+    const mine = helpServer;
     if (helpServer) helpServer.then((d) => {
+      if (helpServer !== mine) return; // 止めた・終わったあとの返事は使わない
       if (d.configured === false) { helpServer = null; return; }
-      if (helpBusy && !d.cancelled) finishHelp(d.sent === true, true);
+      if (!helpBusy || d.cancelled) return;
+      if (d.sent !== true && d.error !== "no_family" && d.error !== "daily") {
+        // サーバーとうまくつながらなかった：画面の数えで送る（数え終わっていたら、すぐ送る）
+        helpServer = null;
+        if (!helpTimer) sendHelp(source);
+        return;
+      }
+      finishHelp(d.sent === true, true, d.error);
     });
     helpTimer = setInterval(() => {
       helpLeft = Math.ceil((helpDeadline - Date.now()) / 1000);
@@ -1879,14 +1899,19 @@
     $("helpStop").hidden = true; $("helpNow").hidden = true;
     $("helpMsg").textContent = "知らせたよ";
   }
-  document.addEventListener("visibilitychange", () => { if (document.hidden) sendHelpNowBackground(); });
+  document.addEventListener("visibilitychange", () => { if (document.hidden) sendHelpNowBackground(); else hello(); });
   window.addEventListener("pagehide", sendHelpNowBackground);
   function endHelp() { clearInterval(helpTimer); helpTimer = null; helpBusy = false; helpSent = false; $("helpSheet").hidden = true; }
-  $("helpStop").addEventListener("click", () => {
-    if (helpServer) helpPost(helpPayload("stop", "cancel"));
+  $("helpStop").addEventListener("click", async () => {
+    const wasServer = !!helpServer;
     helpServer = null;
     endHelp();
-    sayScripted("うん、わかった。止めたよ。そばにいるからね。");
+    if (!wasServer) { sayScripted("うん、わかった。止めたよ。そばにいるからね。"); return; }
+    // サーバーに「いらない」を確実に伝える（届かなかったら、もう一度）
+    let d = await helpPost(helpPayload("stop", "cancel"), true);
+    if (!d.cancelled) d = await helpPost(helpPayload("stop", "cancel"), true);
+    sayScripted(d.cancelled ? "うん、わかった。止めたよ。そばにいるからね。"
+      : "止める合図が、うまく届かなかったかもしれない。家族にLINEが届いたら「まちがいでした」と伝えてね。");
   });
   $("helpNow").addEventListener("click", () => { clearInterval(helpTimer); helpTimer = null; sendHelp("now"); });
   async function sendHelp(source) {

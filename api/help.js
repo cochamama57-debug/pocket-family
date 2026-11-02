@@ -7,7 +7,8 @@
 // 記録置き場やLINEの準備がないときは configured:false を返し、画面側だけで数える（どこにも送らない）。
 import { fromOurPage, rateLimited, clientIp, readBody, reply, cleanText } from "../lib/shared.js";
 import { storeReady, redis, loadDevice } from "../lib/store.js";
-import { lineReady, pushText } from "../lib/line.js";
+import crypto from "node:crypto";
+import { lineReady, pushMessages, sticker } from "../lib/line.js";
 
 const WAIT_MS = 8000;
 const DAILY_MAX = 10; // 1台あたり1日に送れる回数
@@ -20,10 +21,16 @@ export function petText(pets) {
     : [];
   return list.length ? "家に" + list.map((x) => x.kind + (x.name ? "の" + x.name : "")).join("、") + "がいます。" : "";
 }
+// 名前に「さん」をつける（もう「さん」「ちゃん」などが付いていれば、そのまま）
+export const honor = (name) => (/(さん|ちゃん|くん|君|様|さま)$/.test(name) ? name : name + "さん");
 export function buildHelpText(body) {
   const name = cleanText(body?.name, 12).replace(/[<>\[\]{}]/g, "");
-  const who = name ? name + "さん" : "AIポケットファミリーを使っている方";
-  return "【AIポケットファミリー】" + who + "から「助けて」の合図がありました。様子を見に行くか、連絡をしてください。" + petText(body?.pets);
+  const pets = petText(body?.pets);
+  return "⚠️「助けて」の合図がありました‼️\n"
+    + (name ? honor(name) + "からです。\n" : "")
+    + "様子を見に行くか、連絡をしてください📲"
+    + (pets ? "\n\n🐾 " + pets : "")
+    + "\n\n（AIポケットファミリーより）";
 }
 
 async function sendToFamily(id, dev, body) {
@@ -34,13 +41,21 @@ async function sendToFamily(id, dev, body) {
     for (let i = 0; i < 10; i++) { await sleep(1000); if (await redis("GET", "help:sent:" + id)) return { sent: true, dup: true }; }
     return { sent: false, error: "server" };
   }
+  // 送る直前にもう一度「いらない」を確かめる
+  if (await redis("GET", "help:cancel:" + id)) { await redis("DEL", "help:lock:" + id); return { sent: false, cancelled: true }; }
   const day = new Date().toISOString().slice(0, 10);
   const n = await redis("INCR", "help:count:" + id + ":" + day);
   if (n === 1) await redis("EXPIRE", "help:count:" + id + ":" + day, "90000");
   if (n > DAILY_MAX) { await redis("DEL", "help:lock:" + id); return { sent: false, error: "daily" }; }
   if (!dev.family.length) { await redis("DEL", "help:lock:" + id); return { sent: false, error: "no_family" }; }
   const text = buildHelpText({ name: dev.name || body?.name, pets: dev.pets?.length ? dev.pets : body?.pets });
-  const results = await Promise.all(dev.family.map((to) => pushText(to, text)));
+  // 作者が選んだ順番：あわてるサリーのスタンプ → 文章 → 「よろしくお願いします」のスタンプ（LINEが用意したスタンプ）
+  const messages = [sticker(11537, 52002756), { type: "text", text: text.slice(0, 1000) }, sticker(8515, 16581248)];
+  // スタンプで失敗しても、文章だけは届ける。合言葉（retry key）を同じにして、二重に届かないようにする
+  const results = await Promise.all(dev.family.map(async (to) => {
+    const key = crypto.randomUUID();
+    return (await pushMessages(to, messages, key)) || pushMessages(to, [messages[1]], key);
+  }));
   const sent = results.some(Boolean);
   if (sent) await redis("SET", "help:sent:" + id, "1", "EX", "60");
   await redis("DEL", "help:lock:" + id);
