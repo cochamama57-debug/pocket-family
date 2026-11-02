@@ -117,6 +117,20 @@
   .tool.mic.listening { background: #c0392b; border-color: #c0392b; animation: pulse 1.2s ease-in-out infinite; }
   @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(192,57,43,.45); } 50% { box-shadow: 0 0 0 8px rgba(192,57,43,0); } }
   .row { display: flex; gap: 8px; align-items: flex-end; }
+  .guide {
+    display: flex; align-items: center; gap: 12px;
+    background: #fffbe0; border: 2px solid #f0c94a; border-radius: 14px;
+    padding: 6px 8px 6px 10px; margin-bottom: 8px;
+    font-size: 19px; line-height: 1.45;
+  }
+  .guide b { color: #b3261e; }
+  .guide .more { font-size: 14px; color: var(--sub); background: transparent; border: 0; padding: 4px 0; min-height: 32px; text-decoration: underline; }
+  .guide .help { font-size: 15px; color: var(--sub); }
+  .guide .close { flex: none; align-self: flex-start; font-size: 15px; color: var(--sub); background: transparent; border: 0; min-width: 44px; min-height: 44px; }
+  .kbd { flex: none; width: 64px; }
+  .kbd svg { width: 100%; height: auto; display: block; }
+  .kbd .hot { animation: hot 1s ease-in-out infinite; }
+  @keyframes hot { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
   textarea {
     flex: 1;
     font: inherit;
@@ -197,6 +211,24 @@
     <div class="preview" id="preview" hidden>
       <img id="previewImg" alt="送る写真">
       <button type="button" id="previewRemove">写真をやめる</button>
+    </div>
+    <div class="guide" id="guide" hidden>
+      <div class="kbd" aria-hidden="true">
+        <svg viewBox="0 0 100 70">
+          <rect x="1" y="1" width="98" height="68" rx="6" fill="#e9e6e1" stroke="#c9c3ba"/>
+          <g fill="#fff">
+            <rect x="6" y="7" width="88" height="10" rx="2"/>
+            <rect x="6" y="21" width="88" height="10" rx="2"/>
+            <rect x="6" y="35" width="88" height="10" rx="2"/>
+            <rect x="26" y="49" width="48" height="10" rx="2"/>
+          </g>
+          <g id="kbdMic">
+            <circle class="hot" cx="86" cy="60" r="11" fill="#c0392b"/>
+          </g>
+        </svg>
+      </div>
+      <div id="guideText"></div>
+      <button class="close" type="button" id="guideClose" aria-label="案内をとじる">✕</button>
     </div>
     <div class="tools">
       <button class="tool mic" id="mic" type="button"><span class="ico" aria-hidden="true">🎤</span><span id="micLabel">話す</span></button>
@@ -346,15 +378,36 @@
   // ---- マイク（話した言葉を文字にする） ----
   // iPhoneのくせ：話の切れ目ですぐ止まる／止まったあと次が始まらないことがある。
   // → 毎回新しく作り直し、古いものは必ず捨てる。止めるのはこちらで決める（だまって3秒たったら、または押したら）。
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const ua = navigator.userAgent || "";
+  const isIOS = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  const isAndroid = /Android/.test(ua);
+  const guide = $("guide"), guideText = $("guideText"), guideClose = $("guideClose"), kbdMic = $("kbdMic");
+  // iPhoneはページの中の音声認識が不安定なので使わない（キーボードのマイクを使う）
+  let useKeyboardMic = isIOS;
+
+  function showGuide() {
+    if (isAndroid) {
+      kbdMic.setAttribute("transform", "translate(0,-52)"); // Androidのキーボードは右上にマイクが多い
+      guideText.innerHTML = "キーボードの<b>右上の🎤</b>を押して話してね";
+    } else {
+      kbdMic.removeAttribute("transform"); // iPhoneは右下
+      guideText.innerHTML = "キーボードの<b>右下の🎤</b>を押して話してね"
+        + '<br><button type="button" class="more" id="guideMore">🎤が見つからないとき</button>'
+        + '<span class="help" id="guideHelp" hidden><br>設定 → 一般 → キーボード →「音声入力」をオンにしてね</span>';
+      $("guideMore").addEventListener("click", () => { $("guideHelp").hidden = false; $("guideMore").hidden = true; input.focus(); });
+    }
+    guide.hidden = false;
+  }
+  function hideGuide() { guide.hidden = true; }
+  guideClose.addEventListener("click", () => { hideGuide(); input.focus(); });
+  input.addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== input && document.activeElement !== micBtn) hideGuide(); }, 300));
+
+  const SR = useKeyboardMic ? null : (window.SpeechRecognition || window.webkitSpeechRecognition);
   let rec = null, listening = false, baseText = "", heard = "";
   let silenceTimer = null, startTimer = null;
   const SILENCE_MS = 3000;   // 話し終わってから止まるまで
   const NOTHING_MS = 12000;  // 何も聞こえないとき止まるまで
-  if (!SR) {
-    micBtn.disabled = true;
-    micLabel.textContent = "話す（この画面では使えません）";
-  }
+  if (!SR) useKeyboardMic = true;
   function clearMicTimers() { clearTimeout(silenceTimer); clearTimeout(startTimer); }
   function setListening(on) {
     listening = on;
@@ -397,7 +450,13 @@
     return text;
   }
   micBtn.addEventListener("click", () => {
-    if (!SR) return;
+    if (useKeyboardMic) {
+      // キーボードを開いて、マイクの場所を案内する（押したその場でfocusしないとiPhoneでキーボードが開かない）
+      input.focus();
+      showGuide();
+      setTimeout(() => { log.scrollTop = log.scrollHeight; }, 300);
+      return;
+    }
     if (listening) { stopMic(); return; }
     dropRec();
     const r = new SR();
@@ -426,6 +485,9 @@
         addNote("マイクがほかのアプリで使われているみたい。ほかのアプリを閉じて、もう一度押してね。");
       } else if (e.error !== "aborted") {
         addNote("うまく聞き取れなかったみたい。もう一度「話す」を押してね。");
+      }
+      if (e.error === "not-allowed" || e.error === "service-not-allowed" || e.error === "network") {
+        useKeyboardMic = true; // 次からはキーボードのマイクで
       }
       setListening(false);
       dropRec();
@@ -459,6 +521,7 @@
     if (!text && photo) text = PHOTO_TEXT;
 
     sending = true;
+    hideGuide();
     setBusy(true);
     input.value = "";
     autoGrow();
