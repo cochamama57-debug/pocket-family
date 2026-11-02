@@ -27,17 +27,24 @@ export function buildHelpText(body) {
 }
 
 async function sendToFamily(id, dev, body) {
+  if (await redis("GET", "help:sent:" + id)) return { sent: true, dup: true };
   // 二重に送らない（start と now が重なっても1回だけ）
-  const first = await redis("SET", "help:sent:" + id, "1", "NX", "EX", "60");
-  if (!first) return { sent: true, dup: true };
+  const lock = await redis("SET", "help:lock:" + id, "1", "NX", "EX", "20");
+  if (!lock) {
+    for (let i = 0; i < 10; i++) { await sleep(1000); if (await redis("GET", "help:sent:" + id)) return { sent: true, dup: true }; }
+    return { sent: false, error: "server" };
+  }
   const day = new Date().toISOString().slice(0, 10);
   const n = await redis("INCR", "help:count:" + id + ":" + day);
   if (n === 1) await redis("EXPIRE", "help:count:" + id + ":" + day, "90000");
-  if (n > DAILY_MAX) return { sent: false, error: "daily" };
-  if (!dev.family.length) return { sent: false, error: "no_family" };
+  if (n > DAILY_MAX) { await redis("DEL", "help:lock:" + id); return { sent: false, error: "daily" }; }
+  if (!dev.family.length) { await redis("DEL", "help:lock:" + id); return { sent: false, error: "no_family" }; }
   const text = buildHelpText({ name: dev.name || body?.name, pets: dev.pets?.length ? dev.pets : body?.pets });
   const results = await Promise.all(dev.family.map((to) => pushText(to, text)));
-  return { sent: results.some(Boolean) };
+  const sent = results.some(Boolean);
+  if (sent) await redis("SET", "help:sent:" + id, "1", "EX", "60");
+  await redis("DEL", "help:lock:" + id);
+  return { sent };
 }
 
 export default async function handler(req, res) {
@@ -61,7 +68,7 @@ export default async function handler(req, res) {
       return reply(res, 200, { ...r, configured: true });
     }
     // start：サーバーで8秒数える
-    await redis("DEL", "help:cancel:" + id, "help:sent:" + id);
+    await redis("DEL", "help:cancel:" + id, "help:sent:" + id, "help:lock:" + id);
     const until = Date.now() + WAIT_MS;
     while (Date.now() < until) {
       await sleep(1000);
