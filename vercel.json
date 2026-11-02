@@ -1,0 +1,4 @@
+{
+  "crons": [{ "path": "/api/cron-quiet", "schedule": "0 0 * * *" }],
+  "functions": { "api/help.js": { "maxDuration": 30 } }
+}

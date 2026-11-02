@@ -152,7 +152,7 @@
   .sheet .empty { color: var(--sub); font-size: 17px; }
   .sheet .danger { margin-top: 28px; text-align: center; }
   .tabs { display: flex; gap: 6px; margin-bottom: 12px; }
-  .tab { flex: 1; font-size: 17px; font-weight: 700; min-height: 50px; border-radius: 12px; border: 2px solid var(--line); background: #fff; color: var(--sub); padding: 0 4px; }
+  .tab { flex: 1; font-size: 16px; font-weight: 700; min-height: 50px; border-radius: 12px; border: 2px solid var(--line); background: #fff; color: var(--sub); padding: 0 4px; }
   .tab.on { background: var(--mic); border-color: var(--mic); color: #fff; }
   .hint-s { font-size: 15px; color: var(--sub); margin: 0 0 8px; }
   .remind-btn { display: inline-block; margin: 8px 8px 0 0; font-size: 19px; font-weight: 700; color: #fff; background: var(--mic); border: 0; border-radius: 999px; min-height: 48px; padding: 0 18px; }
@@ -413,6 +413,7 @@
       <button type="button" class="tab on" data-tab="tabMem">思い出</button>
       <button type="button" class="tab" data-tab="tabPlan">予定・お薬</button>
       <button type="button" class="tab" data-tab="tabPet">ペット</button>
+      <button type="button" class="tab" data-tab="tabFam">家族</button>
     </div>
     <section id="tabMem">
     <div class="stat">
@@ -442,6 +443,28 @@
         <label>呼び方<input id="medLabel" maxlength="16" placeholder="例：朝のお薬" enterkeyhint="done"></label>
         <button type="submit" class="add">＋ お薬の時間を登録する</button>
       </form>
+    </section>
+    <section id="tabFam" hidden>
+      <h3>家族への連絡（LINE）</h3>
+      <p class="hint-s">「助けて」の合図や、しばらくアプリを開いていないときに、家族のLINEに知らせます。家族の連絡先を、ここに入れる必要はありません。</p>
+      <div class="stat" id="famStatus">読みこみ中…</div>
+      <button type="button" class="big-btn" id="famCode" style="background:var(--mic)">家族に登録してもらう</button>
+      <div class="stat" id="famCodeBox" hidden>
+        <div>家族に、この番号を伝えてね</div>
+        <div class="help-count" id="famCodeNum" style="font-size:52px;margin:6px 0"></div>
+        <ol style="padding-left:1.2em;margin:0;font-size:17px">
+          <li>家族に、LINEで「AIポケットファミリー」を<b>友だち追加</b>してもらう</li>
+          <li>そのトークに、この<b>6けたの番号</b>を送ってもらう</li>
+        </ol>
+        <p class="hint-s">番号は30分だけ使えます。</p>
+        <button type="button" class="big-btn" id="famShare">家族に送る（LINEなど）</button>
+      </div>
+      <label style="display:grid;gap:4px;font-size:17px;margin-top:12px">しばらく開いていないとき、家族に知らせる
+        <select id="famQuiet" style="font:inherit;font-size:20px;padding:8px;border:2px solid var(--line);border-radius:12px;min-height:48px">
+          <option value="1">1日開いていないとき</option><option value="2">2日</option><option value="3">3日</option><option value="5">5日</option><option value="7">7日</option><option value="0">知らせない</option>
+        </select>
+      </label>
+      <div class="danger" style="margin-top:16px"><button type="button" class="reset" id="famUnlink">登録した家族を消す</button></div>
     </section>
     <section id="tabPet" hidden>
       <h3>うちの家族（ペット）</h3>
@@ -1123,6 +1146,7 @@
           save();
         }
         afterActivity("talk");
+        hello();
         setTimeout(checkReminders, 1500);
         if (growth().talks === 1) homeTip();
       } else {
@@ -1688,9 +1712,84 @@
   document.querySelectorAll(".tab").forEach((tb) => {
     tb.addEventListener("click", () => {
       document.querySelectorAll(".tab").forEach(x => x.classList.toggle("on", x === tb));
-      for (const id of ["tabMem", "tabPlan", "tabPet"]) $(id).hidden = id !== tb.dataset.tab;
+      for (const id of ["tabMem", "tabPlan", "tabPet", "tabFam"]) $(id).hidden = id !== tb.dataset.tab;
+      if (tb.dataset.tab === "tabFam") renderFamily();
       if (tb.dataset.tab === "tabPlan") { if (!$("planDate").value) $("planDate").value = today(); renderPlanTab(); }
     });
+  });
+
+  // ---- 端末の合言葉（家族の登録に使う。サーバーにはハッシュだけ） ----
+  const DEVICE_KEY = "pf.device.v1";
+  function rnd(bytes) { const a = new Uint8Array(bytes); crypto.getRandomValues(a); return Array.from(a, x => x.toString(16).padStart(2, "0")).join(""); }
+  function device() {
+    try {
+      const d = JSON.parse(localStorage.getItem(DEVICE_KEY) || "null");
+      if (d && /^[a-f0-9]{32}$/.test(d.id) && /^[a-f0-9]{64}$/.test(d.secret)) return d;
+    } catch {}
+    const d = { id: rnd(16), secret: rnd(32) };
+    try { localStorage.setItem(DEVICE_KEY, JSON.stringify(d)); } catch {}
+    return d;
+  }
+  let lastHello = 0, familyConfigured = null;
+  async function familyCall(action, extra) {
+    const d = device();
+    const r = await fetch("/api/family", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, id: d.id, secret: d.secret, ...(extra || {}) }), signal: AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined });
+    const data = await r.json().catch(() => ({}));
+    if (data.configured === false) familyConfigured = false; else if (r.ok) familyConfigured = true;
+    return { ok: r.ok, data };
+  }
+  function hello(force) {
+    if (!profile || familyConfigured === false) return;
+    if (!force && Date.now() - lastHello < 60 * 60 * 1000) return;
+    lastHello = Date.now();
+    const quiet = Number.isInteger(profile.quietDays) ? profile.quietDays : 3;
+    familyCall("hello", { name: callName(), pets: helpPayload().pets, quietDays: quiet }).catch(() => {});
+  }
+  async function renderFamily() {
+    $("famCodeBox").hidden = true;
+    $("famQuiet").value = String(Number.isInteger(profile.quietDays) ? profile.quietDays : 3);
+    $("famStatus").textContent = "読みこみ中…";
+    try {
+      await familyCall("hello", { name: callName(), pets: helpPayload().pets, quietDays: Number($("famQuiet").value) });
+      const { data } = await familyCall("status");
+      if (data.configured === false) { $("famStatus").textContent = "LINEへの連絡は、いま準備中です。"; $("famCode").disabled = true; return; }
+      $("famCode").disabled = false;
+      $("famStatus").textContent = data.family ? "登録している家族：" + data.family + "人" : "まだ家族が登録されていません。";
+    } catch { $("famStatus").textContent = "電波がとどかなかったみたい。"; }
+  }
+  let famAddUrl = "";
+  $("famCode").addEventListener("click", async () => {
+    $("famCode").disabled = true;
+    try {
+      const { data } = await familyCall("code");
+      if (data.code) {
+        $("famCodeNum").textContent = data.code.slice(0, 3) + " " + data.code.slice(3);
+        famAddUrl = data.addUrl || "";
+        $("famCodeBox").hidden = false;
+      } else { $("famStatus").textContent = "番号を作れなかったみたい。もう一度押してね。"; }
+    } catch { $("famStatus").textContent = "電波がとどかなかったみたい。"; }
+    $("famCode").disabled = false;
+  });
+  $("famShare").addEventListener("click", async () => {
+    const code = $("famCodeNum").textContent.replace(/\s/g, "");
+    const text = "AIポケットファミリーの家族登録のお願いです。\n①このリンクから友だち追加してください：" + (famAddUrl || "（あとで送ります）") + "\n②そのトークに、この番号を送ってください：" + code;
+    try {
+      if (navigator.share) await navigator.share({ text });
+      else { await navigator.clipboard.writeText(text); $("famStatus").textContent = "文章をコピーしたよ。LINEに貼って、家族に送ってね。"; }
+    } catch {}
+  });
+  $("famQuiet").addEventListener("change", () => {
+    profile.quietDays = Number($("famQuiet").value);
+    saveProfile();
+    hello(true);
+  });
+  $("famUnlink").addEventListener("click", async () => {
+    const b = $("famUnlink");
+    if (b.dataset.armed !== "1") { b.dataset.armed = "1"; b.textContent = "もう一度押すと消えます"; setTimeout(() => { b.dataset.armed = ""; b.textContent = "登録した家族を消す"; }, 4000); return; }
+    b.dataset.armed = ""; b.textContent = "登録した家族を消す";
+    try { await familyCall("unlink"); } catch {}
+    renderFamily();
   });
 
   // ---- 助けて ----
@@ -1718,9 +1817,15 @@
     const m = raw.replace(/\s+/g, "").replace(/(って|と)?(呼んで|よんで|でいい|がいい|です|だよ|ね|よ|！|!|。)+.*$/, "");
     return m.slice(0, 12);
   }
-  function helpPayload(source) {
+  function helpPayload(source, action) {
     const pl = profile ? pets() : [];
-    return { name: callName(), pets: pl.slice(0, 10).map(x => ({ kind: x.kind === "そのほか" ? "ペット" : x.kind, name: x.name || "" })), source };
+    const d = device();
+    return { action: action || "now", id: d.id, secret: d.secret, name: callName(), pets: pl.slice(0, 10).map(x => ({ kind: x.kind === "そのほか" ? "ペット" : x.kind, name: x.name || "" })), source };
+  }
+  let helpServer = null; // サーバーで数えているときの結果（Promise）
+  function helpPost(payload, keepalive) {
+    return fetch("/api/help", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload), keepalive: !!keepalive })
+      .then(r => r.json().catch(() => ({}))).catch(() => ({}));
   }
   function startHelp(source) {
     if (helpBusy) return;
@@ -1740,20 +1845,30 @@
     $("helpSheet").hidden = false;
     chime();
     clearInterval(helpTimer);
+    // サーバーに「数え始めた」と知らせる（スマホが止まっても、サーバーが8秒後に送る）
+    helpServer = familyConfigured === false ? null : helpPost(helpPayload(source, "start"), true);
+    if (helpServer) helpServer.then((d) => {
+      if (d.configured === false) { helpServer = null; return; }
+      if (helpBusy && !d.cancelled) finishHelp(d.sent === true, true);
+    });
     helpTimer = setInterval(() => {
       helpLeft = Math.ceil((helpDeadline - Date.now()) / 1000);
       $("helpCount").textContent = Math.max(0, helpLeft);
-      if (helpLeft <= 0) { clearInterval(helpTimer); sendHelp(source); }
+      if (helpLeft <= 0) {
+        clearInterval(helpTimer); helpTimer = null;
+        if (helpServer) { $("helpStop").hidden = true; $("helpNow").hidden = true; $("helpCount").textContent = "…"; $("helpMsg").textContent = "知らせています"; }
+        else sendHelp(source);
+      }
     }, 250);
   }
   // 数えている途中で画面が消えたり、ほかのアプリに切りかえたら、待たずにすぐ送る（「いらない」と言われていないため）
   let helpSource = "button", helpDeadline = 0, helpSent = false;
   function sendHelpNowBackground() {
-    if (!helpBusy || helpSent || !helpTimer) return;
+    if (!helpBusy || helpSent || !helpTimer || helpServer) return; // サーバーで数えているときは、サーバーにまかせる
     clearInterval(helpTimer); helpTimer = null;
     helpSent = true;
     try {
-      fetch("/api/help", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(helpPayload(helpSource)), keepalive: true });
+      helpPost(helpPayload(helpSource, "now"), true);
     } catch {}
     $("helpCount").textContent = "…";
     $("helpStop").hidden = true; $("helpNow").hidden = true;
@@ -1763,6 +1878,8 @@
   window.addEventListener("pagehide", sendHelpNowBackground);
   function endHelp() { clearInterval(helpTimer); helpTimer = null; helpBusy = false; helpSent = false; $("helpSheet").hidden = true; }
   $("helpStop").addEventListener("click", () => {
+    if (helpServer) helpPost(helpPayload("stop", "cancel"));
+    helpServer = null;
     endHelp();
     sayScripted("うん、わかった。止めたよ。そばにいるからね。");
   });
@@ -1773,56 +1890,27 @@
     $("helpStop").hidden = true; $("helpNow").hidden = true;
     $("helpCount").textContent = "…";
     $("helpMsg").textContent = "知らせています";
-    let ok = false, configured = true;
+    let d = {};
     try {
-      const r = await fetch("/api/help", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(helpPayload(source)), signal: AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined });
-      const data = await r.json().catch(() => ({}));
-      ok = r.ok && data.sent === true;
-      configured = data.configured !== false;
+      d = await Promise.race([helpPost(helpPayload(source, "now")), new Promise(r => setTimeout(() => r({ timeout: true }), 10000))]);
     } catch {}
+    finishHelp(d.sent === true, d.configured !== false, d.error);
+  }
+  function finishHelp(ok, configured, error) {
+    if (!helpBusy || $("helpSheet").hidden) return;
+    helpServer = null;
+    clearInterval(helpTimer); helpTimer = null;
+    $("helpStop").hidden = true; $("helpNow").hidden = true;
     $("helpCount").textContent = ok ? "✓" : "!";
-    $("helpMsg").textContent = ok ? "家族に知らせたよ。" : (configured ? "うまく送れなかったみたい。電話できるなら、家族に電話してね。" : "まだ家族の連絡先が準備できていないよ（準備中）。");
+    $("helpMsg").textContent = ok ? "家族に知らせたよ。"
+      : !configured ? "まだ家族への連絡が準備できていないよ（準備中）。"
+      : error === "no_family" ? "まだ家族が登録されていないよ。電話できるなら、家族に電話してね。"
+      : "うまく送れなかったみたい。電話できるなら、家族に電話してね。";
     setTimeout(() => {
       endHelp();
       sayScripted(ok ? "家族に知らせたよ。来てくれるまで、ここにいるからね。" : "知らせることができなかったよ。電話できそうなら、家族か119に電話してね。わたしは、ここにいるよ。");
     }, 2500);
   }
-  // ---- お散歩（歩数は数えない。誘って、帰ってきたら話を聞く） ----
-  const WALK_LINES = {
-    chamu: { go: "いってらっしゃい！気をつけてね。帰ってきたら、お話きかせてね。", back: "おかえり！どうだった？なにか見つけた？" },
-    colon: { go: "ピピッ、いってらっしゃい！気をつけてね。帰ってきたら、教えてね。", back: "おかえり！ピピッ。外はどうだった？" },
-  };
-  function walkButton(state) {
-    const row = log.lastElementChild;
-    if (!row) return;
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "remind-btn";
-    b.textContent = state === "go" ? "🚶 いってきます" : "🏠 ただいま（歩いてきたよ）";
-    b.addEventListener("click", () => {
-      b.disabled = true; b.classList.add("done");
-      if (!profile) return;
-      if (state === "go") {
-        profile.walking = true; saveProfile();
-        history.push({ role: "user", content: "（お散歩に出かけた）" }); save();
-        bubble("me", "🚶 いってきます");
-        sayScripted(WALK_LINES[profile.char].go);
-        showFace("wave", 2000);
-        history[history.length - 1].walk = "back"; save();
-        walkButton("back");
-      } else {
-        profile.walking = false; saveProfile();
-        history.push({ role: "user", content: "（お散歩から帰ってきた）" }); save();
-        bubble("me", "🏠 ただいま");
-        sayScripted(WALK_LINES[profile.char].back);
-        showFace("happy", 1800);
-        afterActivity("walk");
-      }
-    });
-    row.querySelector(".bubble").appendChild(b);
-    log.scrollTop = log.scrollHeight;
-  }
-
   // 会話の中で「どちらか分からない」ときに出す、大きな助けてボタン
   function helpInvite() {
     const row = log.lastElementChild;
@@ -1993,6 +2081,7 @@
     render();
     setTimeout(() => showFace("wave", 1800), 400);
     setTimeout(checkReminders, 800);
+    setTimeout(() => hello(true), 1200);
   }
 })();
 </script>

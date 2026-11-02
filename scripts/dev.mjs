@@ -4,7 +4,8 @@ import http from "node:http";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-const handlers = { chat: (await import("../api/chat.js")).default, memory: (await import("../api/memory.js")).default, help: (await import("../api/help.js")).default, "yt-search": (await import("../api/yt-search.js")).default, voice: (await import("../api/voice.js")).default };
+const handlers = { chat: (await import("../api/chat.js")).default, memory: (await import("../api/memory.js")).default, help: (await import("../api/help.js")).default, "yt-search": (await import("../api/yt-search.js")).default, voice: (await import("../api/voice.js")).default,
+  family: (await import("../api/family.js")).default, "line-webhook": (await import("../api/line-webhook.js")).default, "cron-quiet": (await import("../api/cron-quiet.js")).default };
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "public");
 const types = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".png": "image/png", ".svg": "image/svg+xml", ".mp3": "audio/mpeg", ".json": "application/json", ".webmanifest": "application/manifest+json" };
@@ -20,10 +21,12 @@ http
         if (raw.length > 100_000) { res.statusCode = 413; return res.end(); }
       }
       req.body = raw;
-      if (process.env.PF_MOCK) {
+      const realFamily = process.env.PF_FAMILY_REAL && ["family", "help", "line-webhook", "cron-quiet"].includes(apiName);
+      if (process.env.PF_MOCK && !realFamily) {
         // 見た目の確認用：AIを呼ばずに決まった返事を返す
         res.setHeader("Content-Type", "application/json; charset=utf-8");
         if (apiName === "voice") { res.statusCode = 204; return res.end(); }
+        if (apiName === "family") { res.setHeader("Content-Type", "application/json"); return res.end(JSON.stringify({ configured: false })); }
         const mock = apiName === "yt-search" ? { configured: true, items: [{ id: "Jh53iS0Kwng", title: "【Healing water】水の歌", channel: "nekomori - 音弧の森音楽舎", thumb: "" }, { id: "M7lc1UVf-VE", title: "テスト動画", channel: "YouTube", thumb: "" }] } : apiName === "help" ? { sent: false, configured: false } : apiName === "memory"
           ? { notes: ["雨の日は家でのんびりすごす", "水の歌が好き"], habits: ["「のんびりいこうね」が合言葉"] }
           : { reply: "そっかぁ、きょうは雨だったんだね。おうちでゆっくりできた？", song: (JSON.parse(raw || "{}").songs || [])[0]?.id,
