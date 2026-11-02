@@ -1234,6 +1234,10 @@
     renderFavs();
     $("favResults").textContent = "";
     $("favMsg").textContent = "";
+    // 最初の会話で聞いた「好きな歌」を、さがす欄に入れておく
+    if (!favs().length && !$("favQ").value && profile.answers.song) {
+      $("favQ").value = profile.answers.song.replace(/(が|は)?(好き|すき|だよ|です|かな|ね|よ).*$/, "").slice(0, 60);
+    }
     $("songsImg").src = CHARS[profile.char].img;
     const ul = $("songList");
     ul.textContent = "";
