@@ -26,6 +26,7 @@ http
         const mock = apiName === "help" ? { sent: false, configured: false } : apiName === "memory"
           ? { notes: ["雨の日は家でのんびりすごす", "水の歌が好き"], habits: ["「のんびりいこうね」が合言葉"] }
           : { reply: "そっかぁ、きょうは雨だったんだね。おうちでゆっくりできた？", song: (JSON.parse(raw || "{}").songs || [])[0]?.id,
+            walk: raw.includes("散歩") ? true : undefined,
             help: raw.includes("倒れた") ? "now" : raw.includes("たすけて") ? "ask" : undefined,
             plan: raw.includes("歯医者") ? { date: "2026-11-03", time: "10:00", text: "歯医者" } : undefined };
         return setTimeout(() => res.end(JSON.stringify(mock)), 800);

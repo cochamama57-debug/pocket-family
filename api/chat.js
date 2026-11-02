@@ -35,6 +35,13 @@ const HELP_RULE = `「助けて」の見分け方（とても大事）:
 - 本当に困っているのか、口ぐせなのか、分からないとき（例：「たすけて〜」だけ、ぐあいが悪そう、今夜・薬をためた等の具体的な話）は、「ほんとに困ってる？家族に知らせようか？」と一度だけやさしく聞き、最後の行に [[たすけてボタン]] と書く。
 - ふだんの口ぐせ・冗談（例：「宿題たすけて〜」「暑くて死ぬ〜」）は、ふつうに会話する。印は書かない。
 - 印のことは言葉で説明しない。キャラが成長しても、緊急の言葉を見のがさない。`;
+const WALK_RULE = `お散歩:
+- 相手が「ずっと家にいた」「気分を変えたい」「天気がいい」など合うときだけ、家族として「お散歩いこうか？」と誘ってよい。毎回は誘わない。断られたら、その話の中ではもう誘わない。
+- 誘うときは、返事のいちばん最後の行に [[おさんぽ]] と書く。記号のことは言葉で説明しない。
+- 「1日◯歩」「運動しなさい」のような指示や、健康の助言はしない。`;
+function takeWalk(text) {
+  return { clean: text.replace(/\[\[おさんぽ\]\]/g, "").trim(), walk: /\[\[おさんぽ\]\]/.test(text) };
+}
 function takeHelp(text) {
   const help = /\[\[緊急\]\]/.test(text) ? "now" : /\[\[たすけてボタン\]\]/.test(text) ? "ask" : null;
   return { clean: text.replace(/\[\[(緊急|たすけてボタン)\]\]/g, "").trim(), help };
@@ -158,6 +165,7 @@ export default async function handler(req, res) {
         { type: "text", text: CHARACTERS[profile.char], cache_control: { type: "ephemeral" } },
         { type: "text", text: HELP_RULE },
         { type: "text", text: PLAN_RULE },
+        { type: "text", text: WALK_RULE },
         { type: "text", text: songBlock(songs) },
         { type: "text", text: nowBlock() },
         { type: "text", text: profileBlock(profile) },
@@ -174,9 +182,10 @@ export default async function handler(req, res) {
       .join("")
       .trim();
     const { clean: t0, help } = takeHelp(text);
-    const { clean: t1, plan } = takePlan(t0);
+    const { clean: tw, walk } = takeWalk(t0);
+    const { clean: t1, plan } = takePlan(tw);
     const { clean, id } = takeSong(t1, songs);
-    return reply(res, 200, { reply: clean || "……うん、聞いてるよ。", song: id || undefined, plan: plan || undefined, help: help || undefined });
+    return reply(res, 200, { reply: clean || "……うん、聞いてるよ。", song: id || undefined, plan: plan || undefined, help: help || undefined, walk: walk || undefined });
   } catch (err) {
     return replyApiError(res, err);
   }

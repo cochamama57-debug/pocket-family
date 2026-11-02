@@ -520,7 +520,7 @@
   }
   function points() {
     const g = growth();
-    return (g.days.length * 10 + g.talks + g.sung * 5) * demoBoost;
+    return (g.days.length * 10 + g.talks + g.sung * 5 + (Number.isInteger(g.walked) ? g.walked : 0) * 5) * demoBoost;
   }
   function stageOf(pt) {
     let st = 0;
@@ -588,6 +588,7 @@
     markDay();
     if (kind === "talk") { g.talks++; g.sinceMemory++; }
     if (kind === "sing") g.sung++;
+    if (kind === "walk") g.walked = (Number.isInteger(g.walked) ? g.walked : 0) + 1;
     saveProfile();
     const after = stageOf(points());
     updateHearts();
@@ -647,7 +648,7 @@
   function save() {
     try {
       // 写真そのものは残さない（容量のため）。「写真を見せた」という印だけ残す
-      const slim = history.slice(-MAX_KEEP).map(m => ({ role: m.role, content: m.content, photo: m.photo ? true : undefined, song: typeof m.song === "string" ? m.song : undefined, remind: m.remind && typeof m.remind === "object" ? m.remind : undefined }));
+      const slim = history.slice(-MAX_KEEP).map(m => ({ role: m.role, content: m.content, photo: m.photo ? true : undefined, song: typeof m.song === "string" ? m.song : undefined, remind: m.remind && typeof m.remind === "object" ? m.remind : undefined, walk: m.walk === "go" || m.walk === "back" ? m.walk : undefined }));
       localStorage.setItem(STORE_KEY, JSON.stringify(slim));
     } catch {
       if (canSave) {
@@ -742,6 +743,8 @@
       bubble(m.role === "user" ? "me" : "her", shown(m));
       if (m.song) songInvite(m.song);
       if (m.remind) remindBubble(m);
+      if (m.walk === "go" && !profile?.walking) { /* 終わった誘いは、ボタンを出さない */ }
+      else if (m.walk === "back" && profile?.walking) walkButton("back");
     }
   }
   // キャラが自分から話す（最初の質問など。AIは呼ばない）
@@ -1060,6 +1063,7 @@
         talkFace(data.reply);
         if (data.help === "now") setTimeout(() => startHelp("chat"), 600);
         else if (data.help === "ask") helpInvite();
+        if (data.walk === true) { history[history.length - 1].walk = "go"; save(); walkButton("go"); }
         if (data.plan && typeof data.plan === "object") {
           history[history.length - 1].remind = { type: "plan", plan: data.plan };
           save();
@@ -1522,6 +1526,42 @@
       sayScripted(ok ? "家族に知らせたよ。来てくれるまで、ここにいるからね。" : "知らせることができなかったよ。電話できそうなら、家族か119に電話してね。わたしは、ここにいるよ。");
     }, 2500);
   }
+  // ---- お散歩（歩数は数えない。誘って、帰ってきたら話を聞く） ----
+  const WALK_LINES = {
+    chamu: { go: "いってらっしゃい！気をつけてね。帰ってきたら、お話きかせてね。", back: "おかえり！どうだった？なにか見つけた？" },
+    colon: { go: "ピピッ、いってらっしゃい！気をつけてね。帰ってきたら、教えてね。", back: "おかえり！ピピッ。外はどうだった？" },
+  };
+  function walkButton(state) {
+    const row = log.lastElementChild;
+    if (!row) return;
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "remind-btn";
+    b.textContent = state === "go" ? "🚶 いってきます" : "🏠 ただいま（歩いてきたよ）";
+    b.addEventListener("click", () => {
+      b.disabled = true; b.classList.add("done");
+      if (!profile) return;
+      if (state === "go") {
+        profile.walking = true; saveProfile();
+        history.push({ role: "user", content: "（お散歩に出かけた）" }); save();
+        bubble("me", "🚶 いってきます");
+        sayScripted(WALK_LINES[profile.char].go);
+        showFace("wave", 2000);
+        history[history.length - 1].walk = "back"; save();
+        walkButton("back");
+      } else {
+        profile.walking = false; saveProfile();
+        history.push({ role: "user", content: "（お散歩から帰ってきた）" }); save();
+        bubble("me", "🏠 ただいま");
+        sayScripted(WALK_LINES[profile.char].back);
+        showFace("happy", 1800);
+        afterActivity("walk");
+      }
+    });
+    row.querySelector(".bubble").appendChild(b);
+    log.scrollTop = log.scrollHeight;
+  }
+
   // 会話の中で「どちらか分からない」ときに出す、大きな助けてボタン
   function helpInvite() {
     const row = log.lastElementChild;
