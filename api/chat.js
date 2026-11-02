@@ -2,8 +2,8 @@
 // APIキーはサーバーの環境変数 ANTHROPIC_API_KEY だけに置く。画面には出さない。
 import Anthropic from "@anthropic-ai/sdk";
 
-// モデルはサーバーの設定 PF_MODEL で切りかえられる（未設定なら Opus 5.5）
-const MODEL = process.env.PF_MODEL || "claude-opus-5-5";
+// モデルはサーバーの設定 PF_MODEL で切りかえられる（未設定なら Sonnet 5.5。オーナー決定 2026-11-02）
+const MODEL = process.env.PF_MODEL || "claude-sonnet-5-5";
 const MAX_USER_CHARS = 400; // 1回に送れる文字数
 const MAX_TURNS = 30; // 覚えておく直近のやりとり数
 const MAX_HISTORY_CHARS = 12000; // 送る会話全体の上限
