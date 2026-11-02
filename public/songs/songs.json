@@ -1,5 +1,29 @@
 [
  {
+  "id": "ohayou",
+  "title": "おはよう、あたらしい日",
+  "tag": "おはよう",
+  "file": "songs/ohayou6.mp3",
+  "lyrics": "（歌詞は、作者の作品のため公開していません）",
+  "credit": "音弧の森音楽舎"
+ },
+ {
+  "id": "dance",
+  "title": "ポケット・ダンス",
+  "tag": "踊ろう",
+  "file": "songs/dance4.mp3",
+  "lyrics": "（歌詞は、作者の作品のため公開していません）",
+  "credit": "音弧の森音楽舎"
+ },
+ {
+  "id": "naitemo",
+  "title": "泣いてもいいの",
+  "tag": "寄り添い",
+  "file": "songs/naitemo3.mp3",
+  "lyrics": "（歌詞は、作者の作品のため公開していません）",
+  "credit": "音弧の森音楽舎"
+ },
+ {
   "id": "oyasumi",
   "title": "ポケットの中からおやすみ",
   "tag": "おやすみ",

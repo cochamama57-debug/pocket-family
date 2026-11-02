@@ -269,6 +269,7 @@
   }
   .send:disabled, .tool:disabled { opacity: .5; }
   .nb { display: inline-block; }
+  .lyrics .nb { max-width: 100%; }
   .foot { display: flex; align-items: center; gap: 8px; }
   .foot footer { flex: 1; }
   .help-btn-s { position: relative; flex: none; width: 52px; height: 52px; border-radius: 50%; border: 2px solid #e6a39b; background: #fff5f3; color: #b3261e; font-size: 13px; font-weight: 700; line-height: 1.1; padding: 0; margin-bottom: env(safe-area-inset-bottom, 0px); -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none; }
@@ -1343,7 +1344,8 @@
     playerChar.classList.remove("cheer");
     $("playerTitle").textContent = sg.title;
     $("playerNote").textContent = sg.credit || "";
-    $("lyrics").textContent = sg.lyrics || "（歌詞はありません。曲に合わせて、自由に歌ってね）";
+    if (sg.lyrics) setLyrics($("lyrics"), sg.lyrics);
+    else setPhrases($("lyrics"), "（歌詞はありません。|曲に合わせて、|自由に歌ってね）");
     $("lyrics").scrollTop = 0;
     const isYt = !!sg.youtube;
     $("ytWrap").hidden = !isYt;
@@ -1967,6 +1969,18 @@
 
   // ---- 思い出ノート ----
   // 「|」のところでだけ改行してよい文を入れる（言葉の途中で切れないように）
+  // 歌詞：行ごとに、空白のところでだけ折り返す（言葉の途中で切らない）
+  function setLyrics(el, text) {
+    el.textContent = "";
+    String(text).split("\n").forEach((line, i) => {
+      if (i) el.appendChild(document.createTextNode("\n"));
+      // 空白＝見える区切り、「|」＝見えない区切り（長い言葉を折り返してよい所）
+      line.split(/[ 　]+/).filter(Boolean).forEach((w, j) => {
+        if (j) el.appendChild(document.createTextNode(" "));
+        for (const part of w.split("|").filter(Boolean)) { const sp = document.createElement("span"); sp.className = "nb"; sp.textContent = part; el.appendChild(sp); }
+      });
+    });
+  }
   function setPhrases(el, text) {
     el.textContent = "";
     for (const part of String(text).split("|")) { const sp = document.createElement("span"); sp.className = "nb"; sp.textContent = part; el.appendChild(sp); }
