@@ -137,6 +137,13 @@
   .sheet li { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; margin-bottom: 8px; font-size: 19px; }
   .sheet .empty { color: var(--sub); font-size: 17px; }
   .sheet .danger { margin-top: 28px; text-align: center; }
+  .pet-row { display: flex; align-items: center; gap: 8px; }
+  .pet-row span { flex: 1; }
+  .pet-row button { flex: none; font-size: 15px; color: var(--sub); background: transparent; border: 1px solid var(--line); border-radius: 999px; min-height: 44px; padding: 0 12px; }
+  .pet-form { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 12px; display: grid; gap: 10px; }
+  .pet-form label { font-size: 17px; display: grid; gap: 4px; }
+  .pet-form input, .pet-form select { font: inherit; font-size: 20px; padding: 8px 10px; border: 2px solid var(--line); border-radius: 12px; background: #fff; color: var(--ink); min-height: 48px; }
+  .pet-form .add { font-size: 20px; font-weight: 700; min-height: 52px; border: 0; border-radius: 14px; background: var(--mic); color: #fff; }
 
   .log {
     flex: 1;
@@ -352,6 +359,17 @@
     <ul id="memoNotes"></ul>
     <h3 id="memoHabitsTitle"></h3>
     <ul id="memoHabits"></ul>
+    <h3>うちの家族（ペット）</h3>
+    <ul id="petList"></ul>
+    <form class="pet-form" id="petForm" autocomplete="off">
+      <label>どんな子？
+        <select id="petKind">
+          <option>猫</option><option>犬</option><option>鳥</option><option>うさぎ</option><option>魚</option><option>そのほか</option>
+        </select>
+      </label>
+      <label>名前（なくてもいいよ）<input id="petName" maxlength="12" enterkeyhint="done"></label>
+      <button type="submit" class="add">＋ ペットを登録する</button>
+    </form>
     <div class="danger"><button class="reset" id="reset" type="button">はじめからやり直す</button></div>
   </div>
 </div>
@@ -459,7 +477,12 @@
       days: Math.max(1, g.days.length),
       notes: g.notes,
       habits: g.habits,
+      pets: pets(),
     };
+  }
+  function pets() {
+    if (!Array.isArray(profile.pets)) profile.pets = [];
+    return profile.pets;
   }
   let memoryBusy = false;
   async function updateMemory() {
@@ -1103,9 +1126,52 @@
     fillList($("memoNotes"), firsts.concat(g.notes), "これから、たくさん覚えていくね");
     $("memoHabitsTitle").textContent = profile.name + "の口ぐせ（いっしょに育ったもの）";
     fillList($("memoHabits"), g.habits, "まだないよ。いっぱい話すと、育っていくよ");
+    renderPets();
     $("memoBtn").classList.remove("new");
     $("memo").hidden = false;
   }
+  function renderPets() {
+    const ul = $("petList");
+    ul.textContent = "";
+    const list = pets();
+    if (!list.length) {
+      const li = document.createElement("li");
+      li.className = "empty";
+      li.textContent = "登録すると、「助けて」のときに家族へ伝わるよ";
+      ul.appendChild(li);
+      return;
+    }
+    list.forEach((pt, i) => {
+      const li = document.createElement("li");
+      li.className = "pet-row";
+      const sp = document.createElement("span");
+      sp.textContent = pt.kind + (pt.name ? "の" + pt.name : "");
+      const del = document.createElement("button");
+      del.type = "button";
+      del.textContent = "けす";
+      del.addEventListener("click", () => {
+        if (del.dataset.armed !== "1") { del.dataset.armed = "1"; del.textContent = "もう一度でけす"; setTimeout(() => { del.dataset.armed = ""; del.textContent = "けす"; }, 3000); return; }
+        pets().splice(i, 1);
+        saveProfile();
+        renderPets();
+      });
+      li.append(sp, del);
+      ul.appendChild(li);
+    });
+  }
+  $("petForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (!profile) return;
+    const list = pets();
+    if (list.length >= 10) return;
+    const kind = $("petKind").value;
+    const name = $("petName").value.replace(/\s+/g, " ").trim().slice(0, 12);
+    list.push({ kind, name });
+    saveProfile();
+    $("petName").value = "";
+    $("petName").blur();
+    renderPets();
+  });
   $("memoBtn").addEventListener("click", () => { stopMic(); openMemo(); });
   $("memoClose").addEventListener("click", () => { $("memo").hidden = true; });
 
