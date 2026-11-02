@@ -48,8 +48,30 @@
     padding: 8px 0;
     border-bottom: 1px solid var(--line);
   }
-  .avatar { width: 76px; height: 76px; flex: none; }
-  .avatar svg { width: 100%; height: 100%; overflow: visible; }
+  .avatar { width: 84px; height: 84px; flex: none; }
+  .avatar img { width: 100%; height: 100%; object-fit: contain; display: block; transform-origin: 50% 90%; animation: bob 3.2s ease-in-out infinite; }
+  .avatar.talking img { animation: chatter .5s ease-in-out infinite; }
+  .avatar.listening-face img { animation: lean 1.6s ease-in-out infinite; }
+  @keyframes bob { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-3px) scale(1.01, .99); } }
+  @keyframes chatter { 0%, 100% { transform: translateY(0) scale(1, 1); } 50% { transform: translateY(-5px) scale(1.03, .97); } }
+  @keyframes lean { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+
+  /* 家族えらび */
+  .setup { position: fixed; inset: 0; z-index: 20; background: var(--bg); overflow-y: auto; padding: calc(env(safe-area-inset-top, 0px) + 16px) 16px calc(env(safe-area-inset-bottom, 0px) + 24px); }
+  .setup-in { max-width: 560px; margin: 0 auto; text-align: center; }
+  .setup h1 { font-size: 26px; line-height: 1.45; margin: 8px 0 16px; }
+  .setup p { margin: 0 0 16px; color: var(--sub); font-size: 18px; }
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .card { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 8px 14px; background: #fff; border: 3px solid var(--line); border-radius: 20px; color: var(--ink); font-size: 16px; line-height: 1.45; }
+  .card img { width: 100%; max-width: 180px; aspect-ratio: 1; object-fit: contain; }
+  .card b { font-size: 24px; }
+  .card:active { border-color: var(--accent); }
+  .pick-img { width: 200px; max-width: 70%; aspect-ratio: 1; object-fit: contain; animation: bob 3.2s ease-in-out infinite; }
+  .name-input { width: 100%; font: inherit; font-size: 26px; text-align: center; padding: 12px; border: 3px solid var(--line); border-radius: 16px; background: #fff; color: var(--ink); margin-bottom: 14px; }
+  .name-input:focus { outline: none; border-color: var(--accent); }
+  .big-btn { width: 100%; font-size: 22px; font-weight: 700; min-height: 60px; border: 0; border-radius: 16px; background: var(--accent); color: #fff; margin-bottom: 10px; }
+  .sub-btn { font-size: 17px; min-height: 48px; padding: 0 16px; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--sub); }
+  .skip { display: block; margin: 0 0 8px auto; font-size: 16px; color: var(--sub); background: #fff; border: 1px solid var(--line); border-radius: 999px; min-height: 44px; padding: 0 16px; }
   .who { flex: 1; min-width: 0; }
   .who .name { font-size: 26px; font-weight: 700; line-height: 1.3; }
   .who .status { font-size: 17px; color: var(--sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -173,41 +195,17 @@
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
   /* コロンの動き */
-  .colon-body { transform-origin: 60px 100px; animation: idle 3.2s ease-in-out infinite; }
-  .talking .colon-body { animation: talk .45s ease-in-out infinite; }
-  .eye { transform-box: fill-box; transform-origin: center; animation: eyeblink 4.5s infinite; }
-  .antenna-ball { animation: glow 2.4s ease-in-out infinite; }
-  .listening-face .antenna-ball { animation: glow .6s ease-in-out infinite; }
-  @keyframes idle { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
-  @keyframes talk { 0%, 100% { transform: translateY(0) scale(1, 1); } 50% { transform: translateY(-4px) scale(1.03, .97); } }
-  @keyframes eyeblink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
-  @keyframes glow { 0%, 100% { fill: #ffcf5a; } 50% { fill: #ffe9a8; } }
   @media (prefers-reduced-motion: reduce) {
-    .colon-body, .eye, .antenna-ball, .tool.mic.listening { animation: none !important; }
+    .avatar img, .pick-img, .tool.mic.listening { animation: none !important; }
   }
 </style>
 </head>
 <body>
 <div class="app">
   <header>
-    <div class="avatar" id="avatar" aria-hidden="true">
-      <!-- 仮のキャラ：まるいロボット「コロン」（あとで絵に差し替え） -->
-      <svg viewBox="0 0 120 120">
-        <g class="colon-body">
-          <line x1="60" y1="22" x2="60" y2="8" stroke="#8a9bb0" stroke-width="3" stroke-linecap="round"/>
-          <circle class="antenna-ball" cx="60" cy="7" r="6" fill="#ffcf5a"/>
-          <circle cx="60" cy="64" r="44" fill="#bfe3f2" stroke="#7fb6cf" stroke-width="3"/>
-          <ellipse cx="60" cy="66" rx="31" ry="24" fill="#f4fbff"/>
-          <ellipse class="eye" cx="48" cy="62" rx="5" ry="7" fill="#33414f"/>
-          <ellipse class="eye" cx="72" cy="62" rx="5" ry="7" fill="#33414f"/>
-          <circle cx="38" cy="74" r="5" fill="#ffb4a8" opacity=".7"/>
-          <circle cx="82" cy="74" r="5" fill="#ffb4a8" opacity=".7"/>
-          <path d="M53 75 Q60 81 67 75" fill="none" stroke="#33414f" stroke-width="3" stroke-linecap="round"/>
-        </g>
-      </svg>
-    </div>
+    <div class="avatar" id="avatar" aria-hidden="true"><img id="avatarImg" alt=""></div>
     <div class="who">
-      <div class="name">コロン</div>
+      <div class="name" id="charName"></div>
       <div class="status" id="status">おしゃべりしよう</div>
     </div>
     <button class="reset" id="reset" type="button">はじめから</button>
@@ -239,6 +237,7 @@
       <div id="guideText"></div>
       <button class="close" type="button" id="guideClose" aria-label="案内をとじる">✕<br>とじる</button>
     </div>
+    <button type="submit" class="skip" id="skip" hidden formnovalidate>答えずに次へ</button>
     <div class="tools">
       <button class="tool mic" id="mic" type="button"><span class="ico" aria-hidden="true"><svg class="micsvg" viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="2.5" width="7" height="12" rx="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 11.5a7 7 0 0 0 14 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="18.5" x2="12" y2="21.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="8" y1="21.5" x2="16" y2="21.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><span id="micLabel">話す</span></button>
       <button class="tool help-btn" id="micHelp" type="button" aria-label="マイクの使い方"><span class="q">？</span><span class="hl">使い方</span></button>
@@ -246,11 +245,31 @@
     </div>
     <input class="sr" id="photoInput" type="file" accept="image/*" tabindex="-1" aria-hidden="true">
     <div class="row">
-      <textarea id="input" rows="1" maxlength="400" placeholder="ここに書いてね" enterkeyhint="send" aria-label="コロンに話しかける"></textarea>
+      <textarea id="input" rows="1" maxlength="400" placeholder="ここに書いてね" enterkeyhint="send" aria-label="話しかける"></textarea>
       <button class="send" id="send" type="submit">送る</button>
     </div>
   </form>
   <footer>AIポケットファミリー<small>© 2026 nekomori*I’ll</small></footer>
+</div>
+
+<div class="setup" id="setup" hidden>
+  <div class="setup-in">
+    <div id="step1">
+      <h1>いっしょに暮らす<br>家族をえらんでね</h1>
+      <div class="cards">
+        <button type="button" class="card" data-char="chamu"><img src="chars/chamu/normal.png" alt=""><b>ちゃむ</b><span>犬と猫がまざった<br>ふしぎな生き物</span></button>
+        <button type="button" class="card" data-char="colon"><img src="chars/colon/normal.png" alt=""><b>コロン</b><span>まるくて小さな<br>ロボット</span></button>
+      </div>
+    </div>
+    <div id="step2" hidden>
+      <img class="pick-img" id="pickImg" alt="">
+      <h1>名前をつけてね</h1>
+      <p>このままでも、好きな名前でもいいよ</p>
+      <input class="name-input" id="nameInput" maxlength="12" autocomplete="off" enterkeyhint="done" aria-label="名前">
+      <button type="button" class="big-btn" id="nameOk">この名前にする</button>
+      <button type="button" class="sub-btn" id="backBtn">えらびなおす</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -258,11 +277,24 @@
   const STORE_KEY = "pf.chat.v1";
   const MAX_KEEP = 60;
   const PHOTO_TEXT = "（写真を見せたよ）";
-  const GREETING = "こんにちは。わたし、コロンだよ。きょうは、どんな一日だった？";
+  const PROFILE_KEY = "pf.profile.v1";
+  const CHARS = {
+    chamu: { label: "ちゃむ", img: "chars/chamu/normal.png" },
+    colon: { label: "コロン", img: "chars/colon/normal.png" },
+  };
+  // 最初の会話でキャラが聞くこと（診断ではなく、好みを聞くだけ）
+  const QUESTIONS = [
+    { key: "call", ask: (n) => "はじめまして。\nわたし、" + n + "だよ。\nこれから、よろしくね。\nあなたのこと、\nなんて呼んだらいい？" },
+    { key: "wish", ask: () => "うん、おぼえたよ。\nわたし、何をしたら、\nあなたがうれしい？" },
+    { key: "song", ask: () => "教えてくれて、\nありがとう。\nあとひとつだけ。\n好きな歌はある？" },
+  ];
+  const SKIPPED = "（答えずに次へ）";
+  let profile = null; // { char, name, answers: {call, wish, song}, step, createdAt }
 
   const $ = (id) => document.getElementById(id);
   const log = $("log"), form = $("form"), input = $("input"), send = $("send");
   const avatar = $("avatar"), statusEl = $("status"), resetBtn = $("reset");
+  const setupEl = $("setup"), step1 = $("step1"), step2 = $("step2"), nameInput = $("nameInput");
   const micBtn = $("mic"), micLabel = $("micLabel");
   const photoBtn = $("photo"), photoInput = $("photoInput");
   const preview = $("preview"), previewImg = $("previewImg"), previewRemove = $("previewRemove");
@@ -280,6 +312,19 @@
         history = data.filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string");
       }
     } catch { history = []; }
+  }
+  function loadProfile() {
+    try {
+      const p = JSON.parse(localStorage.getItem(PROFILE_KEY) || "null");
+      if (p && CHARS[p.char] && typeof p.name === "string") {
+        p.answers = p.answers && typeof p.answers === "object" ? p.answers : {};
+        p.step = Number.isInteger(p.step) ? p.step : QUESTIONS.length;
+        profile = p;
+      }
+    } catch { profile = null; }
+  }
+  function saveProfile() {
+    try { localStorage.setItem(PROFILE_KEY, JSON.stringify(profile)); } catch {}
   }
   function save() {
     try {
@@ -315,10 +360,22 @@
   const addNote = (t) => bubble("note", t);
   const shown = (m) => m.photo && m.content === PHOTO_TEXT ? "📷 写真を見せたよ" : (m.photo ? "📷 " + m.content : m.content);
 
+  function applyChar() {
+    const c = CHARS[profile.char];
+    $("avatarImg").src = c.img;
+    $("charName").textContent = profile.name;
+    input.setAttribute("aria-label", profile.name + "に話しかける");
+    $("skip").hidden = profile.step >= QUESTIONS.length;
+  }
   function render() {
     log.textContent = "";
-    bubble("her", GREETING);
     for (const m of history) bubble(m.role === "user" ? "me" : "her", shown(m));
+  }
+  // キャラが自分から話す（最初の質問など。AIは呼ばない）
+  function sayScripted(text) {
+    history.push({ role: "assistant", content: text });
+    save();
+    bubble("her", text);
   }
 
   function setBusy(on) {
@@ -544,9 +601,33 @@
     if (sending) return;
     stopMic();
     const photo = pendingPhoto;
-    let text = input.value.trim();
+    let text = (e.submitter && e.submitter.id === "skip") ? SKIPPED : input.value.trim();
     if (!text && !photo) { input.focus(); return; }
     if (!text && photo) text = PHOTO_TEXT;
+
+    // 最初の会話（質問への答えを、最初の思い出として残す）
+    if (profile && profile.step < QUESTIONS.length) {
+      const q = QUESTIONS[profile.step];
+      profile.answers[q.key] = text === SKIPPED ? "" : text.slice(0, 100);
+      profile.step++;
+      saveProfile();
+      if (text !== SKIPPED) input.value = "";
+      autoGrow();
+      hideGuide();
+      history.push({ role: "user", content: text === SKIPPED ? "（とばした）" : text });
+      save();
+      bubble("me", text === SKIPPED ? "（とばした）" : text);
+      $("skip").hidden = profile.step >= QUESTIONS.length;
+      if (profile.step < QUESTIONS.length && !photo) {
+        const next = profile.step;
+        setTimeout(() => { if (profile && QUESTIONS[next]) sayScripted(QUESTIONS[next].ask(profile.name)); }, 500);
+        return;
+      }
+      // 最後の答えのあとは、AIがそのまま返事をする（下へ続く）
+      history.pop();
+      log.lastElementChild && log.lastElementChild.remove();
+      if (text === SKIPPED) text = "（とばした）";
+    }
 
     sending = true;
     hideGuide();
@@ -577,7 +658,14 @@
     const timer = setTimeout(() => ctrl.abort(), 60000);
     try {
       const payload = {
-        messages: [{ role: "assistant", content: GREETING }, ...history.map(m => ({ role: m.role, content: m.content }))],
+        messages: history.map(m => ({ role: m.role, content: m.content })),
+        profile: profile ? {
+          char: profile.char,
+          name: profile.name,
+          call: profile.answers.call || "",
+          wish: profile.answers.wish || "",
+          song: profile.answers.song || "",
+        } : null,
       };
       if (photo) payload.image = { type: "image/jpeg", data: photo.data };
       const r = await fetch("/api/chat", {
@@ -626,11 +714,55 @@
     history = [];
     clearPhoto();
     save();
+    profile = null;
+    try { localStorage.removeItem(PROFILE_KEY); } catch {}
     render();
+    openSetup();
+  });
+
+  // ---- 家族えらび ----
+  let picked = null;
+  function openSetup() {
+    picked = null;
+    step1.hidden = false;
+    step2.hidden = true;
+    setupEl.hidden = false;
+  }
+  setupEl.querySelectorAll(".card").forEach((card) => {
+    card.addEventListener("click", () => {
+      picked = card.dataset.char;
+      $("pickImg").src = CHARS[picked].img;
+      nameInput.value = CHARS[picked].label;
+      step1.hidden = true;
+      step2.hidden = false;
+    });
+  });
+  $("backBtn").addEventListener("click", openSetup);
+  nameInput.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("nameOk").click(); } });
+  $("nameOk").addEventListener("click", () => {
+    if (!picked) return;
+    const name = nameInput.value.replace(/\s+/g, " ").trim().slice(0, 12) || CHARS[picked].label;
+    profile = { char: picked, name, answers: {}, step: 0, createdAt: new Date().toISOString() };
+    saveProfile();
+    history = [];
+    save();
+    setupEl.hidden = true;
+    applyChar();
+    render();
+    setTimeout(() => sayScripted(QUESTIONS[0].ask(profile.name)), 300);
   });
 
   load();
-  render();
+  loadProfile();
+  if (!profile) {
+    history = []; // 家族を決める前の古い会話は使わない
+    save();
+    render();
+    openSetup();
+  } else {
+    applyChar();
+    render();
+  }
 })();
 </script>
 </body>
