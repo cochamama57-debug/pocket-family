@@ -6,6 +6,11 @@
 <meta name="theme-color" content="#fff7ec">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ポケットファミリー">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="favicon.png">
 <title>AIポケットファミリー</title>
 <style>
   :root {
@@ -431,6 +436,12 @@
       <button type="submit" class="add">＋ ペットを登録する</button>
     </form>
     </section>
+    <div id="homeGuide" class="stat" style="margin-top:20px">
+      <b>ホーム画面に置こう</b>
+      <p class="hint-s" style="margin:6px 0">アプリのように開けて、思い出も消えにくくなるよ。</p>
+      <div id="homeHowIos">iPhone：Safariの下にある <b>共有ボタン</b>（四角から上に矢印）→「<b>ホーム画面に追加</b>」→「追加」</div>
+      <div id="homeHowAndroid">Android：Chromeの右上の <b>︙</b> →「<b>ホーム画面に追加</b>」→「追加」</div>
+    </div>
     <div class="danger"><button class="reset" id="reset" type="button">はじめからやり直す</button></div>
   </div>
 </div>
@@ -1076,6 +1087,7 @@
         }
         afterActivity("talk");
         setTimeout(checkReminders, 1500);
+        if (growth().talks === 1) homeTip();
       } else {
         fail(data.message || "うまく届かなかったみたい。もう一度送ってみてね。");
       }
@@ -1575,6 +1587,15 @@
     log.scrollTop = log.scrollHeight;
   }
 
+  // ---- ホーム画面に置く ----
+  const isStandalone = () => (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+  function homeTip() {
+    if (!profile || isStandalone() || profile.homeTipSaid) return;
+    profile.homeTipSaid = true;
+    saveProfile();
+    setTimeout(() => sayScripted("そうだ、ひとつだけ。わたしを、スマホのホーム画面に置いてくれると、思い出をなくしにくくなるよ。置き方は「ノート」の下に書いてあるからね。"), 2500);
+  }
+
   // ---- 思い出ノート ----
   function fillList(ul, items, emptyText) {
     ul.textContent = "";
@@ -1613,6 +1634,9 @@
     $("memoHabitsTitle").textContent = profile.name + "の口ぐせ（いっしょに育ったもの）";
     fillList($("memoHabits"), g.habits, "まだないよ。いっぱい話すと、育っていくよ");
     renderPets();
+    $("homeGuide").hidden = isStandalone();
+    $("homeHowIos").hidden = isAndroid;
+    $("homeHowAndroid").hidden = isIOS;
     document.querySelector('.tab[data-tab="tabMem"]').click();
     $("memoBtn").classList.remove("new");
     $("memo").hidden = false;
