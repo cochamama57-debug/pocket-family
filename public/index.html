@@ -180,6 +180,7 @@
     overflow-wrap: anywhere;
     line-break: strict;
   }
+  .say-btn { display: inline-block; margin-left: 6px; vertical-align: middle; font-size: 18px; line-height: 1; background: transparent; border: 0; padding: 6px; min-width: 40px; min-height: 40px; opacity: .7; }
   .msg.her .bubble { background: var(--her); border: 1px solid var(--line); border-top-left-radius: 6px; }
   .msg.me { justify-content: flex-end; }
   .msg.me .bubble { background: var(--me); border-top-right-radius: 6px; }
@@ -455,6 +456,10 @@
       <button type="submit" class="add">＋ ペットを登録する</button>
     </form>
     </section>
+    <div class="stat" style="margin-top:20px">
+      <label style="display:flex;align-items:center;gap:10px;font-size:19px"><input type="checkbox" id="voiceToggle" style="width:28px;height:28px"> 声で話す（返事を読み上げる）</label>
+      <p class="hint-s" style="margin:6px 0 0">吹き出しの 🔊 を押すと、いつでも聞けるよ。</p>
+    </div>
     <div id="homeGuide" class="stat" style="margin-top:20px">
       <b>ホーム画面に置こう</b>
       <p class="hint-s" style="margin:6px 0">アプリのように開けて、思い出も消えにくくなるよ。</p>
@@ -701,6 +706,12 @@
       b.appendChild(im);
     }
     if (text) b.appendChild(document.createTextNode(text)); // 文字はそのまま（HTMLとして扱わない）
+    if (cls === "her" && text) {
+      const sp = document.createElement("button");
+      sp.type = "button"; sp.className = "say-btn"; sp.setAttribute("aria-label", "声で聞く"); sp.textContent = "🔊";
+      sp.addEventListener("click", () => speak(text, true));
+      b.appendChild(sp);
+    }
     row.appendChild(b);
     log.appendChild(row);
     log.scrollTop = log.scrollHeight;
@@ -783,6 +794,7 @@
     save();
     bubble("her", text);
     talkFace(text);
+    speak(text);
   }
 
   function setBusy(on) {
@@ -1007,6 +1019,8 @@
     e.preventDefault();
     if (sending) return;
     stopMic();
+    stopVoice();
+    unlockVoice();
     const photo = pendingPhoto;
     let text = (e.submitter && e.submitter.id === "skip") ? SKIPPED : input.value.trim();
     if (!text && !photo) { input.focus(); return; }
@@ -1091,6 +1105,7 @@
         save();
         bubble("her", data.reply);
         talkFace(data.reply);
+        speak(data.reply);
         if (data.help === "now") setTimeout(() => startHelp("chat"), 600);
         else if (data.help === "ask") helpInvite();
         if (data.walk === true) { history[history.length - 1].walk = "go"; save(); walkButton("go"); }
@@ -1287,6 +1302,7 @@
     const sg = songById(id);
     if (!sg || !profile) return;
     stopMic();
+    stopVoice();
     currentSong = sg;
     setFace("normal", playerChar);
     playerChar.classList.remove("cheer");
@@ -1437,6 +1453,57 @@
     });
   }
 
+  // ---- キャラの声（Fish Audio。使えないときはスマホの読み上げ） ----
+  const voiceEl = new Audio();
+  voiceEl.preload = "none";
+  let voiceUnlocked = false, voiceUrl = null, voiceSeq = 0;
+  const SILENT = "data:audio/wav;base64,UklGRrQBAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YZABAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA";
+  function voiceOn() { return !!(profile && profile.voiceOn === true); } // いまは最初はオフ（Fish Audioの声が用意できたら、最初からオンにする）
+  function unlockVoice() {
+    if (voiceUnlocked) return;
+    voiceUnlocked = true;
+    try { voiceEl.src = SILENT; const pr = voiceEl.play(); if (pr) pr.catch(() => {}); } catch {}
+  }
+  ["touchend", "click"].forEach(ev => document.addEventListener(ev, unlockVoice, { passive: true }));
+  function stopVoice() {
+    voiceSeq++;
+    try { voiceEl.pause(); } catch {}
+    try { window.speechSynthesis && speechSynthesis.cancel(); } catch {}
+  }
+  function speakDevice(text) {
+    try {
+      if (!window.speechSynthesis) return;
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "ja-JP";
+      u.pitch = profile && profile.char === "chamu" ? 1.4 : 1.05;
+      u.rate = profile && profile.char === "chamu" ? 0.95 : 1.0;
+      const ja = speechSynthesis.getVoices().find(v => /ja[-_]JP/i.test(v.lang));
+      if (ja) u.voice = ja;
+      speechSynthesis.speak(u);
+    } catch {}
+  }
+  async function speak(text, force) {
+    if (!profile || !text || (!force && !voiceOn())) return;
+    if (!$("player").hidden) return; // 曲を流しているときは話さない
+    stopVoice();
+    const my = voiceSeq;
+    const clean = String(text).replace(/[🔊🎵📅🚶🏠✓]/gu, "").slice(0, 200);
+    try {
+      const r = await fetch("/api/voice", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: clean, char: profile.char }) });
+      if (my !== voiceSeq) return;
+      if (r.status === 200) {
+        const blob = await r.blob();
+        if (my !== voiceSeq) return;
+        if (voiceUrl) URL.revokeObjectURL(voiceUrl);
+        voiceUrl = URL.createObjectURL(blob);
+        voiceEl.src = voiceUrl;
+        await voiceEl.play();
+        return;
+      }
+    } catch {}
+    if (my === voiceSeq) speakDevice(clean);
+  }
+
   // ---- 予定とお薬の時間 ----
   const uid = () => Math.random().toString(36).slice(2, 10);
   const isHM = (v) => typeof v === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(v);
@@ -1524,6 +1591,7 @@
     save();
     bubble("her", text);
     talkFace(text);
+    speak(text);
     remindBubble(history[history.length - 1]);
   }
   function checkReminders() {
@@ -1784,6 +1852,7 @@
     fillList($("memoHabits"), g.habits, "まだないよ。いっぱい話すと、育っていくよ");
     renderPets();
     $("homeGuide").hidden = isStandalone();
+    $("voiceToggle").checked = voiceOn();
     $("homeHowIos").hidden = isAndroid;
     $("homeHowAndroid").hidden = isIOS;
     document.querySelector('.tab[data-tab="tabMem"]').click();
@@ -1831,6 +1900,12 @@
     $("petName").value = "";
     $("petName").blur();
     renderPets();
+  });
+  $("voiceToggle").addEventListener("change", () => {
+    if (!profile) return;
+    profile.voiceOn = $("voiceToggle").checked;
+    saveProfile();
+    if (!profile.voiceOn) stopVoice();
   });
   $("memoBtn").addEventListener("click", () => { stopMic(); openMemo(); });
   $("memoClose").addEventListener("click", () => { $("memo").hidden = true; });
