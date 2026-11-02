@@ -124,6 +124,8 @@
   .player-ctrl { display: flex; gap: 8px; margin: 12px 0 8px; }
   .player-ctrl button { flex: 1; font-size: 20px; font-weight: 700; min-height: 56px; border-radius: 14px; border: 2px solid var(--line); background: #fff; color: var(--ink); }
   .player-ctrl .play { background: #8a5cc2; border-color: #8a5cc2; color: #fff; flex: 1.4; }
+  .yt-wrap { position: relative; width: 100%; aspect-ratio: 16 / 9; margin: 8px 0; border-radius: 12px; overflow: hidden; background: #000; }
+  .yt-wrap iframe, .yt-wrap #ytBox { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
   .sang { width: 100%; font-size: 24px; font-weight: 700; min-height: 64px; border: 0; border-radius: 16px; background: var(--accent); color: #fff; }
 
   /* 思い出ノート */
@@ -372,8 +374,10 @@
     <img class="player-char" id="playerChar" alt="">
     <div class="player-title" id="playerTitle"></div>
     <p class="player-note" id="playerNote"></p>
+    <div class="yt-wrap" id="ytWrap" hidden><div id="ytBox"></div></div>
+    <p class="player-note" id="ytNote" hidden></p>
     <div class="lyrics" id="lyrics"></div>
-    <div class="player-ctrl">
+    <div class="player-ctrl" id="playerCtrl">
       <button type="button" class="play" id="playBtn">▶ 再生</button>
       <button type="button" id="restartBtn">はじめから</button>
     </div>
@@ -1148,7 +1152,8 @@
     try {
       const r = await fetch("songs/songs.json", { cache: "no-cache" });
       const list = await r.json();
-      SONGS = Array.isArray(list) ? list.filter(x => x && typeof x.id === "string" && typeof x.title === "string" && typeof x.file === "string") : [];
+      SONGS = Array.isArray(list) ? list.filter(x => x && typeof x.id === "string" && typeof x.title === "string" &&
+        (typeof x.file === "string" || (typeof x.youtube === "string" && /^[\w-]{11}$/.test(x.youtube)))) : [];
     } catch { SONGS = []; }
     $("singBtn").hidden = SONGS.length === 0;
   }
@@ -1195,7 +1200,18 @@
     $("playerNote").textContent = sg.credit || "";
     $("lyrics").textContent = sg.lyrics || "（歌詞はありません。曲に合わせて、自由に歌ってね）";
     $("lyrics").scrollTop = 0;
-    audio.src = sg.file;
+    const isYt = !!sg.youtube;
+    $("ytWrap").hidden = !isYt;
+    $("ytNote").hidden = !isYt;
+    $("playerCtrl").hidden = isYt;
+    $("lyrics").hidden = isYt && !sg.lyrics;
+    if (isYt) {
+      audio.removeAttribute("src");
+      $("ytNote").textContent = "動画の ▶ を押すと、曲が流れるよ";
+      openYouTube(sg.youtube);
+    } else {
+      audio.src = sg.file;
+    }
     $("sangBtn").disabled = false;
     setPlaying(false);
     $("player").hidden = false;
@@ -1212,7 +1228,44 @@
   audio.addEventListener("play", () => setPlaying(true));
   audio.addEventListener("pause", () => setPlaying(false));
   audio.addEventListener("ended", () => { setPlaying(false); $("sangBtn").focus(); });
+  // ---- YouTube（公式の埋め込みプレーヤー。ダウンロードはしない） ----
+  let ytPlayer = null, ytReady = null;
+  function loadYtApi() {
+    if (ytReady) return ytReady;
+    ytReady = new Promise((resolve) => {
+      window.onYouTubeIframeAPIReady = () => resolve();
+      const sc = document.createElement("script");
+      sc.src = "https://www.youtube.com/iframe_api";
+      sc.onerror = () => resolve();
+      document.head.appendChild(sc);
+    });
+    return ytReady;
+  }
+  async function openYouTube(videoId) {
+    await loadYtApi();
+    if (!window.YT || !YT.Player) { $("ytNote").textContent = "動画を読みこめなかったみたい。電波のよいところで、もう一度ひらいてね。"; return; }
+    if (ytPlayer) { try { ytPlayer.destroy(); } catch {} ytPlayer = null; }
+    $("ytWrap").innerHTML = '<div id="ytBox"></div>';
+    ytPlayer = new YT.Player("ytBox", {
+      videoId,
+      host: "https://www.youtube-nocookie.com",
+      playerVars: { playsinline: 1, rel: 0, modestbranding: 1 },
+      events: {
+        onStateChange: (e) => setPlaying(e.data === 1),
+        onError: () => {
+          $("ytNote").innerHTML = "";
+          $("ytNote").append("この曲は、ここでは流せないみたい。");
+          const a = document.createElement("a");
+          a.href = "https://www.youtube.com/watch?v=" + videoId;
+          a.target = "_blank"; a.rel = "noopener";
+          a.textContent = "YouTubeでひらく";
+          $("ytNote").append(a);
+        },
+      },
+    });
+  }
   function closePlayer() {
+    if (ytPlayer) { try { ytPlayer.stopVideo(); } catch {} }
     audio.pause();
     $("player").hidden = true;
   }
