@@ -9,7 +9,7 @@ function cleanSongs(v) {
   if (!Array.isArray(v)) return [];
   const out = [];
   for (const x of v.slice(0, 20)) {
-    const id = typeof x?.id === "string" && /^[a-z0-9_-]{1,40}$/.test(x.id) ? x.id : null;
+    const id = typeof x?.id === "string" && /^[A-Za-z0-9_-]{1,40}$/.test(x.id) ? x.id : null;
     const title = cleanText(x?.title, 40);
     if (id && title) out.push({ id, title, tag: cleanText(x?.tag, 12), kind: x?.kind === "listen" ? "listen" : "sing" });
   }
@@ -24,6 +24,7 @@ function songBlock(songs) {
     "歌への誘い方:",
     "- 相手が落ち込んでいる・さみしい・気分を変えたい・歌いたい・歌の話をしている、など合うときだけ、「この曲、いっしょに聞こうか」「いっしょに歌おうよ」と一曲だけ誘ってよい。毎回は誘わない。断られたら、その話の中ではもう誘わない。",
     "- ［いっしょに歌う曲］は「いっしょに歌おうよ」と誘う。［聞く曲］はYouTubeの曲で、いっしょに歌うのではなく「この曲、聞いてみない？」「こんなのどう？」とすすめる。",
+    "- 札が「好きな曲」のものは、相手が自分で登録した好きな曲。相手の好みとして大事にする。",
     "- 札の意味：おはよう＝朝のあいさつの曲（朝に）／おやすみ＝寝る前の曲（夜に）／踊ろう＝体を動かしたい・楽しいとき／寄り添い＝さみしい・つらい・泣きたいとき／穏やか＝落ち着きたい・ほっとしたいとき。",
     "- 時間（いまの日時を見る）と相手の気持ちに合う札の曲を選ぶ。元気づける曲を押しつけない。つらいときに明るい曲をすすめない。",
     "- 誘うときは、返事のいちばん最後の行に、曲の記号だけを [[曲:id]] の形で書く（例：[[曲:" + songs[0].id + "]]）。記号は画面でボタンに変わる。記号のことは言葉で説明しない。",
@@ -55,7 +56,7 @@ function takePlan(text) {
   return { clean, plan: ok ? { date: m[1], time: m[2] || "", text: cleanText(m[3], 30) } : null };
 }
 function takeSong(text, songs) {
-  const m = text.match(/\[\[曲:([a-z0-9_-]{1,40})\]\]/);
+  const m = text.match(/\[\[曲:([A-Za-z0-9_-]{1,40})\]\]/);
   const clean = text.replace(/\[\[曲:[^\]]*\]\]/g, "").trim();
   const id = m && songs.some((x) => x.id === m[1]) ? m[1] : null;
   return { clean, id };

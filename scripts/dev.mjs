@@ -4,7 +4,7 @@ import http from "node:http";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-const handlers = { chat: (await import("../api/chat.js")).default, memory: (await import("../api/memory.js")).default, help: (await import("../api/help.js")).default };
+const handlers = { chat: (await import("../api/chat.js")).default, memory: (await import("../api/memory.js")).default, help: (await import("../api/help.js")).default, "yt-search": (await import("../api/yt-search.js")).default };
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "public");
 const types = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".png": "image/png", ".svg": "image/svg+xml" };
@@ -23,7 +23,7 @@ http
       if (process.env.PF_MOCK) {
         // 見た目の確認用：AIを呼ばずに決まった返事を返す
         res.setHeader("Content-Type", "application/json; charset=utf-8");
-        const mock = apiName === "help" ? { sent: false, configured: false } : apiName === "memory"
+        const mock = apiName === "yt-search" ? { configured: true, items: [{ id: "Jh53iS0Kwng", title: "【Healing water】水の歌", channel: "nekomori - 音弧の森音楽舎", thumb: "" }, { id: "M7lc1UVf-VE", title: "テスト動画", channel: "YouTube", thumb: "" }] } : apiName === "help" ? { sent: false, configured: false } : apiName === "memory"
           ? { notes: ["雨の日は家でのんびりすごす", "水の歌が好き"], habits: ["「のんびりいこうね」が合言葉"] }
           : { reply: "そっかぁ、きょうは雨だったんだね。おうちでゆっくりできた？", song: (JSON.parse(raw || "{}").songs || [])[0]?.id,
             walk: raw.includes("散歩") ? true : undefined,

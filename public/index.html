@@ -111,6 +111,13 @@
 
   /* 歌 */
   .song-list li { padding: 0; }
+  .song-list li.empty { padding: 8px 12px; }
+  .fav-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px !important; }
+  .fav-row img { width: 96px; height: 54px; object-fit: cover; border-radius: 8px; flex: none; }
+  .fav-row .t { flex: 1; font-size: 17px; line-height: 1.4; }
+  .fav-row .t small { display: block; color: var(--sub); font-size: 14px; }
+  .fav-row button { flex: none; width: auto !important; font-size: 16px !important; min-height: 44px !important; padding: 0 12px !important; border: 1px solid var(--line) !important; border-radius: 999px; background: #fff !important; }
+  .fav-row button.addit { background: var(--mic) !important; color: #fff !important; border-color: var(--mic) !important; font-weight: 700; }
   .song-list button { width: 100%; text-align: left; font-size: 20px; background: transparent; border: 0; padding: 12px 14px; color: var(--ink); min-height: 56px; }
   .song-list .tag { display: inline-block; font-size: 14px; color: #fff; background: #8a5cc2; border-radius: 999px; padding: 0 10px; margin-left: 8px; vertical-align: 2px; }
   .player-char { display: block; width: 150px; height: 150px; object-fit: contain; margin: 4px auto 0; transform-origin: 50% 90%; }
@@ -362,6 +369,14 @@
       <button type="button" class="close-btn" id="songsClose">とじる</button>
     </div>
     <ul class="song-list" id="songList"></ul>
+    <h3>わたしの好きな曲</h3>
+    <ul class="song-list" id="favList"></ul>
+    <form class="pet-form" id="favForm" autocomplete="off">
+      <label>曲の名前や、歌っている人<input id="favQ" maxlength="60" placeholder="例：川の流れのように" enterkeyhint="search"></label>
+      <button type="submit" class="add">🔍 YouTubeでさがす</button>
+      <p class="hint-s" id="favMsg" style="margin:0"></p>
+      <ul class="song-list" id="favResults"></ul>
+    </form>
   </div>
 </div>
 
@@ -1059,7 +1074,7 @@
       const payload = {
         messages: history.slice(-60).map(m => ({ role: m.role, content: m.content })),
         profile: profile ? profileForServer() : null,
-        songs: SONGS.slice(0, 20).map(x => ({ id: x.id, title: x.title, tag: x.tag || "", kind: x.youtube ? "listen" : "sing" })),
+        songs: allSongs().slice(0, 20).map(x => ({ id: x.id, title: x.title, tag: x.tag || "", kind: x.youtube ? "listen" : "sing" })),
       };
       if (photo) payload.image = { type: "image/jpeg", data: photo.data };
       const r = await fetch("/api/chat", {
@@ -1159,11 +1174,24 @@
       SONGS = Array.isArray(list) ? list.filter(x => x && typeof x.id === "string" && typeof x.title === "string" &&
         (typeof x.file === "string" || (typeof x.youtube === "string" && /^[\w-]{11}$/.test(x.youtube)))) : [];
     } catch { SONGS = []; }
-    $("singBtn").hidden = SONGS.length === 0;
+    $("singBtn").hidden = false;
   }
-  const songById = (id) => SONGS.find(x => x.id === id);
+  function favs() {
+    if (!profile) return [];
+    if (!Array.isArray(profile.favs)) profile.favs = [];
+    profile.favs = profile.favs.filter(x => x && typeof x.youtube === "string" && /^[\w-]{11}$/.test(x.youtube) && typeof x.title === "string");
+    return profile.favs;
+  }
+  // 作者の曲＋利用者の好きな曲（YouTube）
+  function allSongs() {
+    return SONGS.concat(favs().map(f => ({ id: "fav-" + f.youtube, title: f.title, tag: "好きな曲", youtube: f.youtube, credit: f.channel || "YouTube" })));
+  }
+  const songById = (id) => allSongs().find(x => x.id === id);
   function openSongs() {
-    if (!profile || !SONGS.length) return;
+    if (!profile) return;
+    renderFavs();
+    $("favResults").textContent = "";
+    $("favMsg").textContent = "";
     $("songsImg").src = CHARS[profile.char].img;
     const ul = $("songList");
     ul.textContent = "";
@@ -1179,6 +1207,68 @@
     }
     $("songs").hidden = false;
   }
+  function renderFavs() {
+    const ul = $("favList");
+    ul.textContent = "";
+    const list = favs();
+    if (!list.length) {
+      const li = document.createElement("li"); li.className = "empty hint-s";
+      li.textContent = "まだないよ。下で探して、入れてね";
+      ul.appendChild(li);
+      return;
+    }
+    for (const f of list) {
+      const li = document.createElement("li"); li.className = "fav-row";
+      const t = document.createElement("span"); t.className = "t"; t.textContent = f.title;
+      const play = document.createElement("button"); play.type = "button"; play.className = "addit"; play.textContent = "▶ 聞く";
+      play.addEventListener("click", () => { $("songs").hidden = true; openPlayer("fav-" + f.youtube); });
+      const del = document.createElement("button"); del.type = "button"; del.textContent = "けす";
+      del.addEventListener("click", () => {
+        if (del.dataset.armed !== "1") { del.dataset.armed = "1"; del.textContent = "もう一度"; setTimeout(() => { del.dataset.armed = ""; del.textContent = "けす"; }, 3000); return; }
+        profile.favs = favs().filter(x => x.youtube !== f.youtube); saveProfile(); renderFavs();
+      });
+      li.append(t, play, del);
+      ul.appendChild(li);
+    }
+  }
+  let favSearching = false;
+  $("favForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (favSearching || !profile) return;
+    const q = $("favQ").value.replace(/\s+/g, " ").trim();
+    if (!q) { $("favQ").focus(); return; }
+    favSearching = true;
+    $("favMsg").textContent = "さがしています…";
+    $("favResults").textContent = "";
+    document.activeElement && document.activeElement.blur();
+    try {
+      const r = await fetch("/api/yt-search", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ q }) });
+      const data = await r.json().catch(() => ({}));
+      if (data.configured === false) { $("favMsg").textContent = "曲をさがすしくみは、いま準備中です。"; return; }
+      if (!r.ok) { $("favMsg").textContent = data.message || "うまく探せなかったみたい。"; return; }
+      const items = Array.isArray(data.items) ? data.items : [];
+      $("favMsg").textContent = items.length ? "この中にあるかな？" : "見つからなかったよ。ことばを変えて、もう一度さがしてね。";
+      for (const it of items) {
+        const li = document.createElement("li"); li.className = "fav-row";
+        if (it.thumb) { const im = document.createElement("img"); im.src = it.thumb; im.alt = ""; li.appendChild(im); }
+        const t = document.createElement("span"); t.className = "t"; t.textContent = it.title;
+        const ch = document.createElement("small"); ch.textContent = it.channel || ""; t.appendChild(ch);
+        const add = document.createElement("button"); add.type = "button"; add.className = "addit"; add.textContent = "入れる";
+        add.addEventListener("click", () => {
+          if (favs().some(x => x.youtube === it.id)) { add.textContent = "入ってるよ"; return; }
+          if (favs().length >= 30) { $("favMsg").textContent = "好きな曲は30曲までだよ。"; return; }
+          favs().push({ youtube: it.id, title: String(it.title).slice(0, 80), channel: String(it.channel || "").slice(0, 40) });
+          saveProfile();
+          add.textContent = "✓ 入れたよ"; add.disabled = true;
+          renderFavs();
+        });
+        li.append(t, add);
+        $("favResults").appendChild(li);
+      }
+    } catch {
+      $("favMsg").textContent = "電波がとどかなかったみたい。もう一度さがしてね。";
+    } finally { favSearching = false; }
+  });
   const audio = $("audio"), playBtn = $("playBtn"), playerChar = $("playerChar");
   let currentSong = null;
   let singTimer = null;
