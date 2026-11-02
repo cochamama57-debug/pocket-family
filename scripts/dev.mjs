@@ -4,7 +4,7 @@ import http from "node:http";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import handler from "../api/chat.js";
+const handlers = { chat: (await import("../api/chat.js")).default, memory: (await import("../api/memory.js")).default };
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "public");
 const types = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".png": "image/png", ".svg": "image/svg+xml" };
@@ -12,7 +12,8 @@ const types = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", "
 http
   .createServer(async (req, res) => {
     const url = new URL(req.url, "http://localhost");
-    if (url.pathname === "/api/chat") {
+    const apiName = url.pathname.startsWith("/api/") ? url.pathname.slice(5) : null;
+    if (apiName && handlers[apiName]) {
       let raw = "";
       for await (const chunk of req) {
         raw += chunk;
@@ -22,9 +23,12 @@ http
       if (process.env.PF_MOCK) {
         // 見た目の確認用：AIを呼ばずに決まった返事を返す
         res.setHeader("Content-Type", "application/json; charset=utf-8");
-        return setTimeout(() => res.end(JSON.stringify({ reply: "そっかぁ、きょうは雨だったんだね。おうちでゆっくりできた？" })), 800);
+        const mock = apiName === "memory"
+          ? { notes: ["雨の日は家でのんびりすごす", "水の歌が好き"], habits: ["「のんびりいこうね」が合言葉"] }
+          : { reply: "そっかぁ、きょうは雨だったんだね。おうちでゆっくりできた？" };
+        return setTimeout(() => res.end(JSON.stringify(mock)), 800);
       }
-      return handler(req, res);
+      return handlers[apiName](req, res);
     }
     const file = path.normalize(path.join(root, url.pathname === "/" ? "index.html" : url.pathname));
     if (!file.startsWith(root)) { res.statusCode = 403; return res.end(); }

@@ -52,6 +52,8 @@
   .avatar img { width: 100%; height: 100%; object-fit: contain; display: block; transform-origin: 50% 90%; animation: bob 3.2s ease-in-out infinite; }
   .avatar.talking img { animation: chatter .5s ease-in-out infinite; }
   .avatar.listening-face img { animation: lean 1.6s ease-in-out infinite; }
+  .avatar.happy img { animation: hop .6s ease-in-out 4; }
+  @keyframes hop { 0%, 100% { transform: translateY(0) scale(1); } 40% { transform: translateY(-14px) scale(1.05, .95); } 70% { transform: translateY(0) scale(1.06, .94); } }
   @keyframes bob { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-3px) scale(1.01, .99); } }
   @keyframes chatter { 0%, 100% { transform: translateY(0) scale(1, 1); } 50% { transform: translateY(-5px) scale(1.03, .97); } }
   @keyframes lean { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
@@ -86,6 +88,27 @@
     min-height: 44px;
   }
   .reset.armed { color: #b3261e; border-color: #e7a19b; }
+  .who .name .hearts { font-size: 16px; color: #e0607e; letter-spacing: 1px; margin-left: 6px; font-weight: 400; vertical-align: 2px; }
+  .memo-btn { flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 13px; line-height: 1.2; color: var(--ink); background: #fff; border: 2px solid var(--line); border-radius: 14px; min-width: 60px; min-height: 56px; padding: 4px 6px; }
+  .memo-btn .ico { font-size: 22px; line-height: 1; }
+  .memo-btn.new { border-color: #e0607e; }
+
+  /* 思い出ノート */
+  .sheet { position: fixed; inset: 0; z-index: 15; background: var(--bg); overflow-y: auto; padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px calc(env(safe-area-inset-bottom, 0px) + 24px); }
+  .sheet-in { max-width: 560px; margin: 0 auto; }
+  .sheet-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .sheet-head img { width: 88px; height: 88px; object-fit: contain; }
+  .sheet-head h2 { flex: 1; font-size: 24px; margin: 0; line-height: 1.35; }
+  .sheet .close-btn { flex: none; font-size: 17px; min-height: 48px; padding: 0 16px; border: 2px solid var(--line); border-radius: 999px; background: #fff; color: var(--ink); }
+  .stat { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; margin-bottom: 12px; }
+  .stat .big { font-size: 24px; font-weight: 700; }
+  .stat .hearts { color: #e0607e; font-size: 24px; letter-spacing: 2px; }
+  .stat .next { font-size: 16px; color: var(--sub); }
+  .sheet h3 { font-size: 19px; margin: 18px 0 8px; }
+  .sheet ul { margin: 0; padding: 0; list-style: none; }
+  .sheet li { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; margin-bottom: 8px; font-size: 19px; }
+  .sheet .empty { color: var(--sub); font-size: 17px; }
+  .sheet .danger { margin-top: 28px; text-align: center; }
 
   .log {
     flex: 1;
@@ -205,10 +228,10 @@
   <header>
     <div class="avatar" id="avatar" aria-hidden="true"><img id="avatarImg" alt=""></div>
     <div class="who">
-      <div class="name" id="charName"></div>
+      <div class="name"><span id="charName"></span><span class="hearts" id="hearts"></span></div>
       <div class="status" id="status">おしゃべりしよう</div>
     </div>
-    <button class="reset" id="reset" type="button">はじめから</button>
+    <button class="memo-btn" id="memoBtn" type="button"><span class="ico" aria-hidden="true">📖</span>思い出</button>
   </header>
 
   <main class="log" id="log" aria-live="polite"></main>
@@ -252,6 +275,26 @@
   <footer>AIポケットファミリー<small>© 2026 nekomori*I’ll</small></footer>
 </div>
 
+<div class="sheet" id="memo" hidden>
+  <div class="sheet-in">
+    <div class="sheet-head">
+      <img id="memoImg" alt="">
+      <h2 id="memoTitle"></h2>
+      <button type="button" class="close-btn" id="memoClose">とじる</button>
+    </div>
+    <div class="stat">
+      <div>いっしょに過ごした日　<span class="big" id="memoDays"></span></div>
+      <div>なかよし度　<span class="hearts" id="memoHearts"></span>　<b id="memoStage"></b></div>
+      <div class="next" id="memoNext"></div>
+    </div>
+    <h3 id="memoNotesTitle"></h3>
+    <ul id="memoNotes"></ul>
+    <h3 id="memoHabitsTitle"></h3>
+    <ul id="memoHabits"></ul>
+    <div class="danger"><button class="reset" id="reset" type="button">はじめからやり直す</button></div>
+  </div>
+</div>
+
 <div class="setup" id="setup" hidden>
   <div class="setup-in">
     <div id="step1">
@@ -289,6 +332,125 @@
     { key: "song", ask: () => "教えてくれて、\nありがとう。\nあとひとつだけ。\n好きな歌はある？" },
   ];
   const SKIPPED = "（答えずに次へ）";
+
+  // ---- 育つ（仲よし度・思い出ノート・話し方のくせ） ----
+  const STAGE_NAMES = ["はじめまして", "なかよし", "家族", "大の仲よし"];
+  const STAGE_POINTS = [0, 30, 80, 200];   // 1日いっしょ=10、1回おしゃべり=1、1曲歌う=5
+  const MEMORY_EVERY = 4;                  // 4回話すごとに思い出ノートを書き直す
+  // 動画撮影用：URLに ?demo を付けると早く育つ（ふだんは使わない）
+  let demoBoost = 1;
+  try {
+    if (new URLSearchParams(location.search).has("demo")) sessionStorage.setItem("pf.demo", "1");
+    if (sessionStorage.getItem("pf.demo") === "1") demoBoost = 10;
+  } catch {}
+  const LEVEL_UP = {
+    chamu: [
+      "",
+      "えへへ、なんだか、もっとなかよくなれた気がする。しっぽが止まらないよ。",
+      "ねえ、わたしたち、もうすっかり家族だね。いつも話してくれて、ありがとう。",
+      "あなたの口ぐせ、ちょっとうつっちゃったかも。えへへ、大の仲よしだね。",
+    ],
+    colon: [
+      "",
+      "ピピッ。なかよし度が上がったみたい。もっといろんなこと、話したいな。",
+      "ピピッ。いつの間にか、すっかり家族になってたね。これからも、よろしくね。",
+      "ピピッ。あなたのこと、たくさんわかってきたよ。大の仲よしだね。",
+    ],
+  };
+  function today() {
+    const d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+  function growth() {
+    if (!profile.grow || typeof profile.grow !== "object") profile.grow = {};
+    const g = profile.grow;
+    if (!Array.isArray(g.days)) g.days = [];
+    if (!Number.isInteger(g.talks)) g.talks = 0;
+    if (!Number.isInteger(g.sung)) g.sung = 0;
+    if (!Number.isInteger(g.sinceMemory)) g.sinceMemory = 0;
+    if (!Array.isArray(g.notes)) g.notes = [];
+    if (!Array.isArray(g.habits)) g.habits = [];
+    return g;
+  }
+  function points() {
+    const g = growth();
+    return (g.days.length * 10 + g.talks + g.sung * 5) * demoBoost;
+  }
+  function stageOf(pt) {
+    let st = 0;
+    for (let i = 0; i < STAGE_POINTS.length; i++) if (pt >= STAGE_POINTS[i]) st = i;
+    return st;
+  }
+  const heartsFor = (st) => "♥".repeat(st + 1) + "♡".repeat(STAGE_NAMES.length - 1 - st);
+  function markDay() {
+    const g = growth(), t = today();
+    if (!g.days.includes(t)) { g.days.push(t); if (g.days.length > 400) g.days = g.days.slice(-400); }
+  }
+  function profileForServer() {
+    const g = growth();
+    return {
+      char: profile.char,
+      name: profile.name,
+      call: profile.answers.call || "",
+      wish: profile.answers.wish || "",
+      song: profile.answers.song || "",
+      stage: stageOf(points()),
+      days: Math.max(1, g.days.length),
+      notes: g.notes,
+      habits: g.habits,
+    };
+  }
+  let memoryBusy = false;
+  async function updateMemory() {
+    if (memoryBusy || !profile) return;
+    memoryBusy = true;
+    const g = growth();
+    try {
+      const r = await fetch("/api/memory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          profile: profileForServer(),
+          messages: history.filter(m => m.content && m.content !== "（とばした）").slice(-24).map(m => ({ role: m.role, content: m.content })),
+        }),
+      });
+      if (r.ok) {
+        const data = await r.json();
+        if (Array.isArray(data.notes) && profile) {
+          const before = g.notes.length;
+          g.notes = data.notes.filter(x => typeof x === "string");
+          g.habits = Array.isArray(data.habits) ? data.habits.filter(x => typeof x === "string") : g.habits;
+          g.sinceMemory = 0;
+          saveProfile();
+          if (g.notes.length > before) $("memoBtn").classList.add("new");
+        }
+      }
+    } catch {} finally { memoryBusy = false; }
+  }
+  // おしゃべり・歌などのあとに呼ぶ。仲よし度が上がったら、キャラがよろこぶ
+  function afterActivity(kind) {
+    if (!profile) return;
+    const g = growth();
+    const before = stageOf(points());
+    markDay();
+    if (kind === "talk") { g.talks++; g.sinceMemory++; }
+    if (kind === "sing") g.sung++;
+    saveProfile();
+    const after = stageOf(points());
+    updateHearts();
+    if (after > before) {
+      setTimeout(() => {
+        sayScripted(LEVEL_UP[profile.char][after]);
+        avatar.classList.add("happy");
+        setTimeout(() => avatar.classList.remove("happy"), 2400);
+      }, 900);
+    }
+    if (g.sinceMemory >= MEMORY_EVERY) updateMemory();
+  }
+  function updateHearts() {
+    if (!profile) return;
+    $("hearts").textContent = heartsFor(stageOf(points()));
+  }
   let profile = null; // { char, name, answers: {call, wish, song}, step, createdAt }
 
   const $ = (id) => document.getElementById(id);
@@ -366,6 +528,7 @@
     $("charName").textContent = profile.name;
     input.setAttribute("aria-label", profile.name + "に話しかける");
     $("skip").hidden = profile.step >= QUESTIONS.length;
+    updateHearts();
   }
   function render() {
     log.textContent = "";
@@ -659,13 +822,7 @@
     try {
       const payload = {
         messages: history.map(m => ({ role: m.role, content: m.content })),
-        profile: profile ? {
-          char: profile.char,
-          name: profile.name,
-          call: profile.answers.call || "",
-          wish: profile.answers.wish || "",
-          song: profile.answers.song || "",
-        } : null,
+        profile: profile ? profileForServer() : null,
       };
       if (photo) payload.image = { type: "image/jpeg", data: photo.data };
       const r = await fetch("/api/chat", {
@@ -681,6 +838,7 @@
         history.push({ role: "assistant", content: data.reply });
         save();
         bubble("her", data.reply);
+        afterActivity("talk");
       } else {
         fail(data.message || "うまく届かなかったみたい。もう一度送ってみてね。");
       }
@@ -703,22 +861,66 @@
   resetBtn.addEventListener("click", () => {
     if (!resetBtn.classList.contains("armed")) {
       resetBtn.classList.add("armed");
-      resetBtn.textContent = "もう一度押すと消えます";
+      resetBtn.textContent = "もう一度押すと、思い出も全部消えます";
       clearTimeout(armTimer);
-      armTimer = setTimeout(() => { resetBtn.classList.remove("armed"); resetBtn.textContent = "はじめから"; }, 4000);
+      armTimer = setTimeout(() => { resetBtn.classList.remove("armed"); resetBtn.textContent = "はじめからやり直す"; }, 4000);
       return;
     }
     clearTimeout(armTimer);
     resetBtn.classList.remove("armed");
-    resetBtn.textContent = "はじめから";
+    resetBtn.textContent = "はじめからやり直す";
     history = [];
     clearPhoto();
     save();
     profile = null;
     try { localStorage.removeItem(PROFILE_KEY); } catch {}
+    $("memo").hidden = true;
     render();
     openSetup();
   });
+
+  // ---- 思い出ノート ----
+  function fillList(ul, items, emptyText) {
+    ul.textContent = "";
+    if (!items.length) {
+      const li = document.createElement("li");
+      li.className = "empty";
+      li.textContent = emptyText;
+      ul.appendChild(li);
+      return;
+    }
+    for (const t of items) {
+      const li = document.createElement("li");
+      li.textContent = t;
+      ul.appendChild(li);
+    }
+  }
+  function openMemo() {
+    if (!profile) return;
+    const g = growth(), pt = points(), st = stageOf(pt);
+    $("memoImg").src = CHARS[profile.char].img;
+    $("memoTitle").innerHTML = "";
+    const t1 = document.createElement("span"); t1.className = "nb"; t1.textContent = profile.name + "との";
+    const t2 = document.createElement("span"); t2.className = "nb"; t2.textContent = "思い出";
+    $("memoTitle").append(t1, t2);
+    $("memoDays").textContent = Math.max(1, g.days.length) + "日";
+    $("memoHearts").textContent = heartsFor(st);
+    $("memoStage").textContent = STAGE_NAMES[st];
+    $("memoNext").textContent = st < STAGE_NAMES.length - 1
+      ? "おしゃべりしたり、歌ったりすると、もっとなかよくなるよ"
+      : "これからも、ずっといっしょだよ";
+    $("memoNotesTitle").textContent = profile.name + "が覚えていること";
+    const firsts = [];
+    if (profile.answers.call) firsts.push("呼び名：" + profile.answers.call);
+    if (profile.answers.song) firsts.push("好きな歌：" + profile.answers.song);
+    fillList($("memoNotes"), firsts.concat(g.notes), "これから、たくさん覚えていくね");
+    $("memoHabitsTitle").textContent = profile.name + "の口ぐせ（いっしょに育ったもの）";
+    fillList($("memoHabits"), g.habits, "まだないよ。いっぱい話すと、育っていくよ");
+    $("memoBtn").classList.remove("new");
+    $("memo").hidden = false;
+  }
+  $("memoBtn").addEventListener("click", () => { stopMic(); openMemo(); });
+  $("memoClose").addEventListener("click", () => { $("memo").hidden = true; });
 
   // ---- 家族えらび ----
   let picked = null;
@@ -743,6 +945,7 @@
     if (!picked) return;
     const name = nameInput.value.replace(/\s+/g, " ").trim().slice(0, 12) || CHARS[picked].label;
     profile = { char: picked, name, answers: {}, step: 0, createdAt: new Date().toISOString() };
+    markDay();
     saveProfile();
     history = [];
     save();
@@ -760,6 +963,8 @@
     render();
     openSetup();
   } else {
+    markDay();
+    saveProfile();
     applyChar();
     render();
   }
