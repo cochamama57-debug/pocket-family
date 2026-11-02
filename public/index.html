@@ -137,6 +137,12 @@
   .sheet li { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; margin-bottom: 8px; font-size: 19px; }
   .sheet .empty { color: var(--sub); font-size: 17px; }
   .sheet .danger { margin-top: 28px; text-align: center; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+  .tab { flex: 1; font-size: 17px; font-weight: 700; min-height: 50px; border-radius: 12px; border: 2px solid var(--line); background: #fff; color: var(--sub); padding: 0 4px; }
+  .tab.on { background: var(--mic); border-color: var(--mic); color: #fff; }
+  .hint-s { font-size: 15px; color: var(--sub); margin: 0 0 8px; }
+  .remind-btn { display: inline-block; margin: 8px 8px 0 0; font-size: 19px; font-weight: 700; color: #fff; background: var(--mic); border: 0; border-radius: 999px; min-height: 48px; padding: 0 18px; }
+  .remind-btn.done { background: #bbb; }
   .pet-row { display: flex; align-items: center; gap: 8px; }
   .pet-row span { flex: 1; }
   .pet-row button { flex: none; font-size: 15px; color: var(--sub); background: transparent; border: 1px solid var(--line); border-radius: 999px; min-height: 44px; padding: 0 12px; }
@@ -268,7 +274,7 @@
     </div>
     <div class="head-btns">
       <button class="memo-btn" id="singBtn" type="button" hidden><span class="ico" aria-hidden="true">🎵</span>歌う</button>
-      <button class="memo-btn" id="memoBtn" type="button"><span class="ico" aria-hidden="true">📖</span>思い出</button>
+      <button class="memo-btn" id="memoBtn" type="button"><span class="ico" aria-hidden="true">📖</span>ノート</button>
     </div>
   </header>
 
@@ -350,6 +356,12 @@
       <h2 id="memoTitle"></h2>
       <button type="button" class="close-btn" id="memoClose">とじる</button>
     </div>
+    <div class="tabs" role="tablist">
+      <button type="button" class="tab on" data-tab="tabMem">思い出</button>
+      <button type="button" class="tab" data-tab="tabPlan">予定・お薬</button>
+      <button type="button" class="tab" data-tab="tabPet">ペット</button>
+    </div>
+    <section id="tabMem">
     <div class="stat">
       <div>いっしょに過ごした日　<span class="big" id="memoDays"></span></div>
       <div>なかよし度　<span class="hearts" id="memoHearts"></span>　<b id="memoStage"></b></div>
@@ -359,7 +371,27 @@
     <ul id="memoNotes"></ul>
     <h3 id="memoHabitsTitle"></h3>
     <ul id="memoHabits"></ul>
-    <h3>うちの家族（ペット）</h3>
+    </section>
+    <section id="tabPlan" hidden>
+      <h3>予定</h3>
+      <ul id="planList"></ul>
+      <form class="pet-form" id="planForm" autocomplete="off">
+        <label>日にち<input type="date" id="planDate" required></label>
+        <label>時間（なくてもいいよ）<input type="time" id="planTime"></label>
+        <label>なにをする？<input id="planText" maxlength="30" placeholder="例：歯医者" required enterkeyhint="done"></label>
+        <button type="submit" class="add">＋ 予定を登録する</button>
+      </form>
+      <h3>お薬の時間のお知らせ</h3>
+      <p class="hint-s">アプリを開いているとき（または、時間を過ぎてから開いたとき）に、やさしい音でお知らせします。アプリを閉じているときは鳴りません。お薬についての助言はしません。</p>
+      <ul id="medList"></ul>
+      <form class="pet-form" id="medForm" autocomplete="off">
+        <label>時間<input type="time" id="medTime" required></label>
+        <label>呼び方<input id="medLabel" maxlength="16" placeholder="例：朝のお薬" enterkeyhint="done"></label>
+        <button type="submit" class="add">＋ お薬の時間を登録する</button>
+      </form>
+    </section>
+    <section id="tabPet" hidden>
+      <h3>うちの家族（ペット）</h3>
     <ul id="petList"></ul>
     <form class="pet-form" id="petForm" autocomplete="off">
       <label>どんな子？
@@ -370,6 +402,7 @@
       <label>名前（なくてもいいよ）<input id="petName" maxlength="12" enterkeyhint="done"></label>
       <button type="submit" class="add">＋ ペットを登録する</button>
     </form>
+    </section>
     <div class="danger"><button class="reset" id="reset" type="button">はじめからやり直す</button></div>
   </div>
 </div>
@@ -478,6 +511,7 @@
       notes: g.notes,
       habits: g.habits,
       pets: pets(),
+      plans: upcomingPlans(),
     };
   }
   function pets() {
@@ -575,7 +609,7 @@
   function save() {
     try {
       // 写真そのものは残さない（容量のため）。「写真を見せた」という印だけ残す
-      const slim = history.slice(-MAX_KEEP).map(m => ({ role: m.role, content: m.content, photo: m.photo ? true : undefined, song: typeof m.song === "string" ? m.song : undefined }));
+      const slim = history.slice(-MAX_KEEP).map(m => ({ role: m.role, content: m.content, photo: m.photo ? true : undefined, song: typeof m.song === "string" ? m.song : undefined, remind: m.remind && typeof m.remind === "object" ? m.remind : undefined }));
       localStorage.setItem(STORE_KEY, JSON.stringify(slim));
     } catch {
       if (canSave) {
@@ -619,6 +653,7 @@
     for (const m of history) {
       bubble(m.role === "user" ? "me" : "her", shown(m));
       if (m.song) songInvite(m.song);
+      if (m.remind) remindBubble(m);
     }
   }
   // キャラが自分から話す（最初の質問など。AIは呼ばない）
@@ -926,12 +961,18 @@
         history.push({ role: "assistant", content: data.reply });
         save();
         bubble("her", data.reply);
+        if (data.plan && typeof data.plan === "object") {
+          history[history.length - 1].remind = { type: "plan", plan: data.plan };
+          save();
+          remindBubble(history[history.length - 1]);
+        }
         if (typeof data.song === "string") {
           songInvite(data.song);
           history[history.length - 1].song = data.song;
           save();
         }
         afterActivity("talk");
+        setTimeout(checkReminders, 1500);
       } else {
         fail(data.message || "うまく届かなかったみたい。もう一度送ってみてね。");
       }
@@ -1089,6 +1130,198 @@
     log.scrollTop = log.scrollHeight;
   }
 
+  // ---- やさしいお知らせの音（コードで作る音。ファイルは使わない） ----
+  // iPhoneは、画面に一度さわったあとでないと音が出せない
+  let actx = null;
+  function unlockAudio() {
+    try {
+      if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+      if (actx.state === "suspended") actx.resume();
+    } catch {}
+  }
+  ["touchend", "click", "keydown"].forEach(ev => document.addEventListener(ev, unlockAudio, { passive: true }));
+  function chime() {
+    try { if (navigator.vibrate) navigator.vibrate([120, 80, 120]); } catch {}
+    if (!actx || actx.state !== "running") return;
+    const t0 = actx.currentTime + 0.05;
+    // ポローン、と2つの音（ド→ミ→ソのやわらかい鐘）
+    [[1046.5, 0], [1318.5, 0.18], [1568.0, 0.36]].forEach(([f, dt]) => {
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = "sine";
+      o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t0 + dt);
+      g.gain.exponentialRampToValueAtTime(0.18, t0 + dt + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dt + 1.2);
+      o.connect(g).connect(actx.destination);
+      o.start(t0 + dt);
+      o.stop(t0 + dt + 1.3);
+    });
+  }
+
+  // ---- 予定とお薬の時間 ----
+  const uid = () => Math.random().toString(36).slice(2, 10);
+  function plans() { if (!Array.isArray(profile.plans)) profile.plans = []; return profile.plans; }
+  function meds() { if (!Array.isArray(profile.meds)) profile.meds = []; return profile.meds; }
+  function remindState() {
+    const t = today();
+    if (!profile.remind || profile.remind.date !== t) profile.remind = { date: t, medsSaid: [], medsDone: [], plansSaid: [], soonSaid: [] };
+    return profile.remind;
+  }
+  const nowHM = () => { const d = new Date(); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); };
+  const minutes = (hm) => { const [h, m] = hm.split(":").map(Number); return h * 60 + m; };
+  function jpDate(ymd) {
+    const [y, m, d] = ymd.split("-").map(Number);
+    const w = "日月火水木金土"[new Date(y, m - 1, d).getDay()];
+    return m + "月" + d + "日（" + w + "）";
+  }
+  function addPlan(date, time, text) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || (time && !/^\d{2}:\d{2}$/.test(time))) return false;
+    const list = plans();
+    if (list.length >= 50) list.shift();
+    list.push({ id: uid(), date, time: time || "", text: String(text).slice(0, 30) });
+    list.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+    saveProfile();
+    return true;
+  }
+  function upcomingPlans() {
+    const t = today();
+    return plans().filter(x => x.date >= t).slice(0, 10).map(x => ({ date: x.date, time: x.time, text: x.text }));
+  }
+  // キャラからのお知らせ（ボタンつき）
+  function remindBubble(m) {
+    const row = log.lastElementChild;
+    if (!row || !m.remind) return;
+    if (m.remind.type === "med") {
+      const done = profile && remindState().date === m.remind.date && remindState().medsDone.includes(m.remind.id);
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "remind-btn" + (done || m.remind.date !== today() ? " done" : "");
+      b.textContent = done ? "✓ のんだよ" : "のんだよ";
+      b.disabled = done || m.remind.date !== today();
+      b.addEventListener("click", () => {
+        const st = remindState();
+        if (!st.medsDone.includes(m.remind.id)) st.medsDone.push(m.remind.id);
+        saveProfile();
+        b.textContent = "✓ のんだよ"; b.disabled = true; b.classList.add("done");
+        sayScripted("うん、教えてくれて、ありがとう。");
+      });
+      row.querySelector(".bubble").appendChild(b);
+    }
+    if (m.remind.type === "plan" && m.remind.plan) {
+      const p0 = m.remind.plan;
+      const exists = plans().some(x => x.date === p0.date && x.time === p0.time && x.text === p0.text);
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "remind-btn" + (exists ? " done" : "");
+      b.textContent = exists ? "✓ 予定に入れたよ" : "📅 予定に入れる";
+      b.disabled = exists;
+      b.addEventListener("click", () => {
+        if (addPlan(p0.date, p0.time, p0.text)) {
+          b.textContent = "✓ 予定に入れたよ"; b.disabled = true; b.classList.add("done");
+          sayScripted(jpDate(p0.date) + (p0.time ? " " + p0.time : "") + "の「" + p0.text + "」、覚えておくね。");
+        }
+      });
+      row.querySelector(".bubble").appendChild(b);
+    }
+  }
+  function sayRemind(text, remind) {
+    history.push({ role: "assistant", content: text, remind });
+    save();
+    bubble("her", text);
+    remindBubble(history[history.length - 1]);
+  }
+  function checkReminders() {
+    if (!profile || profile.step < QUESTIONS.length || sending) return;
+    const st = remindState(), now = minutes(nowHM()), t = today();
+    // お薬：時間を過ぎていて、まだ言っていないもの（日付が変わるまで）
+    for (const md of meds()) {
+      if (minutes(md.time) <= now && !st.medsSaid.includes(md.id)) {
+        st.medsSaid.push(md.id);
+        saveProfile();
+        sayRemind(md.time + "、" + (md.label || "お薬") + "の時間だよ。", { type: "med", id: md.id, date: t });
+        chime();
+      }
+    }
+    // きょうの予定：その日はじめて開いたときに一度。1時間前になったらもう一度
+    const todays = plans().filter(x => x.date === t);
+    const fresh = todays.filter(x => !st.plansSaid.includes(x.id));
+    if (fresh.length) {
+      fresh.forEach(x => st.plansSaid.push(x.id));
+      saveProfile();
+      const list = fresh.map(x => (x.time ? x.time + "に" : "") + "「" + x.text + "」").join("と、");
+      sayScripted("きょうは、" + list + "があるね。");
+      chime();
+    }
+    for (const x of todays) {
+      if (!x.time || st.soonSaid.includes(x.id)) continue;
+      const diff = minutes(x.time) - now;
+      if (diff > 0 && diff <= 60) {
+        st.soonSaid.push(x.id);
+        saveProfile();
+        sayScripted("もうすぐ、" + x.time + "の「" + x.text + "」の時間だよ。");
+        chime();
+      }
+    }
+  }
+  setInterval(checkReminders, 60_000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) checkReminders(); });
+
+  function renderPlanTab() {
+    const pl = $("planList"); pl.textContent = "";
+    const t = today();
+    const list = plans().filter(x => x.date >= t);
+    if (!list.length) { const li = document.createElement("li"); li.className = "empty"; li.textContent = "まだないよ。おしゃべりで話しても、入れられるよ"; pl.appendChild(li); }
+    for (const x of list) pl.appendChild(itemRow(jpDate(x.date) + (x.time ? " " + x.time : "") + "　" + x.text, () => { profile.plans = plans().filter(y => y.id !== x.id); saveProfile(); renderPlanTab(); }));
+    const ml = $("medList"); ml.textContent = "";
+    if (!meds().length) { const li = document.createElement("li"); li.className = "empty"; li.textContent = "まだないよ"; ml.appendChild(li); }
+    for (const x of meds()) ml.appendChild(itemRow("毎日 " + x.time + "　" + (x.label || "お薬"), () => { profile.meds = meds().filter(y => y.id !== x.id); saveProfile(); renderPlanTab(); }));
+  }
+  function itemRow(text, onDelete) {
+    const li = document.createElement("li");
+    li.className = "pet-row";
+    const sp = document.createElement("span"); sp.textContent = text;
+    const del = document.createElement("button"); del.type = "button"; del.textContent = "けす";
+    del.addEventListener("click", () => {
+      if (del.dataset.armed !== "1") { del.dataset.armed = "1"; del.textContent = "もう一度でけす"; setTimeout(() => { del.dataset.armed = ""; del.textContent = "けす"; }, 3000); return; }
+      onDelete();
+    });
+    li.append(sp, del);
+    return li;
+  }
+  $("planForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (!profile) return;
+    const text = $("planText").value.replace(/\s+/g, " ").trim();
+    if (!text || !$("planDate").value) return;
+    if (addPlan($("planDate").value, $("planTime").value, text)) {
+      $("planText").value = ""; $("planTime").value = "";
+      document.activeElement && document.activeElement.blur();
+      renderPlanTab();
+    }
+  });
+  $("medForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (!profile || !/^\d{2}:\d{2}$/.test($("medTime").value)) return;
+    if (meds().length >= 10) return;
+    meds().push({ id: uid(), time: $("medTime").value, label: $("medLabel").value.replace(/\s+/g, " ").trim().slice(0, 16) });
+    meds().sort((a, b) => a.time.localeCompare(b.time));
+    // 登録した時間がもう過ぎていたら、きょうはお知らせしない
+    const st = remindState(), last = meds()[meds().length - 1];
+    meds().forEach(m => { if (minutes(m.time) <= minutes(nowHM()) && !st.medsSaid.includes(m.id)) st.medsSaid.push(m.id); });
+    saveProfile();
+    $("medTime").value = ""; $("medLabel").value = "";
+    document.activeElement && document.activeElement.blur();
+    renderPlanTab();
+  });
+  // タブ
+  document.querySelectorAll(".tab").forEach((tb) => {
+    tb.addEventListener("click", () => {
+      document.querySelectorAll(".tab").forEach(x => x.classList.toggle("on", x === tb));
+      for (const id of ["tabMem", "tabPlan", "tabPet"]) $(id).hidden = id !== tb.dataset.tab;
+      if (tb.dataset.tab === "tabPlan") { if (!$("planDate").value) $("planDate").value = today(); renderPlanTab(); }
+    });
+  });
+
   // ---- 思い出ノート ----
   function fillList(ul, items, emptyText) {
     ul.textContent = "";
@@ -1127,6 +1360,7 @@
     $("memoHabitsTitle").textContent = profile.name + "の口ぐせ（いっしょに育ったもの）";
     fillList($("memoHabits"), g.habits, "まだないよ。いっぱい話すと、育っていくよ");
     renderPets();
+    document.querySelector('.tab[data-tab="tabMem"]').click();
     $("memoBtn").classList.remove("new");
     $("memo").hidden = false;
   }
@@ -1221,6 +1455,7 @@
     saveProfile();
     applyChar();
     render();
+    setTimeout(checkReminders, 800);
   }
 })();
 </script>

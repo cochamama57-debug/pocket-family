@@ -1,7 +1,7 @@
 // AIポケットファミリー: おしゃべりの中継（サーバー側）
 // APIキーはサーバーの環境変数 ANTHROPIC_API_KEY だけに置く。画面には出さない。
 import {
-  MODEL, CHARACTERS, cleanProfile, profileBlock, cleanText, rateLimited, clientIp, readBody, reply, getClient, replyApiError,
+  MODEL, CHARACTERS, cleanProfile, profileBlock, cleanText, nowBlock, rateLimited, clientIp, readBody, reply, getClient, replyApiError,
 } from "../lib/shared.js";
 
 // いっしょに歌える曲（オーナーの自作曲）。曲の一覧は画面側から受け取る
@@ -26,6 +26,14 @@ function songBlock(songs) {
     "- 元気づける曲を押しつけない。泣きたそうなときは泣ける曲、静かにしたいときは静かな曲、楽しいときは楽しい曲。",
     "- 誘うときは、返事のいちばん最後の行に、曲の記号だけを [[曲:id]] の形で書く（例：[[曲:" + songs[0].id + "]]）。記号は画面でボタンに変わる。記号のことは言葉で説明しない。",
   ].join("\n");
+}
+const PLAN_RULE = `予定のお手伝い:
+- 相手が、これからの予定（日にちがわかるもの。例：「あした10時に歯医者」）を話したら、返事の中で「予定に入れておこうか？」とやさしく聞き、返事のいちばん最後の行に [[予定:YYYY-MM-DD|HH:MM|内容]] の形で書く（時間がわからなければ HH:MM の所は空にする。内容は短く）。記号は画面でボタンに変わる。記号のことは言葉で説明しない。
+- すでに登録されている予定や、過去のことには書かない。お薬の量や飲み方の予定は扱わない。`;
+function takePlan(text) {
+  const m = text.match(/\[\[予定:(\d{4}-\d{2}-\d{2})\|(\d{2}:\d{2})?\|([^\]]{1,30})\]\]/);
+  const clean = text.replace(/\[\[予定:[^\]]*\]\]/g, "").trim();
+  return { clean, plan: m ? { date: m[1], time: m[2] || "", text: cleanText(m[3], 30) } : null };
 }
 function takeSong(text, songs) {
   const m = text.match(/\[\[曲:([a-z0-9_-]{1,40})\]\]/);
@@ -137,7 +145,9 @@ export default async function handler(req, res) {
       system: [
         { type: "text", text: SYSTEM_PROMPT },
         { type: "text", text: CHARACTERS[profile.char], cache_control: { type: "ephemeral" } },
+        { type: "text", text: PLAN_RULE },
         { type: "text", text: songBlock(songs) },
+        { type: "text", text: nowBlock() },
         { type: "text", text: profileBlock(profile) },
       ],
       messages,
@@ -151,8 +161,9 @@ export default async function handler(req, res) {
       .map((b) => b.text)
       .join("")
       .trim();
-    const { clean, id } = takeSong(text, songs);
-    return reply(res, 200, { reply: clean || "……うん、聞いてるよ。", song: id || undefined });
+    const { clean: t1, plan } = takePlan(text);
+    const { clean, id } = takeSong(t1, songs);
+    return reply(res, 200, { reply: clean || "……うん、聞いてるよ。", song: id || undefined, plan: plan || undefined });
   } catch (err) {
     return replyApiError(res, err);
   }
