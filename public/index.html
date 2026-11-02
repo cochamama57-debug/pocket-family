@@ -436,7 +436,7 @@
         <button type="submit" class="add">＋ 予定を登録する</button>
       </form>
       <h3>お薬の時間のお知らせ</h3>
-      <p class="hint-s">アプリを開いているとき（または、時間を過ぎてから開いたとき）に、やさしい音でお知らせします。アプリを閉じているときは鳴りません。お薬についての助言はしません。</p>
+      <p class="hint-s"><span class="nb">アプリを開いているとき</span><span class="nb">（または、</span><span class="nb">時間を過ぎてから</span><span class="nb">開いたとき）に、</span><span class="nb">やさしい音で</span><span class="nb">お知らせします。</span><span class="nb">アプリを</span><span class="nb">閉じているときは</span><span class="nb">鳴りません。</span><span class="nb">お薬についての</span><span class="nb">助言はしません。</span></p>
       <ul id="medList"></ul>
       <form class="pet-form" id="medForm" autocomplete="off">
         <label>時間<input type="time" id="medTime" required></label>
@@ -446,21 +446,21 @@
     </section>
     <section id="tabFam" hidden>
       <h3>家族への連絡（LINE）</h3>
-      <p class="hint-s">「助けて」の合図や、しばらくアプリを開いていないときに、家族のLINEに知らせます。家族の連絡先を、ここに入れる必要はありません。</p>
+      <p class="hint-s"><span class="nb">「助けて」の合図や、</span><span class="nb">しばらくアプリを</span><span class="nb">開いていないときに、</span><span class="nb">家族のLINEに</span><span class="nb">知らせます。</span><span class="nb">家族の連絡先を、</span><span class="nb">ここに入れる</span><span class="nb">必要はありません。</span></p>
       <div class="stat" id="famStatus">読みこみ中…</div>
-      <label style="display:grid;gap:4px;font-size:17px;margin:0 0 12px">家族へのお知らせに出す、あなたの名前
+      <label style="display:grid;gap:4px;font-size:17px;margin:0 0 12px"><span><span class="nb">家族へのお知らせに出す、</span><span class="nb">あなたの名前</span></span>
         <input id="famName" maxlength="12" placeholder="例：はなこ" enterkeyhint="done" autocomplete="off" style="font:inherit;font-size:20px;padding:8px;border:2px solid var(--line);border-radius:12px;min-height:48px">
       </label>
       <button type="button" class="big-btn" id="famCode" style="background:var(--mic)">家族に登録してもらう</button>
       <div class="stat" id="famCodeBox" hidden>
-        <div>家族に、この番号を伝えてね</div>
+        <div><span class="nb">家族に、</span><span class="nb">この番号を伝えてね</span></div>
         <div class="help-count" id="famCodeNum" style="font-size:52px;margin:6px 0"></div>
         <ol style="padding-left:1.2em;margin:0;font-size:17px">
-          <li>家族に、LINEで「AIポケットファミリー」を<b>友だち追加</b>してもらう<br><span class="hint-s">そばにいるなら、このQRコードを家族のLINEで読んでもらってね</span></li>
-          <li>そのトークに、この<b>6けたの番号</b>を送ってもらう</li>
+          <li><span class="nb">家族に、LINEで</span><span class="nb">「AIポケットファミリー」を</span><span class="nb"><b>友だち追加</b>してもらう</span><br><span class="hint-s"><span class="nb">そばにいるなら、</span><span class="nb">このQRコードを</span><span class="nb">家族のLINEで</span><span class="nb">読んでもらってね</span></span></li>
+          <li><span class="nb">そのトークに、</span><span class="nb">この<b>6けたの番号</b>を</span><span class="nb">送ってもらう</span></li>
         </ol>
         <img src="line-qr.png" alt="AIポケットファミリーのLINE 友だち追加のQRコード" style="display:block;width:160px;height:160px;margin:10px auto;border:1px solid var(--line);border-radius:8px">
-        <p class="hint-s">番号は30分だけ使えます。</p>
+        <p class="hint-s"><span class="nb">番号は</span><span class="nb">30分だけ使えます。</span></p>
         <button type="button" class="big-btn" id="famShare">家族に送る（LINEなど）</button>
       </div>
       <label style="display:grid;gap:4px;font-size:17px;margin-top:12px">しばらく開いていないとき、家族に知らせる
@@ -485,11 +485,11 @@
     </section>
     <div class="stat" style="margin-top:20px">
       <label style="display:flex;align-items:center;gap:10px;font-size:19px"><input type="checkbox" id="voiceToggle" style="width:28px;height:28px"> 声で話す（返事を読み上げる）</label>
-      <p class="hint-s" style="margin:6px 0 0">吹き出しの 🔊 を押すと、いつでも聞けるよ。</p>
+      <p class="hint-s" style="margin:6px 0 0"><span class="nb">吹き出しの 🔊 を押すと、</span><span class="nb">いつでも聞けるよ。</span></p>
     </div>
     <div id="homeGuide" class="stat" style="margin-top:20px">
       <b>ホーム画面に置こう</b>
-      <p class="hint-s" style="margin:6px 0">アプリのように開けて、思い出も消えにくくなるよ。</p>
+      <p class="hint-s" style="margin:6px 0"><span class="nb">アプリのように開けて、</span><span class="nb">思い出も</span><span class="nb">消えにくくなるよ。</span></p>
       <div id="homeHowIos">iPhone：Safariの下にある <b>共有ボタン</b>（四角から上に矢印）→「<b>ホーム画面に追加</b>」→「追加」</div>
       <div id="homeHowAndroid">Android：Chromeの右上の <b>︙</b> →「<b>ホーム画面に追加</b>」→「追加」</div>
     </div>
@@ -501,16 +501,16 @@
   <div class="setup-in">
     <div id="step1">
       <h1>いっしょに暮らす<br>家族をえらんでね</h1>
-      <p id="homeFirst" hidden style="font-size:16px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 12px;text-align:left">💡 iPhoneの方へ：<b>先にホーム画面に置いてから</b>、ホーム画面のアイコンで始めるのがおすすめです。Safariで始めた思い出は、ホーム画面のほうには引っ越せません。<br>置き方：Safariの下の <b>共有ボタン</b> →「<b>ホーム画面に追加</b>」</p>
+      <p id="homeFirst" hidden style="font-size:16px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 12px;text-align:left"><span class="nb">💡 iPhoneの方へ：</span><span class="nb"><b>先にホーム画面に</b></span><span class="nb"><b>置いてから</b>、</span><span class="nb">ホーム画面のアイコンで</span><span class="nb">始めるのが</span><span class="nb">おすすめです。</span><span class="nb">Safariで始めた</span><span class="nb">思い出は、</span><span class="nb">ホーム画面のほうには</span><span class="nb">引っ越せません。</span><br><span class="nb">置き方：</span><span class="nb">Safariの下の</span><span class="nb"><b>共有ボタン</b> →</span><span class="nb">「<b>ホーム画面に追加</b>」</span></p>
       <div class="cards">
         <button type="button" class="card" data-char="chamu"><img src="chars/chamu/normal.png" alt=""><b>ちゃむ</b><span>のんびり屋の<br>ふしぎな生き物</span></button>
-        <button type="button" class="card" data-char="colon"><img src="chars/colon/normal.png" alt=""><b>コロン</b><span>まじめで<br>やさしいロボット</span></button>
+        <button type="button" class="card" data-char="colon"><img src="chars/colon/normal.png" alt=""><b>コロン</b><span>まじめで<br><span class="nb">やさしい</span><span class="nb">ロボット</span></span></button>
       </div>
     </div>
     <div id="step2" hidden>
       <img class="pick-img" id="pickImg" alt="">
       <h1>名前をつけてね</h1>
-      <p>このままでも、好きな名前でもいいよ</p>
+      <p><span class="nb">このままでも、</span><span class="nb">好きな名前でもいいよ</span></p>
       <input class="name-input" id="nameInput" maxlength="12" autocomplete="off" enterkeyhint="done" aria-label="名前">
       <button type="button" class="big-btn" id="nameOk">この名前にする</button>
       <button type="button" class="sub-btn" id="backBtn">えらびなおす</button>
@@ -1263,7 +1263,7 @@
     const list = favs();
     if (!list.length) {
       const li = document.createElement("li"); li.className = "empty hint-s";
-      li.textContent = "まだないよ。下で探して、入れてね";
+      setPhrases(li, "まだないよ。|下で探して、|入れてね");
       ul.appendChild(li);
       return;
     }
@@ -1316,7 +1316,7 @@
         $("favResults").appendChild(li);
       }
     } catch {
-      $("favMsg").textContent = "電波がとどかなかったみたい。もう一度さがしてね。";
+      setPhrases($("favMsg"), "電波が|とどかなかったみたい。|もう一度|さがしてね。");
     } finally { favSearching = false; }
   });
   const audio = $("audio"), playBtn = $("playBtn"), playerChar = $("playerChar");
@@ -1391,7 +1391,7 @@
     const forSong = currentSong;
     await loadYtApi();
     if (currentSong !== forSong || $("player").hidden) return;
-    if (!window.YT || !YT.Player) { $("ytNote").textContent = "動画を読みこめなかったみたい。電波のよいところで、もう一度ひらいてね。"; return; }
+    if (!window.YT || !YT.Player) { setPhrases($("ytNote"), "動画を|読みこめなかったみたい。|電波のよいところで、|もう一度ひらいてね。"); return; }
     if (ytPlayer) { try { ytPlayer.destroy(); } catch {} ytPlayer = null; }
     $("ytWrap").innerHTML = '<div id="ytBox"></div>';
     ytPlayer = new YT.Player("ytBox", {
@@ -1672,7 +1672,7 @@
     const pl = $("planList"); pl.textContent = "";
     const t = today();
     const list = plans().filter(x => x.date >= t);
-    if (!list.length) { const li = document.createElement("li"); li.className = "empty"; li.textContent = "まだないよ。おしゃべりで話しても、入れられるよ"; pl.appendChild(li); }
+    if (!list.length) { const li = document.createElement("li"); li.className = "empty"; setPhrases(li, "まだないよ。|おしゃべりで|話しても、|入れられるよ"); pl.appendChild(li); }
     for (const x of list) pl.appendChild(itemRow(jpDate(x.date) + (x.time ? " " + x.time : "") + "　" + x.text, () => { profile.plans = plans().filter(y => y.id !== x.id); saveProfile(); renderPlanTab(); }));
     const ml = $("medList"); ml.textContent = "";
     if (!meds().length) { const li = document.createElement("li"); li.className = "empty"; li.textContent = "まだないよ"; ml.appendChild(li); }
@@ -1762,9 +1762,9 @@
     try {
       await familyCall("hello", { name: callName(), pets: helpPayload().pets, quietDays: Number($("famQuiet").value) });
       const { data } = await familyCall("status");
-      if (data.configured === false) { $("famStatus").textContent = "LINEへの連絡は、いま準備中です。"; $("famCode").disabled = true; return; }
+      if (data.configured === false) { setPhrases($("famStatus"), "LINEへの連絡は、|いま準備中です。"); $("famCode").disabled = true; return; }
       $("famCode").disabled = false;
-      $("famStatus").textContent = data.family ? "登録している家族：" + data.family + "人" : "まだ家族が登録されていません。";
+      setPhrases($("famStatus"), data.family ? "登録している家族：|" + data.family + "人" : "まだ家族が|登録されていません。");
     } catch { $("famStatus").textContent = "電波がとどかなかったみたい。"; }
   }
   let famAddUrl = "";
@@ -1776,7 +1776,7 @@
         $("famCodeNum").textContent = data.code.slice(0, 3) + " " + data.code.slice(3);
         famAddUrl = data.addUrl || "";
         $("famCodeBox").hidden = false;
-      } else { $("famStatus").textContent = "番号を作れなかったみたい。もう一度押してね。"; }
+      } else { setPhrases($("famStatus"), "番号を|作れなかったみたい。|もう一度押してね。"); }
     } catch { $("famStatus").textContent = "電波がとどかなかったみたい。"; }
     $("famCode").disabled = false;
   });
@@ -1785,7 +1785,7 @@
     const text = "AIポケットファミリーの家族登録のお願いです。\n①このリンクから友だち追加してください：" + (famAddUrl || "（あとで送ります）") + "\n②そのトークに、この番号を送ってください：" + code;
     try {
       if (navigator.share) await navigator.share({ text });
-      else { await navigator.clipboard.writeText(text); $("famStatus").textContent = "文章をコピーしたよ。LINEに貼って、家族に送ってね。"; }
+      else { await navigator.clipboard.writeText(text); setPhrases($("famStatus"), "文章をコピーしたよ。|LINEに貼って、|家族に送ってね。"); }
     } catch {}
   });
   $("famName").addEventListener("change", () => {
@@ -1932,10 +1932,10 @@
     clearInterval(helpTimer); helpTimer = null;
     $("helpStop").hidden = true; $("helpNow").hidden = true;
     $("helpCount").textContent = ok ? "✓" : "!";
-    $("helpMsg").textContent = ok ? "家族に知らせたよ。"
-      : !configured ? "まだ家族への連絡が準備できていないよ（準備中）。"
-      : error === "no_family" ? "まだ家族が登録されていないよ。電話できるなら、家族に電話してね。"
-      : "うまく送れなかったみたい。電話できるなら、家族に電話してね。";
+    setPhrases($("helpMsg"), ok ? "家族に|知らせたよ。"
+      : !configured ? "まだ家族への連絡が|準備できていないよ|（準備中）。"
+      : error === "no_family" ? "まだ家族が|登録されていないよ。|電話できるなら、|家族に電話してね。"
+      : "うまく|送れなかったみたい。|電話できるなら、|家族に電話してね。");
     setTimeout(() => {
       endHelp();
       sayScripted(ok ? "家族に知らせたよ。来てくれるまで、ここにいるからね。" : "知らせることができなかったよ。電話できそうなら、家族か119に電話してね。わたしは、ここにいるよ。");
@@ -1966,12 +1966,17 @@
   }
 
   // ---- 思い出ノート ----
+  // 「|」のところでだけ改行してよい文を入れる（言葉の途中で切れないように）
+  function setPhrases(el, text) {
+    el.textContent = "";
+    for (const part of String(text).split("|")) { const sp = document.createElement("span"); sp.className = "nb"; sp.textContent = part; el.appendChild(sp); }
+  }
   function fillList(ul, items, emptyText) {
     ul.textContent = "";
     if (!items.length) {
       const li = document.createElement("li");
       li.className = "empty";
-      li.textContent = emptyText;
+      setPhrases(li, emptyText);
       ul.appendChild(li);
       return;
     }
@@ -1992,16 +1997,16 @@
     $("memoDays").textContent = Math.max(1, g.days.length) + "日";
     $("memoHearts").textContent = heartsFor(st);
     $("memoStage").textContent = STAGE_NAMES[st];
-    $("memoNext").textContent = st < STAGE_NAMES.length - 1
-      ? "おしゃべりしたり、歌ったりすると、もっとなかよくなるよ"
-      : "これからも、ずっといっしょだよ";
-    $("memoNotesTitle").textContent = profile.name + "が覚えていること";
+    setPhrases($("memoNext"), st < STAGE_NAMES.length - 1
+      ? "おしゃべりしたり、|歌ったりすると、|もっと|なかよくなるよ"
+      : "これからも、|ずっといっしょだよ");
+    setPhrases($("memoNotesTitle"), profile.name + "が|覚えていること");
     const firsts = [];
     if (profile.answers.call) firsts.push("呼び名：" + profile.answers.call);
     if (profile.answers.song) firsts.push("好きな歌：" + profile.answers.song);
-    fillList($("memoNotes"), firsts.concat(g.notes), "これから、たくさん覚えていくね");
-    $("memoHabitsTitle").textContent = profile.name + "の口ぐせ（いっしょに育ったもの）";
-    fillList($("memoHabits"), g.habits, "まだないよ。いっぱい話すと、育っていくよ");
+    fillList($("memoNotes"), firsts.concat(g.notes), "これから、|たくさん|覚えていくね");
+    setPhrases($("memoHabitsTitle"), profile.name + "の口ぐせ|（いっしょに|育ったもの）");
+    fillList($("memoHabits"), g.habits, "まだないよ。|いっぱい話すと、|育っていくよ");
     renderPets();
     $("homeGuide").hidden = isStandalone();
     $("voiceToggle").checked = voiceOn();
@@ -2018,7 +2023,7 @@
     if (!list.length) {
       const li = document.createElement("li");
       li.className = "empty";
-      li.textContent = "登録すると、「助けて」のときに家族へ伝わるよ";
+      setPhrases(li, "登録すると、|「助けて」のときに|家族へ伝わるよ");
       ul.appendChild(li);
       return;
     }
