@@ -232,7 +232,7 @@
           </g>
           <g id="kbdMic">
             <circle class="hot" cx="88" cy="63" r="9" fill="#c0392b"/>
-            <g transform="translate(82,57) scale(0.5)" color="#fff"><rect x="8.5" y="2.5" width="7" height="12" rx="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 11.5a7 7 0 0 0 14 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="18.5" x2="12" y2="22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></g>
+            <g transform="translate(82,57) scale(0.5)" color="#fff"><rect x="8.5" y="2.5" width="7" height="12" rx="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 11.5a7 7 0 0 0 14 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="18.5" x2="12" y2="21.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="8" y1="21.5" x2="16" y2="21.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></g>
           </g>
         </svg>
       </div>
@@ -240,7 +240,7 @@
       <button class="close" type="button" id="guideClose" aria-label="案内をとじる">✕<br>とじる</button>
     </div>
     <div class="tools">
-      <button class="tool mic" id="mic" type="button"><span class="ico" aria-hidden="true"><svg class="micsvg" viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="2.5" width="7" height="12" rx="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 11.5a7 7 0 0 0 14 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="18.5" x2="12" y2="22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><span id="micLabel">話す</span></button>
+      <button class="tool mic" id="mic" type="button"><span class="ico" aria-hidden="true"><svg class="micsvg" viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="2.5" width="7" height="12" rx="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 11.5a7 7 0 0 0 14 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="18.5" x2="12" y2="21.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="8" y1="21.5" x2="16" y2="21.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><span id="micLabel">話す</span></button>
       <button class="tool help-btn" id="micHelp" type="button" aria-label="マイクの使い方"><span class="q">？</span><span class="hl">使い方</span></button>
       <button class="tool" id="photo" type="button"><span class="ico" aria-hidden="true">📷</span>写真</button>
     </div>
@@ -401,7 +401,7 @@
     const where = isAndroid ? "右上" : "右下";
     if (isAndroid) kbdMic.setAttribute("transform", "translate(0,-55)"); // Androidのキーボードは右上にマイクが多い
     else kbdMic.removeAttribute("transform"); // iPhoneは右下
-    guideText.innerHTML = 'キーボードの<b>' + where + 'の</b> <span class="micbox"><svg class="micsvg" viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="2.5" width="7" height="12" rx="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 11.5a7 7 0 0 0 14 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="18.5" x2="12" y2="22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span> を<span class="nb">押して話してね</span>'
+    guideText.innerHTML = 'キーボードの<b>' + where + 'の</b> <span class="micbox"><svg class="micsvg" viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="2.5" width="7" height="12" rx="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 11.5a7 7 0 0 0 14 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="18.5" x2="12" y2="21.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="8" y1="21.5" x2="16" y2="21.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span> を<span class="nb">押して話してね</span>'
       + '<span class="tip"><span class="nb">スマホを</span><span class="nb">口に近づけて、</span><span class="nb">ゆっくり</span><span class="nb">話してね</span></span>'
       + (isAndroid ? '' : '<span class="help" id="guideHelp" hidden>設定 → 一般 → キーボード →「音声入力」をオンにしてね</span>')
       + '<span class="links">' + (isAndroid ? '' : '<button type="button" class="more" id="guideMore">マイクが見つからないとき</button>') + '<button type="button" class="more" id="guideOff">次から出さない</button></span>';
