@@ -4,11 +4,15 @@
 import { fromOurPage, rateLimited, clientIp, readBody, reply, cleanText } from "../lib/shared.js";
 
 const RATE_MAX = 6; // 1分に6回まで（同じ接続元）。無料枠を守るため
+const DAILY_MAX = 80; // 1日の検索の上限（無料枠 約100回の手前で止める。サーバーごとの目安）
+const cache = new Map(); // 同じ言葉の結果は使い回す
+let day = "", count = 0;
 
 function decode(s) {
   return String(s || "")
     .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)));
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)));
 }
 
 export default async function handler(req, res) {
@@ -22,6 +26,12 @@ export default async function handler(req, res) {
 
   const key = process.env.YOUTUBE_API_KEY;
   if (!key) return reply(res, 200, { configured: false, items: [] });
+
+  const ck = q.toLowerCase();
+  if (cache.has(ck)) return reply(res, 200, { configured: true, items: cache.get(ck) });
+  const today = new Date().toISOString().slice(0, 10);
+  if (today !== day) { day = today; count = 0; }
+  if (++count > DAILY_MAX) return reply(res, 429, { error: "daily", message: "きょうは、もう探せないみたい。また明日ためしてね。" });
 
   const url = new URL("https://www.googleapis.com/youtube/v3/search");
   url.search = new URLSearchParams({
@@ -44,6 +54,8 @@ export default async function handler(req, res) {
       }))
       .filter((x) => /^[\w-]{11}$/.test(x.id || "") && x.title)
       .map((x) => ({ ...x, thumb: /^https:\/\/i\.ytimg\.com\//.test(x.thumb) ? x.thumb : "" }));
+    if (cache.size > 300) cache.clear();
+    cache.set(ck, items);
     return reply(res, 200, { configured: true, items });
   } catch (err) {
     console.error("youtube search failed", err?.name);

@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 const handlers = { chat: (await import("../api/chat.js")).default, memory: (await import("../api/memory.js")).default, help: (await import("../api/help.js")).default, "yt-search": (await import("../api/yt-search.js")).default, voice: (await import("../api/voice.js")).default };
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "public");
-const types = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".png": "image/png", ".svg": "image/svg+xml" };
+const types = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".png": "image/png", ".svg": "image/svg+xml", ".mp3": "audio/mpeg", ".json": "application/json", ".webmanifest": "application/manifest+json" };
 
 http
   .createServer(async (req, res) => {

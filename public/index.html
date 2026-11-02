@@ -474,6 +474,7 @@
   <div class="setup-in">
     <div id="step1">
       <h1>いっしょに暮らす<br>家族をえらんでね</h1>
+      <p id="homeFirst" hidden style="font-size:16px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 12px;text-align:left">💡 iPhoneの方へ：<b>先にホーム画面に置いてから</b>、ホーム画面のアイコンで始めるのがおすすめです。Safariで始めた思い出は、ホーム画面のほうには引っ越せません。<br>置き方：Safariの下の <b>共有ボタン</b> →「<b>ホーム画面に追加</b>」</p>
       <div class="cards">
         <button type="button" class="card" data-char="chamu"><img src="chars/chamu/normal.png" alt=""><b>ちゃむ</b><span>のんびり屋の<br>ふしぎな生き物</span></button>
         <button type="button" class="card" data-char="colon"><img src="chars/colon/normal.png" alt=""><b>コロン</b><span>まじめでやさしい<br>小さなロボット</span></button>
@@ -742,6 +743,7 @@
   }
   function talkFace(text) {
     clearInterval(talkTimer);
+    clearTimeout(faceTimer);
     const until = Date.now() + Math.min(4000, 600 + String(text || "").length * 70);
     let open = false;
     faceLock = "talk";
@@ -785,7 +787,7 @@
       if (m.song) songInvite(m.song);
       if (m.remind) remindBubble(m);
       if (m.walk === "go" && !profile?.walking) { /* 終わった誘いは、ボタンを出さない */ }
-      else if (m.walk === "back" && profile?.walking) walkButton("back");
+      else if (m.walk === "back" && profile?.walking && m === history.filter(x => x.walk === "back").pop()) walkButton("back");
     }
   }
   // キャラが自分から話す（最初の質問など。AIは呼ばない）
@@ -1099,6 +1101,7 @@
       });
       let data = {};
       try { data = await r.json(); } catch {}
+      if (!profile) { typing.remove(); return; }
       if (r.ok && data.reply) {
         typing.remove();
         history.push({ role: "assistant", content: data.reply });
@@ -1347,13 +1350,15 @@
       window.onYouTubeIframeAPIReady = () => resolve();
       const sc = document.createElement("script");
       sc.src = "https://www.youtube.com/iframe_api";
-      sc.onerror = () => resolve();
+      sc.onerror = () => { ytReady = null; resolve(); };
       document.head.appendChild(sc);
     });
     return ytReady;
   }
   async function openYouTube(videoId) {
+    const forSong = currentSong;
     await loadYtApi();
+    if (currentSong !== forSong || $("player").hidden) return;
     if (!window.YT || !YT.Player) { $("ytNote").textContent = "動画を読みこめなかったみたい。電波のよいところで、もう一度ひらいてね。"; return; }
     if (ytPlayer) { try { ytPlayer.destroy(); } catch {} ytPlayer = null; }
     $("ytWrap").innerHTML = '<div id="ytBox"></div>';
@@ -1362,7 +1367,7 @@
       host: "https://www.youtube-nocookie.com",
       playerVars: { playsinline: 1, rel: 0, modestbranding: 1 },
       events: {
-        onStateChange: (e) => setPlaying(e.data === 1),
+        onStateChange: (e) => { if (currentSong !== forSong || $("sangBtn").disabled) return; if (e.data === 1) setPlaying(true); else if (e.data === 2 || e.data === 0) setPlaying(false); },
         onError: () => {
           $("ytNote").innerHTML = "";
           $("ytNote").append("この曲は、ここでは流せないみたい。");
@@ -1378,6 +1383,7 @@
   function closePlayer() {
     if (ytPlayer) { try { ytPlayer.stopVideo(); } catch {} }
     audio.pause();
+    setPlaying(false);
     $("player").hidden = true;
   }
   $("playerClose").addEventListener("click", closePlayer);
@@ -1595,7 +1601,7 @@
     remindBubble(history[history.length - 1]);
   }
   function checkReminders() {
-    if (!profile || profile.step < QUESTIONS.length || sending) return;
+    if (!profile || profile.step < QUESTIONS.length || sending || helpBusy) return;
     const st = remindState(), now = minutes(nowHM()), t = today();
     // お薬：時間を過ぎていて、まだ言っていないもの（日付が変わるまで）
     for (const md of meds()) {
@@ -1706,18 +1712,27 @@
   helpBtn.addEventListener("contextmenu", (e) => e.preventDefault());
   helpBtn.addEventListener("click", () => { if (!helpBusy) { statusEl.textContent = "助けてボタンは、長押ししてね"; setTimeout(() => { if (!sending) statusEl.textContent = "おしゃべりしよう"; }, 3000); } });
 
-  function helpMessage() {
-    // 家族に送る文章（名前・ペットを入れる。薬や住所は入れない）
-    const who = profile && profile.answers.call ? profile.answers.call.replace(/(って|と)?(呼んで|よんで).*$/, "").slice(0, 20) : "";
+  // 家族に送る文章の材料（名前とペットだけ。文章はサーバーで組み立てる。薬や住所は送らない）
+  function callName() {
+    const raw = profile && profile.answers.call ? profile.answers.call : "";
+    const m = raw.replace(/\s+/g, "").replace(/(って|と)?(呼んで|よんで|でいい|がいい|です|だよ|ね|よ|！|!|。)+.*$/, "");
+    return m.slice(0, 12);
+  }
+  function helpPayload(source) {
     const pl = profile ? pets() : [];
-    const petText = pl.length ? "家に" + pl.map(x => x.kind + (x.name ? "の" + x.name : "")).join("、") + "がいます。" : "";
-    return (who ? who + "さん" : "利用者") + "から「助けて」の合図がありました。様子を見に行くか、連絡をしてください。" + petText;
+    return { name: callName(), pets: pl.slice(0, 10).map(x => ({ kind: x.kind === "そのほか" ? "ペット" : x.kind, name: x.name || "" })), source };
   }
   function startHelp(source) {
     if (helpBusy) return;
     helpBusy = true;
     stopMic();
     unlockAudio();
+    // 曲・ほかの画面を閉じて、助けてを一番前に
+    try { closePlayer(); } catch {}
+    for (const id of ["memo", "songs"]) $(id).hidden = true;
+    stopVoice();
+    helpSource = source;
+    helpDeadline = Date.now() + HELP_WAIT * 1000;
     helpLeft = HELP_WAIT;
     $("helpCount").textContent = helpLeft;
     $("helpMsg").innerHTML = '<span class="nb">いらないときは、</span><span class="nb">下のボタンを押してね</span>';
@@ -1726,24 +1741,41 @@
     chime();
     clearInterval(helpTimer);
     helpTimer = setInterval(() => {
-      helpLeft--;
+      helpLeft = Math.ceil((helpDeadline - Date.now()) / 1000);
       $("helpCount").textContent = Math.max(0, helpLeft);
       if (helpLeft <= 0) { clearInterval(helpTimer); sendHelp(source); }
-    }, 1000);
+    }, 250);
   }
-  function endHelp() { clearInterval(helpTimer); helpBusy = false; $("helpSheet").hidden = true; }
+  // 数えている途中で画面が消えたり、ほかのアプリに切りかえたら、待たずにすぐ送る（「いらない」と言われていないため）
+  let helpSource = "button", helpDeadline = 0, helpSent = false;
+  function sendHelpNowBackground() {
+    if (!helpBusy || helpSent || !helpTimer) return;
+    clearInterval(helpTimer); helpTimer = null;
+    helpSent = true;
+    try {
+      fetch("/api/help", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(helpPayload(helpSource)), keepalive: true });
+    } catch {}
+    $("helpCount").textContent = "…";
+    $("helpStop").hidden = true; $("helpNow").hidden = true;
+    $("helpMsg").textContent = "知らせたよ";
+  }
+  document.addEventListener("visibilitychange", () => { if (document.hidden) sendHelpNowBackground(); });
+  window.addEventListener("pagehide", sendHelpNowBackground);
+  function endHelp() { clearInterval(helpTimer); helpTimer = null; helpBusy = false; helpSent = false; $("helpSheet").hidden = true; }
   $("helpStop").addEventListener("click", () => {
     endHelp();
     sayScripted("うん、わかった。止めたよ。そばにいるからね。");
   });
-  $("helpNow").addEventListener("click", () => { clearInterval(helpTimer); sendHelp("now"); });
+  $("helpNow").addEventListener("click", () => { clearInterval(helpTimer); helpTimer = null; sendHelp("now"); });
   async function sendHelp(source) {
+    if (helpSent) return;
+    helpSent = true;
     $("helpStop").hidden = true; $("helpNow").hidden = true;
     $("helpCount").textContent = "…";
     $("helpMsg").textContent = "知らせています";
     let ok = false, configured = true;
     try {
-      const r = await fetch("/api/help", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: helpMessage(), source }) });
+      const r = await fetch("/api/help", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(helpPayload(source)), signal: AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined });
       const data = await r.json().catch(() => ({}));
       ok = r.ok && data.sent === true;
       configured = data.configured !== false;
@@ -1810,7 +1842,9 @@
     if (!profile || isStandalone() || profile.homeTipSaid) return;
     profile.homeTipSaid = true;
     saveProfile();
-    setTimeout(() => sayScripted("そうだ、ひとつだけ。わたしを、スマホのホーム画面に置いてくれると、思い出をなくしにくくなるよ。置き方は「ノート」の下に書いてあるからね。"), 2500);
+    setTimeout(() => sayScripted(isIOS
+      ? "そうだ、ひとつだけ。わたしを、スマホのホーム画面に置いてくれると、思い出をなくしにくくなるよ。ただ、iPhoneはホーム画面から開くと、はじめからになっちゃうの。置くなら、早いうちがいいよ。置き方は「ノート」の下に書いてあるからね。"
+      : "そうだ、ひとつだけ。わたしを、スマホのホーム画面に置いてくれると、すぐ会いに来られるよ。置き方は「ノート」の下に書いてあるからね。"), 2500);
   }
 
   // ---- 思い出ノート ----
@@ -1914,6 +1948,7 @@
   let picked = null;
   function openSetup() {
     picked = null;
+    $("homeFirst").hidden = !(isIOS && !isStandalone());
     step1.hidden = false;
     step2.hidden = true;
     setupEl.hidden = false;
