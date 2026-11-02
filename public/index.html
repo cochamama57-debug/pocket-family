@@ -437,6 +437,10 @@
     chamu: { label: "ちゃむ", img: "chars/chamu/normal.png" },
     colon: { label: "コロン", img: "chars/colon/normal.png" },
   };
+  const FACES = ["normal", "talk", "happy", "sleepy"];
+  const faceSrc = (ch, f) => "chars/" + ch + "/" + f + ".png";
+  // 表情の絵を先に読みこんでおく（切りかえたときにチラつかないように）
+  function preloadFaces(ch) { for (const f of FACES) { const im = new Image(); im.src = faceSrc(ch, f); } }
   // 最初の会話でキャラが聞くこと（診断ではなく、好みを聞くだけ）
   const QUESTIONS = [
     { key: "call", ask: (n) => "はじめまして。\nわたし、" + n + "だよ。\nこれから、よろしくね。\nあなたのこと、\nなんて呼んだらいい？" },
@@ -559,6 +563,8 @@
     if (after > before) {
       setTimeout(() => {
         sayScripted(LEVEL_UP[profile.char][after]);
+        clearInterval(talkTimer);
+        showFace("happy", 2600);
         avatar.classList.add("happy");
         setTimeout(() => avatar.classList.remove("happy"), 2400);
       }, 900);
@@ -640,9 +646,58 @@
   const addNote = (t) => bubble("note", t);
   const shown = (m) => m.photo && m.content === PHOTO_TEXT ? "📷 写真を見せたよ" : (m.photo ? "📷 " + m.content : m.content);
 
+  // ---- 表情（まばたき・話す口・うれしい・ねむい） ----
+  let faceLock = null, faceTimer = null, talkTimer = null, lastActive = Date.now();
+  function setFace(f, el) {
+    if (!profile) return;
+    const img = el || $("avatarImg");
+    const src = faceSrc(profile.char, f);
+    if (img.getAttribute("src") !== src) img.setAttribute("src", src);
+  }
+  function baseFace() {
+    const h = new Date().getHours();
+    const night = h >= 22 || h < 6;
+    return night && Date.now() - lastActive > 120000 ? "sleepy" : "normal";
+  }
+  function showFace(f, ms) {
+    clearTimeout(faceTimer);
+    faceLock = f;
+    setFace(f);
+    faceTimer = setTimeout(() => { faceLock = null; setFace(baseFace()); }, ms);
+  }
+  function talkFace(text) {
+    clearInterval(talkTimer);
+    const until = Date.now() + Math.min(4000, 600 + String(text || "").length * 70);
+    let open = false;
+    faceLock = "talk";
+    talkTimer = setInterval(() => {
+      if (Date.now() > until) { clearInterval(talkTimer); faceLock = null; setFace(baseFace()); return; }
+      open = !open;
+      setFace(open ? "talk" : "normal");
+    }, 170);
+  }
+  // まばたき（3〜6秒に一度）
+  (function blink() {
+    setTimeout(() => {
+      if (profile && !faceLock && baseFace() === "normal") {
+        setFace("sleepy");
+        setTimeout(() => { if (!faceLock) setFace(baseFace()); }, 140);
+      } else if (profile && !faceLock) {
+        setFace(baseFace());
+      }
+      blink();
+    }, 3000 + Math.random() * 3000);
+  })();
+  ["touchstart", "keydown", "click"].forEach(ev => document.addEventListener(ev, () => {
+    const wasSleepy = baseFace() === "sleepy";
+    lastActive = Date.now();
+    if (wasSleepy && !faceLock && profile) setFace("normal");
+  }, { passive: true }));
+
   function applyChar() {
     const c = CHARS[profile.char];
-    $("avatarImg").src = c.img;
+    preloadFaces(profile.char);
+    setFace(baseFace());
     $("charName").textContent = profile.name;
     input.setAttribute("aria-label", profile.name + "に話しかける");
     $("skip").hidden = profile.step >= QUESTIONS.length;
@@ -661,6 +716,7 @@
     history.push({ role: "assistant", content: text });
     save();
     bubble("her", text);
+    talkFace(text);
   }
 
   function setBusy(on) {
@@ -961,6 +1017,7 @@
         history.push({ role: "assistant", content: data.reply });
         save();
         bubble("her", data.reply);
+        talkFace(data.reply);
         if (data.plan && typeof data.plan === "object") {
           history[history.length - 1].remind = { type: "plan", plan: data.plan };
           save();
@@ -1057,16 +1114,24 @@
   }
   const audio = $("audio"), playBtn = $("playBtn"), playerChar = $("playerChar");
   let currentSong = null;
+  let singTimer = null;
   function setPlaying(on) {
     playBtn.textContent = on ? "⏸ とめる" : "▶ 再生";
     playerChar.classList.toggle("dance", on);
+    clearInterval(singTimer);
+    if (on && profile) {
+      let k = 0;
+      singTimer = setInterval(() => { k++; setFace(k % 4 === 3 ? "happy" : (k % 2 ? "talk" : "normal"), playerChar); }, 450);
+    } else if (profile) {
+      setFace("normal", playerChar);
+    }
   }
   function openPlayer(id) {
     const sg = songById(id);
     if (!sg || !profile) return;
     stopMic();
     currentSong = sg;
-    playerChar.src = CHARS[profile.char].img;
+    setFace("normal", playerChar);
     playerChar.classList.remove("cheer");
     $("playerTitle").textContent = sg.title;
     $("playerNote").textContent = sg.credit || "";
@@ -1098,6 +1163,8 @@
     playerChar.classList.remove("dance");
     void playerChar.offsetWidth;
     playerChar.classList.add("cheer");
+    clearInterval(singTimer);
+    setFace("happy", playerChar);
     const lines = SANG_LINES[profile.char];
     const line = lines[Math.floor(Math.random() * lines.length)];
     const title = currentSong.title;
@@ -1108,6 +1175,7 @@
       bubble("me", "🎵 『" + title + "』を歌ったよ");
       sayScripted(line);
       afterActivity("sing");
+      showFace("happy", 2600);
     }, 1400);
   });
   $("singBtn").addEventListener("click", () => { stopMic(); openSongs(); });
@@ -1204,6 +1272,7 @@
         saveProfile();
         b.textContent = "✓ のんだよ"; b.disabled = true; b.classList.add("done");
         sayScripted("うん、教えてくれて、ありがとう。");
+        setTimeout(() => showFace("happy", 1800), 1200);
       });
       row.querySelector(".bubble").appendChild(b);
     }
@@ -1228,6 +1297,7 @@
     history.push({ role: "assistant", content: text, remind });
     save();
     bubble("her", text);
+    talkFace(text);
     remindBubble(history[history.length - 1]);
   }
   function checkReminders() {
