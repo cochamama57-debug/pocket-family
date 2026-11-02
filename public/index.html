@@ -115,7 +115,7 @@
   .tool .ico { font-size: 26px; line-height: 1; }
   .tool.mic { flex: 1.4; background: var(--mic); border-color: var(--mic); color: #fff; }
   .tool.mic.listening { background: #c0392b; border-color: #c0392b; animation: pulse 1.2s ease-in-out infinite; }
-  @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
+  @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(192,57,43,.45); } 50% { box-shadow: 0 0 0 8px rgba(192,57,43,0); } }
   .row { display: flex; gap: 8px; align-items: flex-end; }
   textarea {
     flex: 1;
@@ -344,50 +344,106 @@
   }
 
   // ---- マイク（話した言葉を文字にする） ----
+  // iPhoneのくせ：話の切れ目ですぐ止まる／止まったあと次が始まらないことがある。
+  // → 毎回新しく作り直し、古いものは必ず捨てる。止めるのはこちらで決める（だまって3秒たったら、または押したら）。
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  let rec = null, listening = false, baseText = "";
+  let rec = null, listening = false, baseText = "", heard = "";
+  let silenceTimer = null, startTimer = null;
+  const SILENCE_MS = 3000;   // 話し終わってから止まるまで
+  const NOTHING_MS = 12000;  // 何も聞こえないとき止まるまで
   if (!SR) {
     micBtn.disabled = true;
     micLabel.textContent = "話す（この画面では使えません）";
   }
-  function stopMic() { if (rec && listening) { try { rec.stop(); } catch {} } }
+  function clearMicTimers() { clearTimeout(silenceTimer); clearTimeout(startTimer); }
   function setListening(on) {
     listening = on;
     micBtn.classList.toggle("listening", on);
     avatar.classList.toggle("listening-face", on);
-    micLabel.textContent = on ? "聞いてるよ…（押すと止まる）" : "話す";
-    statusEl.textContent = on ? "聞いてるよ" : "おしゃべりしよう";
+    micLabel.textContent = on ? "聞いてるよ（押すと止まる）" : "話す";
+    if (!sending) statusEl.textContent = on ? "聞いてるよ" : "おしゃべりしよう";
+  }
+  // 古いマイクを捨てる（あとから来る知らせは無視する）
+  function dropRec() {
+    clearMicTimers();
+    const old = rec;
+    rec = null;
+    if (old) {
+      old.onresult = old.onerror = old.onend = old.onstart = null;
+      try { old.abort(); } catch {}
+    }
+  }
+  function stopMic() {
+    if (!listening && !rec) return;
+    const r = rec;
+    clearMicTimers();
+    setListening(false); // 画面はすぐ元に戻す
+    if (r) {
+      // 最後の言葉を受け取ってから捨てる
+      try { r.stop(); } catch {}
+      setTimeout(() => { if (rec === r) dropRec(); }, 1500);
+    }
+  }
+  // 結果をまとめる（iPhoneでは同じ言葉がくり返し届くことがあるので、重ならないようにする）
+  function joinResults(results) {
+    let text = "";
+    for (let i = 0; i < results.length; i++) {
+      const t = results[i][0].transcript;
+      if (!t) continue;
+      if (text && t.startsWith(text)) text = t;      // 前の分を含んで届いた
+      else if (text.endsWith(t)) continue;            // 同じものが重ねて届いた
+      else text += t;
+    }
+    return text;
   }
   micBtn.addEventListener("click", () => {
     if (!SR) return;
     if (listening) { stopMic(); return; }
-    rec = new SR();
-    rec.lang = "ja-JP";
-    rec.interimResults = true;
-    rec.continuous = false;
-    rec.maxAlternatives = 1;
+    dropRec();
+    const r = new SR();
+    rec = r;
+    r.lang = "ja-JP";
+    r.interimResults = true;
+    r.continuous = true;
+    r.maxAlternatives = 1;
     baseText = input.value ? input.value.replace(/\s+$/, "") + " " : "";
-    rec.onresult = (e) => {
-      let text = "";
-      for (let i = 0; i < e.results.length; i++) text += e.results[i][0].transcript;
-      input.value = (baseText + text).slice(0, 400);
+    heard = "";
+    r.onresult = (e) => {
+      if (rec !== r) return;
+      heard = joinResults(e.results);
+      input.value = (baseText + heard).slice(0, 400);
       autoGrow();
+      clearTimeout(silenceTimer);
+      silenceTimer = setTimeout(() => { if (rec === r) stopMic(); }, SILENCE_MS);
     };
-    rec.onerror = (e) => {
+    r.onerror = (e) => {
+      if (rec !== r) return;
       if (e.error === "not-allowed" || e.error === "service-not-allowed") {
         addNote("マイクが使えないみたい。スマホの設定で、このページ（Safari や Chrome）にマイクを許可してね。");
       } else if (e.error === "no-speech") {
         addNote("声が聞こえなかったみたい。もう一度「話す」を押してね。");
+      } else if (e.error === "audio-capture") {
+        addNote("マイクがほかのアプリで使われているみたい。ほかのアプリを閉じて、もう一度押してね。");
       } else if (e.error !== "aborted") {
-        addNote("うまく聞き取れなかったみたい。もう一度ためしてね。");
+        addNote("うまく聞き取れなかったみたい。もう一度「話す」を押してね。");
       }
+      setListening(false);
+      dropRec();
     };
-    rec.onend = () => setListening(false);
+    r.onend = () => {
+      if (rec !== r) return;
+      setListening(false);
+      dropRec();
+    };
     try {
-      rec.start();
+      r.start();
       setListening(true);
+      // 何も聞こえないまま長く待たせない
+      silenceTimer = setTimeout(() => { if (rec === r && !heard) { stopMic(); addNote("声が聞こえなかったみたい。もう一度「話す」を押してね。"); } }, NOTHING_MS);
     } catch {
       setListening(false);
+      dropRec();
+      addNote("マイクの準備ができなかったみたい。少し待って、もう一度「話す」を押してね。");
     }
   });
 
