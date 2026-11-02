@@ -17,7 +17,7 @@ async function rawBody(req) {
   return raw;
 }
 
-const HOW_TO = "AIポケットファミリーです。友だち追加ありがとうございます。\nご家族のアプリに出ている「6けたの番号」を、このトークに送ってください。登録すると、「助けて」の合図や、しばらくアプリを開いていないときに、ここでお知らせします。";
+const HOW_TO = "AIポケットファミリーです🐾\n友だち追加ありがとうございます。\n\nご家族のアプリ（📖ノート →「家族」）に出ている「6けたの番号」を、このトークに送ってください。\n\n登録すると、「助けて」の合図や、しばらくアプリを開いていないときに、ここでお知らせします。";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return reply(res, 405, { error: "method" });
