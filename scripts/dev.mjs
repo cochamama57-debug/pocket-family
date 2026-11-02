@@ -25,7 +25,7 @@ http
         res.setHeader("Content-Type", "application/json; charset=utf-8");
         const mock = apiName === "memory"
           ? { notes: ["雨の日は家でのんびりすごす", "水の歌が好き"], habits: ["「のんびりいこうね」が合言葉"] }
-          : { reply: "そっかぁ、きょうは雨だったんだね。おうちでゆっくりできた？" };
+          : { reply: "そっかぁ、きょうは雨だったんだね。おうちでゆっくりできた？", song: (JSON.parse(raw || "{}").songs || [])[0]?.id };
         return setTimeout(() => res.end(JSON.stringify(mock)), 800);
       }
       return handlers[apiName](req, res);

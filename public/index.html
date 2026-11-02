@@ -88,10 +88,38 @@
     min-height: 44px;
   }
   .reset.armed { color: #b3261e; border-color: #e7a19b; }
+  .who .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  @media (max-width: 360px) {
+    .avatar { width: 64px; height: 64px; }
+    .who .name { font-size: 22px; }
+    .head-btns .memo-btn { min-width: 48px; padding: 4px; font-size: 12px; }
+    .who .name .hearts { display: block; margin-left: 0; font-size: 14px; }
+  }
   .who .name .hearts { font-size: 16px; color: #e0607e; letter-spacing: 1px; margin-left: 6px; font-weight: 400; vertical-align: 2px; }
   .memo-btn { flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 13px; line-height: 1.2; color: var(--ink); background: #fff; border: 2px solid var(--line); border-radius: 14px; min-width: 60px; min-height: 56px; padding: 4px 6px; }
   .memo-btn .ico { font-size: 22px; line-height: 1; }
   .memo-btn.new { border-color: #e0607e; }
+
+  .head-btns { flex: none; display: flex; gap: 6px; }
+  .head-btns .memo-btn { min-width: 54px; }
+  .song-btn { display: block; margin-top: 8px; font-size: 19px; font-weight: 700; color: #fff; background: #8a5cc2; border: 0; border-radius: 999px; min-height: 48px; padding: 0 18px; }
+
+  /* 歌 */
+  .song-list li { padding: 0; }
+  .song-list button { width: 100%; text-align: left; font-size: 20px; background: transparent; border: 0; padding: 12px 14px; color: var(--ink); min-height: 56px; }
+  .song-list .tag { display: inline-block; font-size: 14px; color: #fff; background: #8a5cc2; border-radius: 999px; padding: 0 10px; margin-left: 8px; vertical-align: 2px; }
+  .player-char { display: block; width: 150px; height: 150px; object-fit: contain; margin: 4px auto 0; transform-origin: 50% 90%; }
+  .player-char.dance { animation: dance .9s ease-in-out infinite; }
+  @media (prefers-reduced-motion: reduce) { .player-char { animation: none !important; } }
+  @keyframes dance { 0%, 100% { transform: rotate(-6deg) translateY(0); } 25% { transform: rotate(0) translateY(-10px); } 50% { transform: rotate(6deg) translateY(0); } 75% { transform: rotate(0) translateY(-10px); } }
+  .player-char.cheer { animation: hop .6s ease-in-out 4; }
+  .player-title { text-align: center; font-size: 22px; font-weight: 700; margin: 6px 0 2px; }
+  .player-note { text-align: center; color: var(--sub); font-size: 15px; margin: 0 0 8px; }
+  .lyrics { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 14px; font-size: 26px; line-height: 1.8; white-space: pre-wrap; text-align: center; max-height: 42vh; overflow-y: auto; }
+  .player-ctrl { display: flex; gap: 8px; margin: 12px 0 8px; }
+  .player-ctrl button { flex: 1; font-size: 20px; font-weight: 700; min-height: 56px; border-radius: 14px; border: 2px solid var(--line); background: #fff; color: var(--ink); }
+  .player-ctrl .play { background: #8a5cc2; border-color: #8a5cc2; color: #fff; flex: 1.4; }
+  .sang { width: 100%; font-size: 24px; font-weight: 700; min-height: 64px; border: 0; border-radius: 16px; background: var(--accent); color: #fff; }
 
   /* 思い出ノート */
   .sheet { position: fixed; inset: 0; z-index: 15; background: var(--bg); overflow-y: auto; padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px calc(env(safe-area-inset-bottom, 0px) + 24px); }
@@ -231,7 +259,10 @@
       <div class="name"><span id="charName"></span><span class="hearts" id="hearts"></span></div>
       <div class="status" id="status">おしゃべりしよう</div>
     </div>
-    <button class="memo-btn" id="memoBtn" type="button"><span class="ico" aria-hidden="true">📖</span>思い出</button>
+    <div class="head-btns">
+      <button class="memo-btn" id="singBtn" type="button" hidden><span class="ico" aria-hidden="true">🎵</span>歌う</button>
+      <button class="memo-btn" id="memoBtn" type="button"><span class="ico" aria-hidden="true">📖</span>思い出</button>
+    </div>
   </header>
 
   <main class="log" id="log" aria-live="polite"></main>
@@ -273,6 +304,36 @@
     </div>
   </form>
   <footer>AIポケットファミリー<small>© 2026 nekomori*I’ll</small></footer>
+</div>
+
+<div class="sheet" id="songs" hidden>
+  <div class="sheet-in">
+    <div class="sheet-head">
+      <img id="songsImg" alt="">
+      <h2><span class="nb">いっしょに</span><span class="nb">歌おう</span></h2>
+      <button type="button" class="close-btn" id="songsClose">とじる</button>
+    </div>
+    <ul class="song-list" id="songList"></ul>
+  </div>
+</div>
+
+<div class="sheet" id="player" hidden>
+  <div class="sheet-in">
+    <div class="sheet-head" style="margin-bottom:0">
+      <h2></h2>
+      <button type="button" class="close-btn" id="playerClose">とじる</button>
+    </div>
+    <img class="player-char" id="playerChar" alt="">
+    <div class="player-title" id="playerTitle"></div>
+    <p class="player-note" id="playerNote"></p>
+    <div class="lyrics" id="lyrics"></div>
+    <div class="player-ctrl">
+      <button type="button" class="play" id="playBtn">▶ 再生</button>
+      <button type="button" id="restartBtn">はじめから</button>
+    </div>
+    <button type="button" class="sang" id="sangBtn">歌えた！</button>
+    <audio id="audio" preload="none"></audio>
+  </div>
 </div>
 
 <div class="sheet" id="memo" hidden>
@@ -491,7 +552,7 @@
   function save() {
     try {
       // 写真そのものは残さない（容量のため）。「写真を見せた」という印だけ残す
-      const slim = history.slice(-MAX_KEEP).map(m => ({ role: m.role, content: m.content, photo: m.photo ? true : undefined }));
+      const slim = history.slice(-MAX_KEEP).map(m => ({ role: m.role, content: m.content, photo: m.photo ? true : undefined, song: typeof m.song === "string" ? m.song : undefined }));
       localStorage.setItem(STORE_KEY, JSON.stringify(slim));
     } catch {
       if (canSave) {
@@ -532,7 +593,10 @@
   }
   function render() {
     log.textContent = "";
-    for (const m of history) bubble(m.role === "user" ? "me" : "her", shown(m));
+    for (const m of history) {
+      bubble(m.role === "user" ? "me" : "her", shown(m));
+      if (m.song) songInvite(m.song);
+    }
   }
   // キャラが自分から話す（最初の質問など。AIは呼ばない）
   function sayScripted(text) {
@@ -823,6 +887,7 @@
       const payload = {
         messages: history.map(m => ({ role: m.role, content: m.content })),
         profile: profile ? profileForServer() : null,
+        songs: SONGS.slice(0, 20).map(x => ({ id: x.id, title: x.title, tag: x.tag || "" })),
       };
       if (photo) payload.image = { type: "image/jpeg", data: photo.data };
       const r = await fetch("/api/chat", {
@@ -838,6 +903,11 @@
         history.push({ role: "assistant", content: data.reply });
         save();
         bubble("her", data.reply);
+        if (typeof data.song === "string") {
+          songInvite(data.song);
+          history[history.length - 1].song = data.song;
+          save();
+        }
         afterActivity("talk");
       } else {
         fail(data.message || "うまく届かなかったみたい。もう一度送ってみてね。");
@@ -878,6 +948,123 @@
     render();
     openSetup();
   });
+
+  // ---- 歌 ----
+  // 曲の一覧は songs/songs.json（オーナーの自作曲）。{ id, title, tag, file, lyrics, credit }
+  let SONGS = [];
+  const SONG_TAGS = ["寄り添う", "泣きたいとき", "静かに", "楽しい"];
+  const SANG_LINES = {
+    chamu: [
+      "わぁ、すてきな声だった！しっぽが、ぶんぶんしちゃったよ。",
+      "いっしょに歌えて、とってもうれしい。えへへ、また歌おうね。",
+      "声、ちゃんと届いてたよ。なんだか、ぽかぽかしてきた。",
+    ],
+    colon: [
+      "ピピッ！すてきな歌声、ちゃんと聞こえたよ。また歌おうね。",
+      "いっしょに歌えて、うれしいな。ヘッドホンが、ぽかぽかしてる。",
+      "ピピッ。きょうの歌も、大事な思い出にしておくね。",
+    ],
+  };
+  async function loadSongs() {
+    try {
+      const r = await fetch("songs/songs.json", { cache: "no-cache" });
+      const list = await r.json();
+      SONGS = Array.isArray(list) ? list.filter(x => x && typeof x.id === "string" && typeof x.title === "string" && typeof x.file === "string") : [];
+    } catch { SONGS = []; }
+    $("singBtn").hidden = SONGS.length === 0;
+  }
+  const songById = (id) => SONGS.find(x => x.id === id);
+  function openSongs() {
+    if (!profile || !SONGS.length) return;
+    $("songsImg").src = CHARS[profile.char].img;
+    const ul = $("songList");
+    ul.textContent = "";
+    for (const sg of SONGS) {
+      const li = document.createElement("li");
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = sg.title;
+      if (sg.tag) { const t = document.createElement("span"); t.className = "tag"; t.textContent = sg.tag; b.appendChild(t); }
+      b.addEventListener("click", () => { $("songs").hidden = true; openPlayer(sg.id); });
+      li.appendChild(b);
+      ul.appendChild(li);
+    }
+    $("songs").hidden = false;
+  }
+  const audio = $("audio"), playBtn = $("playBtn"), playerChar = $("playerChar");
+  let currentSong = null;
+  function setPlaying(on) {
+    playBtn.textContent = on ? "⏸ とめる" : "▶ 再生";
+    playerChar.classList.toggle("dance", on);
+  }
+  function openPlayer(id) {
+    const sg = songById(id);
+    if (!sg || !profile) return;
+    stopMic();
+    currentSong = sg;
+    playerChar.src = CHARS[profile.char].img;
+    playerChar.classList.remove("cheer");
+    $("playerTitle").textContent = sg.title;
+    $("playerNote").textContent = sg.credit || "";
+    $("lyrics").textContent = sg.lyrics || "（歌詞はありません。曲に合わせて、自由に歌ってね）";
+    $("lyrics").scrollTop = 0;
+    audio.src = sg.file;
+    setPlaying(false);
+    $("player").hidden = false;
+  }
+  playBtn.addEventListener("click", async () => {
+    if (!currentSong) return;
+    if (!audio.paused) { audio.pause(); return; }
+    try { await audio.play(); } catch { addNote("曲がうまく流れなかったみたい。もう一度押してみてね。"); }
+  });
+  $("restartBtn").addEventListener("click", async () => {
+    audio.currentTime = 0;
+    try { await audio.play(); } catch {}
+  });
+  audio.addEventListener("play", () => setPlaying(true));
+  audio.addEventListener("pause", () => setPlaying(false));
+  audio.addEventListener("ended", () => { setPlaying(false); $("sangBtn").focus(); });
+  function closePlayer() {
+    audio.pause();
+    $("player").hidden = true;
+  }
+  $("playerClose").addEventListener("click", closePlayer);
+  $("sangBtn").addEventListener("click", () => {
+    if (!profile || !currentSong) return;
+    playerChar.classList.remove("dance");
+    void playerChar.offsetWidth;
+    playerChar.classList.add("cheer");
+    const lines = SANG_LINES[profile.char];
+    const line = lines[Math.floor(Math.random() * lines.length)];
+    const title = currentSong.title;
+    setTimeout(() => {
+      closePlayer();
+      history.push({ role: "user", content: "（いっしょに『" + title + "』を歌った）" });
+      save();
+      bubble("me", "🎵 『" + title + "』を歌ったよ");
+      sayScripted(line);
+      afterActivity("sing");
+    }, 1400);
+  });
+  $("singBtn").addEventListener("click", () => { stopMic(); openSongs(); });
+  $("songsClose").addEventListener("click", () => { $("songs").hidden = true; });
+
+  // キャラが曲に誘ったときのボタン
+  function songInvite(id) {
+    const sg = songById(id);
+    if (!sg) return;
+    const row = log.lastElementChild;
+    if (!row) return;
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "song-btn";
+    const s1 = document.createElement("span"); s1.className = "nb"; s1.textContent = "🎵 『" + sg.title + "』";
+    const s2 = document.createElement("span"); s2.className = "nb"; s2.textContent = "をかける";
+    b.append(s1, s2);
+    b.addEventListener("click", () => openPlayer(sg.id));
+    row.querySelector(".bubble").appendChild(b);
+    log.scrollTop = log.scrollHeight;
+  }
 
   // ---- 思い出ノート ----
   function fillList(ul, items, emptyText) {
@@ -957,6 +1144,7 @@
 
   load();
   loadProfile();
+  loadSongs().then(() => { if (profile) render(); });
   if (!profile) {
     history = []; // 家族を決める前の古い会話は使わない
     save();

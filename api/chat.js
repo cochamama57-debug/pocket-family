@@ -1,8 +1,38 @@
 // AIポケットファミリー: おしゃべりの中継（サーバー側）
 // APIキーはサーバーの環境変数 ANTHROPIC_API_KEY だけに置く。画面には出さない。
 import {
-  MODEL, CHARACTERS, cleanProfile, profileBlock, rateLimited, clientIp, readBody, reply, getClient, replyApiError,
+  MODEL, CHARACTERS, cleanProfile, profileBlock, cleanText, rateLimited, clientIp, readBody, reply, getClient, replyApiError,
 } from "../lib/shared.js";
+
+// いっしょに歌える曲（オーナーの自作曲）。曲の一覧は画面側から受け取る
+function cleanSongs(v) {
+  if (!Array.isArray(v)) return [];
+  const out = [];
+  for (const x of v.slice(0, 20)) {
+    const id = typeof x?.id === "string" && /^[a-z0-9_-]{1,40}$/.test(x.id) ? x.id : null;
+    const title = cleanText(x?.title, 40);
+    if (id && title) out.push({ id, title, tag: cleanText(x?.tag, 12) });
+  }
+  return out;
+}
+function songBlock(songs) {
+  if (!songs.length) return "いまは、いっしょに歌える曲はまだない。歌に誘わない。";
+  return [
+    "いっしょに歌える曲（作者が作った曲。札は曲の気分）:",
+    ...songs.map((x) => "- " + x.id + "：『" + x.title + "』" + (x.tag ? "（" + x.tag + "）" : "")),
+    "",
+    "歌への誘い方:",
+    "- 相手が落ち込んでいる・さみしい・気分を変えたい・歌いたい・歌の話をしている、など合うときだけ、「この曲、いっしょに聞こうか」「いっしょに歌おうよ」と一曲だけ誘ってよい。毎回は誘わない。断られたら、その話の中ではもう誘わない。",
+    "- 元気づける曲を押しつけない。泣きたそうなときは泣ける曲、静かにしたいときは静かな曲、楽しいときは楽しい曲。",
+    "- 誘うときは、返事のいちばん最後の行に、曲の記号だけを [[曲:id]] の形で書く（例：[[曲:" + songs[0].id + "]]）。記号は画面でボタンに変わる。記号のことは言葉で説明しない。",
+  ].join("\n");
+}
+function takeSong(text, songs) {
+  const m = text.match(/\[\[曲:([a-z0-9_-]{1,40})\]\]/);
+  const clean = text.replace(/\[\[曲:[^\]]*\]\]/g, "").trim();
+  const id = m && songs.some((x) => x.id === m[1]) ? m[1] : null;
+  return { clean, id };
+}
 
 const MAX_USER_CHARS = 400; // 1回に送れる文字数
 const MAX_TURNS = 30; // 覚えておく直近のやりとり数
@@ -91,6 +121,7 @@ export default async function handler(req, res) {
   }
 
   const profile = cleanProfile(body?.profile) || cleanProfile({ char: "colon", name: "コロン" });
+  const songs = cleanSongs(body?.songs);
 
   if (!process.env.ANTHROPIC_API_KEY) {
     return reply(res, 503, { error: "no_key", message: "いまは、おやすみ中です。（準備中）" });
@@ -106,6 +137,7 @@ export default async function handler(req, res) {
       system: [
         { type: "text", text: SYSTEM_PROMPT },
         { type: "text", text: CHARACTERS[profile.char], cache_control: { type: "ephemeral" } },
+        { type: "text", text: songBlock(songs) },
         { type: "text", text: profileBlock(profile) },
       ],
       messages,
@@ -119,7 +151,8 @@ export default async function handler(req, res) {
       .map((b) => b.text)
       .join("")
       .trim();
-    return reply(res, 200, { reply: text || "……うん、聞いてるよ。" });
+    const { clean, id } = takeSong(text, songs);
+    return reply(res, 200, { reply: clean || "……うん、聞いてるよ。", song: id || undefined });
   } catch (err) {
     return replyApiError(res, err);
   }
