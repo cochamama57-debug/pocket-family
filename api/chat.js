@@ -189,8 +189,16 @@ export default async function handler(req, res) {
       ? "【今回の返事】質問は、しなくてよい。するなら1つだけ。自分の気持ちや小さな話で終えるほうが、うれしい。"
       : "【今回の返事】質問は、するなら1つだけ。";
 
+  // AIが、まれに英語の「考えごと」を返事に混ぜることがある（11/4 本物で1回）。英語ばかりの段落は見せずに、聞き直す
+  const englishy = (para) => {
+    const t = para.replace(/\s/g, "");
+    const ja = (t.match(/[\u3040-\u30ff\u3400-\u9fff]/g) || []).length;
+    return t.length > 20 && ja / t.length < 0.2 && /[A-Za-z]+\s+[A-Za-z]+\s+[A-Za-z]+/.test(para);
+  };
+  const dropEnglish = (text) => text.split(/\n+/).filter((l) => !englishy(l)).join("\n\n").trim();
+
   try {
-    const response = await getClient().beta.messages.create({
+    const ask = () => getClient().beta.messages.create({
       model: MODEL,
       max_tokens: 1200, // 返事は短いので、上限を小さくして使いすぎを防ぐ
       output_config: { effort: "low" },
@@ -209,15 +217,17 @@ export default async function handler(req, res) {
       ],
       messages,
     });
+    const textIn = (r) => r.content.filter((b) => b.type === "text").map((b) => b.text).join("").trim();
+    let response = await ask();
+    if (response.stop_reason !== "refusal" && textIn(response).split(/\n+/).some(englishy)) {
+      const again = await ask();
+      if (again.stop_reason !== "refusal" && !textIn(again).split(/\n+/).some(englishy)) response = again;
+    }
 
     if (response.stop_reason === "refusal") {
       return reply(res, 200, { reply: "ごめんね、そのお話はうまく返せないみたい。ほかのこと、話そうか。" });
     }
-    const text = response.content
-      .filter((b) => b.type === "text")
-      .map((b) => b.text)
-      .join("")
-      .trim();
+    const text = dropEnglish(textIn(response));
     const { clean: t0, help } = takeHelp(text);
     const { clean: tw, walk } = takeWalk(t0);
     const { clean: t1, plan } = takePlan(tw);
