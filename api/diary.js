@@ -97,6 +97,7 @@ export default async function handler(req, res) {
     let response;
     try { response = await ask(DIARY_MODEL); }
     catch (e) { if (e && (e.status === 404 || e.status === 400 || e.status === 529 || e.status === 503)) response = await ask(MODEL); else throw e; }
+    try { res.setHeader("X-PF-Model", String(response.model || "").slice(0, 40)); } catch {}
     if (response.stop_reason !== "end_turn") return reply(res, 200, { ok: false, message: "うまくまとめられませんでした。もう一度お試しください。" });
     const text = response.content.filter((b) => b.type === "text").map((b) => b.text).join("");
     let out;
