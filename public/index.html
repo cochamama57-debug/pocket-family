@@ -3227,7 +3227,9 @@
 
   // ---- キャラからの誘い（たまに1つだけ。1日2回まで、前の誘いから2時間あける） ----
   // 「いいよ」→大喜び／「あとで」→「うん！待ってる！」／「今はいい」→しょんぼり
-  function inviteKinds() { return ["song"].concat(typeof openGame === "function" ? ["game"] : []); }
+  function inviteKinds() { return ["song", "game", "teach", "teach"]; }
+  // 「教えて！」の話題（孫が、おばあちゃん・おじいちゃんに聞くように）
+  const TEACH = ["子どものころ、どんな遊びをしていたの？", "おいしいおにぎりのコツ、教えて！", "いちばん好きな季節はいつ？ どうして？", "昔、どんなお祭りがあった？", "得意な料理って、なあに？", "子どものころ好きだった歌、教えて！", "お正月って、昔はどんなふうに過ごしてたの？", "雨の日は、どんなふうに過ごすのが好き？", "若いころ、どんな仕事をしていたの？", "いちばん思い出に残っている旅行は、どこ？"];
   function canInvite() {
     const t = today(), iv = profile.invite && profile.invite.d === t ? profile.invite : { d: t, n: 0, at: 0 };
     profile.invite = iv;
@@ -3248,6 +3250,15 @@
     profile.invite.n++; profile.invite.at = Date.now(); profile.inviteLater = 0;
     saveProfile();
     const polite = stageOf(points()) === 0, chamu = profile.char === "chamu", pi = chamu ? "" : "ピピッ。";
+    if (kind === "teach") {
+      // 「教えて！」は、ボタンなし。答えは、ふつうのおしゃべりで
+      const used = Array.isArray(profile.teachUsed) ? profile.teachUsed : [];
+      const left = TEACH.filter(t => !used.includes(t)), q = (left.length ? left : TEACH)[Math.floor(Math.random() * (left.length || TEACH.length))];
+      profile.teachUsed = (left.length ? used : []).concat([q]).slice(-TEACH.length); saveProfile();
+      const text = pi + (polite ? "あの、教えてもらってもいいですか？ " : "ねえねえ、教えて！ ") + q;
+      sayScripted(text);
+      return;
+    }
     const ask = kind === "song"
       ? pi + (polite ? "あの、いっしょに『" + sg.title + "』を聞きませんか？" : (chamu ? "ねえねえ、いっしょに『" + sg.title + "』聞こうよ〜！" : "ねえ、いっしょに『" + sg.title + "』聞かない？"))
       : pi + (polite ? "あの、いっしょにゲームで遊びませんか？" : (chamu ? "ねえねえ、ゲームで遊ぼうよ〜！" : "ねえ、いっしょにゲームしない？"));
