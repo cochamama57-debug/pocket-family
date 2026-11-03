@@ -1,5 +1,22 @@
 {
-  "regions": ["hnd1"],
-  "crons": [{ "path": "/api/cron-quiet", "schedule": "0 0 * * *" }],
-  "functions": { "api/help.js": { "maxDuration": 45 }, "api/cron-quiet.js": { "maxDuration": 60 } }
+  "regions": [
+    "hnd1"
+  ],
+  "crons": [
+    {
+      "path": "/api/cron-quiet",
+      "schedule": "0 0 * * *"
+    }
+  ],
+  "functions": {
+    "api/help.js": {
+      "maxDuration": 45
+    },
+    "api/cron-quiet.js": {
+      "maxDuration": 60
+    },
+    "api/drawing.js": {
+      "maxDuration": 60
+    }
+  }
 }
