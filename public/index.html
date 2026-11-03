@@ -2872,7 +2872,7 @@
       const cur = profile.birthday ? profile.birthday.split("-") : null;
       if (cur) { mSel.value = cur[0]; dSel.value = cur[1]; }
       const ok = document.createElement("button");
-      ok.type = "button"; ok.className = "song-btn"; ok.textContent = "この日にする";
+      ok.type = "button"; ok.className = "song-btn bday-ok"; ok.textContent = "この日にする";
       ok.addEventListener("click", () => {
         profile.birthday = mSel.value + "-" + dSel.value;
         saveProfile();
