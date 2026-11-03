@@ -150,6 +150,25 @@
     .title-chars img { max-width: 150px; }
     .title-name { font-size: 30px; }
   }
+  /* 神経衰弱 */
+  .game-in { max-width: 520px; margin: 0 auto; }
+  .game-top { display: flex; align-items: center; gap: 10px; }
+  .game-top img { flex: none; object-fit: contain; }
+  .game-say { flex: 1; min-width: 0; background: #fff; border: 2px solid var(--line); border-radius: 16px; padding: 8px 12px; font-size: 18px; line-height: 1.5; min-height: 56px; }
+  .game-close { flex: none; font-size: 14px; line-height: 1.2; min-width: 56px; padding: 4px 6px; }
+  .game-score { display: flex; justify-content: space-around; font-size: 18px; margin: 10px 0; }
+  .game-score b { font-size: 26px; color: #b8501f; }
+  .game-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .game-card { position: relative; aspect-ratio: 1; border: 0; border-radius: 16px; padding: 0; background: transparent; perspective: 600px; }
+  .game-card .in { position: absolute; inset: 0; transition: transform .45s; transform-style: preserve-3d; }
+  .game-card.open .in, .game-card.done .in { transform: rotateY(180deg); }
+  .game-card .bk, .game-card .fr { position: absolute; inset: 0; border-radius: 16px; display: grid; place-items: center; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+  .game-card .bk { background: repeating-linear-gradient(45deg, #f2a65a 0 10px, #f5b673 10px 20px); border: 3px solid #e08a3a; font-size: 34px; color: #fff; }
+  .game-card .fr { background: #fff; border: 3px solid var(--line); transform: rotateY(180deg); font-size: 46px; font-weight: 700; color: #3a2e24; font-family: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif; }
+  .game-card.done .fr { border-color: #6bbf8a; background: #f1fbf4; }
+  .game-end { margin-top: 14px; }
+  @media (max-height: 760px) { .game-board { grid-template-columns: repeat(4, 1fr); gap: 8px; } .game-card .fr { font-size: 40px; } .game-card .bk { font-size: 28px; } .game-top img { width: 56px; height: 56px; } .game-say { font-size: 17px; } }
+  @media (prefers-reduced-motion: reduce) { .game-card .in { transition: none; } }
   .swap-box { display: flex; gap: 12px; align-items: center; }
   .swap-box img { flex: none; object-fit: contain; }
   .swap-box > div { flex: 1; min-width: 0; }
@@ -405,6 +424,7 @@
     </div>
     <div class="head-btns">
       <button class="memo-btn" id="singBtn" type="button" hidden><span class="ico" aria-hidden="true">🎵</span>歌う</button>
+      <button class="memo-btn" id="gameBtn" type="button"><span class="ico" aria-hidden="true">🃏</span>遊ぶ</button>
       <button class="memo-btn" id="memoBtn" type="button"><span class="ico" aria-hidden="true">📖</span>ノート</button>
     </div>
   </header>
@@ -614,6 +634,22 @@
   </div>
 </div>
 
+<div class="sheet game" id="game" hidden role="dialog" aria-label="神経衰弱">
+  <div class="game-in">
+    <div class="game-top">
+      <img id="gameChar" alt="" width="72" height="72">
+      <div class="game-say" id="gameSay" aria-live="polite"></div>
+      <button type="button" class="tour-skip game-close" id="gameClose">✕<br>閉じる</button>
+    </div>
+    <div class="game-score"><span>あなた <b id="gameYou">0</b>まい</span><span><span id="gameCharName"></span> <b id="gameMe">0</b>まい</span></div>
+    <div class="game-board" id="gameBoard"></div>
+    <div class="game-end" id="gameEnd" hidden>
+      <button type="button" class="big-btn" id="gameAgain">もう一回</button>
+      <button type="button" class="title-link" id="gameQuit">終わる</button>
+    </div>
+  </div>
+</div>
+
 <div class="title-screen" id="titleScreen" hidden>
   <div class="title-in">
     <button type="button" class="help-btn-s title-help" id="titleHelp" aria-label="助けて（長押し）"><span class="hfill" aria-hidden="true"></span><span class="hico" aria-hidden="true">🚑</span><span class="htx"><b>助けて</b><small>長押しで連絡先に知らせます</small></span></button>
@@ -740,8 +776,9 @@
   // 今日の分の点を足す（1日の上限つき。動画用の早送り ?demo では、上限なしで多めに）
   function addScore(kind) {
     const g = growth(), t = today();
-    if (!g.td || g.td.d !== t) g.td = { d: t, talk: 0, sing: 0, walk: 0 };
-    const rule = { talk: [1, 10], sing: [5, 2], walk: [5, 1] }[kind];
+    if (!g.td || g.td.d !== t) g.td = { d: t, talk: 0, sing: 0, walk: 0, game: 0 };
+    if (!Number.isInteger(g.td.game)) g.td.game = 0;
+    const rule = { talk: [1, 10], sing: [5, 2], walk: [5, 1], game: [5, 2] }[kind];
     if (!rule) return;
     if (demoBoost > 1) { g.score += rule[0] * 20; return; }
     if (g.td[kind] >= rule[1]) return;
@@ -2327,7 +2364,8 @@
     unlockAudio();
     // 曲・ほかの画面を閉じて、助けてを一番前に
     try { closePlayer(); } catch {}
-    for (const id of ["memo", "songs"]) $(id).hidden = true;
+    for (const id of ["memo", "songs", "game"]) $(id).hidden = true;
+    gm = null;
     stopVoice();
     helpSource = source;
     helpDeadline = Date.now() + HELP_WAIT * 1000;
@@ -2802,6 +2840,173 @@
     if (document.hidden) { hiddenAt = Date.now(); return; }
     if (profile && hiddenAt && Date.now() - hiddenAt > 2 * 3600 * 1000 && $("titleScreen").hidden && profile.step >= QUESTIONS.length && !helpBusy) greet();
   });
+  // ---- 遊び：神経衰弱（キャラと交代でめくる。時間制限なし。キャラもときどき忘れる） ----
+  // 漢字2文字の熟語。カードは漢字1文字ずつ。2枚で熟語ができたら、そろい
+  const WORDS = [
+    ["花火", "はなび"], ["夕日", "ゆうひ"], ["青空", "あおぞら"], ["手紙", "てがみ"], ["時計", "とけい"], ["写真", "しゃしん"],
+    ["電話", "でんわ"], ["音楽", "おんがく"], ["新聞", "しんぶん"], ["映画", "えいが"], ["散歩", "さんぽ"], ["料理", "りょうり"],
+    ["温泉", "おんせん"], ["旅行", "りょこう"], ["金魚", "きんぎょ"], ["紅葉", "もみじ"], ["風鈴", "ふうりん"], ["星空", "ほしぞら"],
+    ["朝顔", "あさがお"], ["牛乳", "ぎゅうにゅう"], ["野菜", "やさい"], ["茶碗", "ちゃわん"], ["布団", "ふとん"], ["小鳥", "ことり"],
+    ["春風", "はるかぜ"], ["雪国", "ゆきぐに"], ["月見", "つきみ"], ["家族", "かぞく"], ["友人", "ゆうじん"], ["季節", "きせつ"],
+    ["夜空", "よぞら"], ["朝日", "あさひ"], ["雨傘", "あまがさ"], ["麦茶", "むぎちゃ"], ["緑茶", "りょくちゃ"], ["果物", "くだもの"],
+    ["豆腐", "とうふ"], ["味噌", "みそ"], ["納豆", "なっとう"], ["団子", "だんご"], ["弁当", "べんとう"], ["食卓", "しょくたく"],
+    ["山道", "やまみち"], ["海辺", "うみべ"], ["公園", "こうえん"], ["神社", "じんじゃ"], ["学校", "がっこう"], ["駅前", "えきまえ"],
+    ["港町", "みなとまち"], ["正月", "しょうがつ"], ["節分", "せつぶん"], ["七夕", "たなばた"], ["年賀", "ねんが"], ["花見", "はなみ"],
+    ["雪見", "ゆきみ"], ["初日", "はつひ"], ["台風", "たいふう"], ["夕立", "ゆうだち"], ["若葉", "わかば"], ["新緑", "しんりょく"],
+    ["落葉", "おちば"], ["秋風", "あきかぜ"], ["北風", "きたかぜ"], ["稲穂", "いなほ"], ["蛍火", "ほたるび"], ["白鳥", "はくちょう"],
+    ["子猫", "こねこ"], ["子犬", "こいぬ"], ["虹色", "にじいろ"], ["手袋", "てぶくろ"], ["帽子", "ぼうし"], ["着物", "きもの"],
+    ["浴衣", "ゆかた"], ["下駄", "げた"], ["毛糸", "けいと"], ["本棚", "ほんだな"], ["窓辺", "まどべ"], ["縁側", "えんがわ"],
+    ["植木", "うえき"], ["花瓶", "かびん"], ["湯船", "ゆぶね"], ["石鹸", "せっけん"], ["歌声", "うたごえ"], ["笑顔", "えがお"],
+    ["親切", "しんせつ"], ["感謝", "かんしゃ"], ["約束", "やくそく"], ["夢中", "むちゅう"], ["安心", "あんしん"], ["平和", "へいわ"],
+    ["自然", "しぜん"], ["読書", "どくしょ"], ["手芸", "しゅげい"], ["園芸", "えんげい"], ["将棋", "しょうぎ"], ["囲碁", "いご"],
+    ["俳句", "はいく"], ["書道", "しょどう"], ["茶道", "さどう"], ["太鼓", "たいこ"], ["汽車", "きしゃ"], ["電車", "でんしゃ"],
+    ["船旅", "ふなたび"], ["名所", "めいしょ"], ["日記", "にっき"], ["絵本", "えほん"], ["童謡", "どうよう"], ["唱歌", "しょうか"],
+    ["梅雨", "つゆ"], ["桜色", "さくらいろ"], ["満月", "まんげつ"], ["流星", "りゅうせい"], ["潮風", "しおかぜ"], ["砂浜", "すなはま"],
+    ["灯台", "とうだい"], ["田舎", "いなか"], ["故郷", "ふるさと"], ["親子", "おやこ"], ["祖母", "そぼ"], ["祖父", "そふ"],
+  ];
+  // 最近出た熟語は、しばらく出さない（毎日ちがう問題になるように）
+  function pickWords(n) {
+    const recent = new Set(Array.isArray(profile.gameRecent) ? profile.gameRecent : []);
+    let pool = WORDS.filter(w => !recent.has(w[0]));
+    if (pool.length < n * 3) { pool = WORDS.slice(); profile.gameRecent = []; }
+    const remember = (pick) => { profile.gameRecent = (Array.isArray(profile.gameRecent) ? profile.gameRecent : []).concat(pick.map(w => w[0])).slice(-80); saveProfile(); return pick; };
+    for (let tries = 0; tries < 300; tries++) {
+      const pick = pool.slice().sort(() => Math.random() - 0.5).slice(0, n);
+      const chars = pick.flatMap(w => [...w[0]]);
+      if (new Set(chars).size !== chars.length) continue; // 同じ漢字が2つあると、まぎらわしい
+      const set = new Set(pick.map(w => w[0]));
+      // ほかの2枚で、別の熟語ができてしまわないか
+      let clash = false;
+      for (let a = 0; a < chars.length && !clash; a++) for (let b = 0; b < chars.length; b++) {
+        if (a === b || Math.floor(a / 2) === Math.floor(b / 2)) continue;
+        if (WORDS.some(w => w[0] === chars[a] + chars[b])) { clash = true; break; }
+      }
+      if (!clash) return remember(pick);
+    }
+    return remember(pool.slice(0, n));
+  }
+  let gm = null;
+  function sfx(kind) {
+    try {
+      if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+      if (actx.state !== "running") actx.resume();
+      const t0 = actx.currentTime + 0.02;
+      const notes = { flip: [[660, 0, 0.08, "triangle"]], match: [[784, 0, 0.18], [1046.5, 0.12, 0.3]], miss: [[392, 0, 0.18, "triangle"], [330, 0.12, 0.22, "triangle"]],
+        win: [[784, 0, 0.16], [988, 0.14, 0.16], [1175, 0.28, 0.16], [1568, 0.42, 0.5]] }[kind] || [];
+      for (const [f, dt, len, type] of notes) {
+        const o = actx.createOscillator(), g = actx.createGain();
+        o.type = type || "sine"; o.frequency.value = f;
+        g.gain.setValueAtTime(0.0001, t0 + dt);
+        g.gain.exponentialRampToValueAtTime(0.16, t0 + dt + 0.015);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + dt + len);
+        o.connect(g).connect(actx.destination); o.start(t0 + dt); o.stop(t0 + dt + len + 0.05);
+      }
+    } catch {}
+  }
+  function gameSay(text, face) {
+    setPhrases($("gameSay"), myWord(text).replace(/([、。！？…])\s*/g, "$1|")); // 句読点のところでだけ折り返す
+    if (face) $("gameChar").src = faceSrc(profile.char, face);
+  }
+  function openGame() {
+    if (!profile) return;
+    stopVoice(); stopMic();
+    try { closePlayer(); } catch {}
+    $("memo").hidden = true;
+    const words = pickWords(6);
+    // カード：{ ch: 漢字1文字, w: 何番目の熟語か }
+    const deck = words.flatMap((w, wi) => [...w[0]].map(ch => ({ ch, w: wi }))).sort(() => Math.random() - 0.5);
+    gm = { deck, words, open: [], done: new Set(), seen: new Map(), you: 0, me: 0, turn: "you", busy: false, mem: [0.45, 0.55, 0.65, 0.7][stageOf(points())] };
+    $("gameCharName").textContent = profile.name;
+    $("gameYou").textContent = "0"; $("gameMe").textContent = "0";
+    $("gameEnd").hidden = true;
+    const board = $("gameBoard"); board.textContent = "";
+    deck.forEach((f, i) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "game-card"; b.setAttribute("aria-label", "カード " + (i + 1));
+      b.innerHTML = '<span class="in"><span class="bk">？</span><span class="fr"></span></span>';
+      b.querySelector(".fr").textContent = f.ch;
+      b.addEventListener("click", () => { if (gm && gm.turn === "you" && !gm.busy) flip(i, "you"); });
+      board.appendChild(b);
+    });
+    const polite = stageOf(points()) === 0;
+    gameSay(polite ? "熟語の神経衰弱をしましょう！ 2まいで熟語ができたら、そろいです。先にどうぞ！" : "熟語の神経衰弱しよう！ 2まいで熟語ができたら、そろいだよ。先にどうぞ！", "wave");
+    $("game").hidden = false;
+  }
+  function flip(i, who) {
+    if (!gm || gm.done.has(i) || gm.open.includes(i) || gm.open.length >= 2) return;
+    const cards = $("gameBoard").children;
+    cards[i].classList.add("open"); sfx("flip");
+    gm.open.push(i); gm.seen.set(i, gm.deck[i]);
+    if (gm.open.length < 2) return;
+    gm.busy = true;
+    const [a, b] = gm.open, hit = gm.deck[a].w === gm.deck[b].w;
+    const word = hit ? gm.words[gm.deck[a].w] : null;
+    setTimeout(() => {
+      if (!gm) return;
+      if (hit) {
+        sfx("match");
+        gm.done.add(a); gm.done.add(b); cards[a].classList.add("done"); cards[b].classList.add("done");
+        const say = "「" + word[0] + "」（" + word[1] + "）";
+        if (who === "you") { gm.you++; gameSay(say + "だね！ " + ["すごい！", "よく覚えてたね！", "さすが！"][Math.floor(Math.random() * 3)], "happy"); }
+        else { gm.me++; gameSay(say + "！ " + ["やったー！", "えへへ、覚えてたよ！", "あたり〜！"][Math.floor(Math.random() * 3)], "banzai"); }
+        $("gameYou").textContent = gm.you; $("gameMe").textContent = gm.me;
+        gm.open = []; gm.busy = false;
+        if (gm.done.size === gm.deck.length) return endGame();
+        if (who === "me") setTimeout(charTurn, 1100); // そろったら、もう一回
+      } else {
+        sfx("miss");
+        if (who === "me") gameSay(["あれ？ ちがった〜。", "うーん、どこだったかな…。", "あっ、まちがえちゃった！"][Math.floor(Math.random() * 3)], "sleepy");
+        setTimeout(() => {
+          cards[a].classList.remove("open"); cards[b].classList.remove("open");
+          gm.open = []; gm.busy = false;
+          if (who === "you") { gm.turn = "me"; gameSay("つぎは、わたしの番ね。", "normal"); setTimeout(charTurn, 900); }
+          else { gm.turn = "you"; gameSay("あなたの番だよ！", "wave"); }
+        }, 900);
+      }
+    }, 650);
+  }
+  // キャラの番：覚えているペアがあれば、ときどき思い出してめくる（忘れることもある）
+  function charTurn() {
+    if (!gm || $("game").hidden) return;
+    gm.busy = true;
+    const left = gm.deck.map((_, i) => i).filter(i => !gm.done.has(i));
+    const remember = () => Math.random() < gm.mem;
+    let pair = null;
+    for (const i of left) for (const j of left) if (i < j && gm.seen.has(i) && gm.seen.has(j) && gm.deck[i].w === gm.deck[j].w) pair = pair || [i, j];
+    const unseen = left.filter(i => !gm.seen.has(i));
+    let first = pair && remember() ? pair[0] : unseen.length ? unseen[Math.floor(Math.random() * unseen.length)] : left[Math.floor(Math.random() * left.length)];
+    if (first === undefined) first = left[0];
+    gm.busy = false; flip(first, "me"); gm.busy = true;
+    setTimeout(() => {
+      if (!gm) return;
+      const match = left.find(j => j !== first && gm.seen.has(j) && gm.deck[j].w === gm.deck[first].w);
+      let second;
+      if (match !== undefined && remember()) { second = match; gameSay("あっ、これ、さっき見た！", "happy"); }
+      else { const pool = left.filter(j => j !== first); second = pool[Math.floor(Math.random() * pool.length)]; gameSay("えっと…、ここかな？", "normal"); }
+      gm.busy = false; flip(second, "me");
+    }, 1100);
+  }
+  function endGame() {
+    sfx("win");
+    const polite = stageOf(points()) === 0;
+    const text = gm.you > gm.me ? (polite ? "あなたの勝ちです！ すごいです！ もう一回、遊びませんか？" : "あなたの勝ち！ すごいなあ！ もう一回やろうよ！")
+      : gm.you < gm.me ? (polite ? "わたしの勝ちです…！ 楽しかったです。もう一回、どうですか？" : "えへへ、わたしの勝ち！ もう一回やろうよ〜！")
+      : (polite ? "引き分けです！ 楽しかったです！" : "引き分け！ 楽しかったね！");
+    gameSay(text, gm.you >= gm.me ? "banzai" : "happy");
+    speak(myWord(text));
+    afterActivity("game");
+    $("gameEnd").hidden = false;
+  }
+  function closeGame() {
+    const played = gm && gm.done.size > 0;
+    gm = null; $("game").hidden = true;
+    if (played) sayScripted(stageOf(points()) === 0 ? "遊んでくれて、ありがとうございました！ また遊びましょうね。" : "遊んでくれて、ありがとう！ また遊ぼうね！");
+  }
+  $("gameBtn").addEventListener("click", () => { stopMic(); openGame(); });
+  $("gameAgain").addEventListener("click", openGame);
+  $("gameQuit").addEventListener("click", closeGame);
+  $("gameClose").addEventListener("click", closeGame);
+
   // ---- 誕生日と、季節のお祝い（だれにも祝ってもらえない日を、つくらない） ----
   const md = (d = new Date()) => String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
   function isBirthday() { return !!(profile && profile.birthday && profile.birthday === md()); }
