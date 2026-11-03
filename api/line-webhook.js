@@ -17,7 +17,7 @@ async function rawBody(req) {
   return raw;
 }
 
-const HOW_TO = "AIポケットファミリーです🐾\n友だち追加ありがとうございます。\n\nご家族のアプリ（📖ノート →「家族」）に出ている「6けたの番号」を、このトークに送ってください。\n\n登録すると、「助けて」の合図や、しばらくアプリを開いていないときに、ここでお知らせします。";
+const HOW_TO = "AIポケットファミリーです🐾\n友だち追加ありがとうございます。\n\n連絡先になってほしいと頼まれた方のアプリ（📖ノート →「連絡先」）に出ている「6けたの番号」を、このトークに送ってください。\n\n登録すると、「助けて」の合図や、しばらくアプリを開いていないときに、ここでお知らせします。";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return reply(res, 405, { error: "method" });
@@ -50,12 +50,12 @@ export default async function handler(req, res) {
       if (!dev) continue;
       const count = Number(await redis("SCARD", "fam:" + devId)) || 0;
       if (count >= 5 && !(await redis("SISMEMBER", "fam:" + devId, userId))) {
-        await replyText(ev.replyToken, "登録できる家族は5人までです。アプリの「登録した家族を消す」で消してから、もう一度お願いします。");
+        await replyText(ev.replyToken, "登録できる連絡先は5人までです。アプリの「登録した連絡先を消す」で消してから、もう一度お願いします。");
         continue;
       }
       await redis("SADD", "fam:" + devId, userId);
       await redis("ZADD", "seen", String(dev.lastSeen || Date.now()), devId); // 見回りの対象に入れる
-      const who = dev.name ? honor(dev.name) : "ご家族";
+      const who = dev.name ? honor(dev.name) : "アプリを使っている方";
       await replyText(ev.replyToken, "登録しました。" + who + "から「助けて」の合図があったときや、しばらくアプリを開いていないときに、ここでお知らせします。");
     } catch (err) {
       console.error("webhook event", err?.message);

@@ -312,7 +312,7 @@
   .lyrics.follow .ln.done { opacity: .6; }
   .foot { display: flex; align-items: center; gap: 8px; }
   .foot footer { flex: 1; }
-  /* 助けて：赤い大きなボタン。長押しすると左から白っぽく満ちていき、満ちたら家族へ */
+  /* 助けて：赤い大きなボタン。長押しすると左から白っぽく満ちていき、満ちたら連絡先へ */
   .help-bar { padding: 8px 0 4px; }
   .help-btn-s { position: relative; overflow: hidden; width: 100%; min-height: 52px; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 4px 14px; border-radius: 16px; border: 0; background: #c62828; color: #fff; box-shadow: 0 2px 0 #8e1b1b; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none; }
   .help-btn-s .hico { position: relative; flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: #ffd23f; box-shadow: 0 0 0 2px #fff3b0; font-size: 28px; line-height: 1; }
@@ -354,7 +354,7 @@
   </header>
   <!-- 助けて：誤って押しにくい、画面の上に置く -->
   <div class="help-bar">
-    <button type="button" class="help-btn-s" id="helpBtn" aria-label="助けて（長押し）"><span class="hfill" id="helpRing" aria-hidden="true"></span><span class="hico" aria-hidden="true">🚑</span><span class="htx"><b>助けて</b><small id="helpHint">長押しで家族へ連絡します</small></span></button>
+    <button type="button" class="help-btn-s" id="helpBtn" aria-label="助けて（長押し）"><span class="hfill" id="helpRing" aria-hidden="true"></span><span class="hico" aria-hidden="true">🚑</span><span class="htx"><b>助けて</b><small id="helpHint">長押しで連絡先に知らせます</small></span></button>
   </div>
 
   <main class="log" id="log" aria-live="polite"></main>
@@ -402,7 +402,7 @@
 
 <div class="help-sheet" id="helpSheet" hidden role="alertdialog" aria-live="assertive">
   <div class="box">
-    <h2>家族に知らせます</h2>
+    <h2>連絡先に知らせます</h2>
     <p id="helpMsg"></p>
     <div class="help-count" id="helpCount">8</div>
     <button type="button" class="help-stop" id="helpStop">いらない（止める）</button>
@@ -464,7 +464,7 @@
       <button type="button" class="tab on" data-tab="tabMem">思い出</button>
       <button type="button" class="tab" data-tab="tabPlan">予定・お薬</button>
       <button type="button" class="tab" data-tab="tabPet">ペット</button>
-      <button type="button" class="tab" data-tab="tabFam">家族</button>
+      <button type="button" class="tab" data-tab="tabFam">連絡先</button>
     </div>
     <section id="tabMem">
     <div class="stat">
@@ -496,30 +496,31 @@
       </form>
     </section>
     <section id="tabFam" hidden>
-      <h3>家族への連絡（LINE）</h3>
-      <p class="hint-s"><span class="nb">「助けて」の合図や、</span><span class="nb">しばらくアプリを</span><span class="nb">開いていないときに、</span><span class="nb">家族のLINEに</span><span class="nb">知らせます。</span><span class="nb">家族の連絡先を、</span><span class="nb">ここに入れる</span><span class="nb">必要はありません。</span></p>
+      <h3>連絡先（LINE）</h3>
+      <p class="hint-s" style="margin:0 0 6px"><span class="nb">友人や家族など、</span><span class="nb">連絡を受け取って</span><span class="nb">くれる人です。</span></p>
+      <p class="hint-s"><span class="nb">「助けて」の合図や、</span><span class="nb">しばらくアプリを</span><span class="nb">開いていないときに、</span><span class="nb">連絡先の人のLINEに</span><span class="nb">知らせます。</span><span class="nb">相手の電話番号などを、</span><span class="nb">ここに入れる</span><span class="nb">必要はありません。</span></p>
       <div class="stat" id="famStatus">読みこみ中…</div>
-      <label style="display:grid;gap:4px;font-size:17px;margin:0 0 12px"><span><span class="nb">家族へのお知らせに出す、</span><span class="nb">あなたの名前</span></span>
+      <label style="display:grid;gap:4px;font-size:17px;margin:0 0 12px"><span><span class="nb">お知らせに出す、</span><span class="nb">あなたの名前</span></span>
         <input id="famName" maxlength="12" placeholder="例：はなこ" enterkeyhint="done" autocomplete="off" style="font:inherit;font-size:20px;padding:8px;border:2px solid var(--line);border-radius:12px;min-height:48px">
       </label>
-      <button type="button" class="big-btn" id="famCode" style="background:var(--mic)">家族に登録してもらう</button>
+      <button type="button" class="big-btn" id="famCode" style="background:var(--mic)"><span class="nb">連絡先の人に</span><span class="nb">登録してもらう</span></button>
       <div class="stat" id="famCodeBox" hidden>
-        <div><span class="nb">家族に、</span><span class="nb">この番号を伝えてね</span></div>
+        <div><span class="nb">連絡先に</span><span class="nb">なってくれる人に、</span><span class="nb">この番号を伝えてね</span></div>
         <div class="help-count" id="famCodeNum" style="font-size:52px;margin:6px 0"></div>
         <ol style="padding-left:1.2em;margin:0;font-size:17px">
-          <li><span class="nb">家族に、LINEで</span><span class="nb">「AIポケットファミリー」を</span><span class="nb"><b>友だち追加</b>してもらう</span><br><span class="hint-s"><span class="nb">そばにいるなら、</span><span class="nb">このQRコードを</span><span class="nb">家族のLINEで</span><span class="nb">読んでもらってね</span></span></li>
+          <li><span class="nb">その人に、LINEで</span><span class="nb">「AIポケットファミリー」を</span><span class="nb"><b>友だち追加</b>してもらう</span><br><span class="hint-s"><span class="nb">そばにいるなら、</span><span class="nb">このQRコードを</span><span class="nb">その人のLINEで</span><span class="nb">読んでもらってね</span></span></li>
           <li><span class="nb">そのトークに、</span><span class="nb">この<b>6けたの番号</b>を</span><span class="nb">送ってもらう</span></li>
         </ol>
         <img src="line-qr.png" alt="AIポケットファミリーのLINE 友だち追加のQRコード" style="display:block;width:160px;height:160px;margin:10px auto;border:1px solid var(--line);border-radius:8px">
         <p class="hint-s"><span class="nb">番号は</span><span class="nb">30分だけ使えます。</span></p>
-        <button type="button" class="big-btn" id="famShare">家族に送る（LINEなど）</button>
+        <button type="button" class="big-btn" id="famShare">その人に送る（LINEなど）</button>
       </div>
-      <label style="display:grid;gap:4px;font-size:17px;margin-top:12px">しばらく開いていないとき、家族に知らせる
+      <label style="display:grid;gap:4px;font-size:17px;margin-top:12px">しばらく開いていないとき、連絡先に知らせる
         <select id="famQuiet" style="font:inherit;font-size:20px;padding:8px;border:2px solid var(--line);border-radius:12px;min-height:48px">
           <option value="1">1日開いていないとき</option><option value="2">2日</option><option value="3">3日</option><option value="5">5日</option><option value="7">7日</option><option value="0">知らせない</option>
         </select>
       </label>
-      <div class="danger" style="margin-top:16px"><button type="button" class="reset" id="famUnlink">登録した家族を消す</button></div>
+      <div class="danger" style="margin-top:16px"><button type="button" class="reset" id="famUnlink">登録した連絡先を消す</button></div>
     </section>
     <section id="tabPet" hidden>
       <h3>うちの家族（ペット）</h3>
@@ -2097,7 +2098,7 @@
       const { data } = await familyCall("status");
       if (data.configured === false) { setPhrases($("famStatus"), "LINEへの連絡は、|いま準備中です。"); $("famCode").disabled = true; return; }
       $("famCode").disabled = false;
-      setPhrases($("famStatus"), data.family ? "登録している家族：|" + data.family + "人" : "まだ家族が|登録されていません。");
+      setPhrases($("famStatus"), data.family ? "登録している連絡先：|" + data.family + "人" : "まだ連絡先が|登録されていません。");
     } catch { $("famStatus").textContent = "電波がとどかなかったみたい。"; }
   }
   let famAddUrl = "";
@@ -2115,10 +2116,10 @@
   });
   $("famShare").addEventListener("click", async () => {
     const code = $("famCodeNum").textContent.replace(/\s/g, "");
-    const text = "AIポケットファミリーの家族登録のお願いです。\n①このリンクから友だち追加してください：" + (famAddUrl || "（あとで送ります）") + "\n②そのトークに、この番号を送ってください：" + code;
+    const text = "AIポケットファミリーの連絡先登録のお願いです。\n①このリンクから友だち追加してください：" + (famAddUrl || "（あとで送ります）") + "\n②そのトークに、この番号を送ってください：" + code;
     try {
       if (navigator.share) await navigator.share({ text });
-      else { await navigator.clipboard.writeText(text); setPhrases($("famStatus"), "文章をコピーしたよ。|LINEに貼って、|家族に送ってね。"); }
+      else { await navigator.clipboard.writeText(text); setPhrases($("famStatus"), "文章をコピーしたよ。|LINEに貼って、|その人に送ってね。"); }
     } catch {}
   });
   $("famName").addEventListener("change", () => {
@@ -2134,8 +2135,8 @@
   });
   $("famUnlink").addEventListener("click", async () => {
     const b = $("famUnlink");
-    if (b.dataset.armed !== "1") { b.dataset.armed = "1"; b.textContent = "もう一度押すと消えます"; setTimeout(() => { b.dataset.armed = ""; b.textContent = "登録した家族を消す"; }, 4000); return; }
-    b.dataset.armed = ""; b.textContent = "登録した家族を消す";
+    if (b.dataset.armed !== "1") { b.dataset.armed = "1"; b.textContent = "もう一度押すと消えます"; setTimeout(() => { b.dataset.armed = ""; b.textContent = "登録した連絡先を消す"; }, 4000); return; }
+    b.dataset.armed = ""; b.textContent = "登録した連絡先を消す";
     try { await familyCall("unlink"); } catch {}
     renderFamily();
   });
@@ -2147,7 +2148,7 @@
   const helpBtn = $("helpBtn"), helpRing = $("helpRing");
   let holdStart = 0, holdRaf = 0, helpTimer = null, helpLeft = 0, helpBusy = false;
   let holdX = 0, holdY = 0;
-  function resetRing() { cancelAnimationFrame(holdRaf); helpRing.style.transform = "scaleX(0)"; holdStart = 0; helpBtn.classList.remove("holding"); $("helpHint").textContent = "長押しで家族へ連絡します"; }
+  function resetRing() { cancelAnimationFrame(holdRaf); helpRing.style.transform = "scaleX(0)"; holdStart = 0; helpBtn.classList.remove("holding"); $("helpHint").textContent = "長押しで連絡先に知らせます"; }
   function holdTick() {
     if (!holdStart) return;
     const r = Math.min(1, (Date.now() - holdStart) / HELP_HOLD_MS);
@@ -2252,7 +2253,7 @@
     let d = await helpPost(helpPayload("stop", "cancel"), true);
     if (!d.cancelled) d = await helpPost(helpPayload("stop", "cancel"), true);
     sayScripted(d.cancelled ? "うん、わかった。止めたよ。そばにいるからね。"
-      : "止める合図が、うまく届かなかったかもしれない。家族にLINEが届いたら「まちがいでした」と伝えてね。");
+      : "止める合図が、うまく届かなかったかもしれない。連絡先の人にLINEが届いたら「まちがいでした」と伝えてね。");
   });
   $("helpNow").addEventListener("click", () => { clearInterval(helpTimer); helpTimer = null; sendHelp("now"); });
   async function sendHelp(source) {
@@ -2273,13 +2274,13 @@
     clearInterval(helpTimer); helpTimer = null;
     $("helpStop").hidden = true; $("helpNow").hidden = true;
     $("helpCount").textContent = ok ? "✓" : "!";
-    setPhrases($("helpMsg"), ok ? "家族に|知らせたよ。"
-      : !configured ? "まだ家族への連絡が|準備できていないよ|（準備中）。"
-      : error === "no_family" ? "まだ家族が|登録されていないよ。|電話できるなら、|家族に電話してね。"
-      : "うまく|送れなかったみたい。|電話できるなら、|家族に電話してね。");
+    setPhrases($("helpMsg"), ok ? "連絡先に|知らせたよ。"
+      : !configured ? "まだ連絡先への|お知らせが|準備できていないよ|（準備中）。"
+      : error === "no_family" ? "まだ連絡先が|登録されていないよ。|電話できるなら、|119か、|知っている人に|電話してね。"
+      : "うまく|送れなかったみたい。|電話できるなら、|119か、|知っている人に|電話してね。");
     setTimeout(() => {
       endHelp();
-      sayScripted(ok ? "家族に知らせたよ。来てくれるまで、ここにいるからね。" : "知らせることができなかったよ。電話できそうなら、家族か119に電話してね。わたしは、ここにいるよ。");
+      sayScripted(ok ? "連絡先に知らせたよ。わたしは、ここにいるからね。" : "知らせることができなかったよ。電話できそうなら、119か、知っている人に電話してね。わたしは、ここにいるよ。");
     }, 2500);
   }
   // 会話の中で「どちらか分からない」ときに出す、大きな助けてボタン
@@ -2289,7 +2290,7 @@
     const b = document.createElement("button");
     b.type = "button";
     b.className = "help-invite";
-    b.textContent = "家族に知らせる";
+    b.textContent = "連絡先に知らせる";
     b.addEventListener("click", () => startHelp("invite"));
     row.querySelector(".bubble").appendChild(b);
     log.scrollTop = log.scrollHeight;
@@ -2383,7 +2384,7 @@
     if (!list.length) {
       const li = document.createElement("li");
       li.className = "empty";
-      setPhrases(li, "登録すると、|「助けて」のときに|家族へ伝わるよ");
+      setPhrases(li, "登録すると、|「助けて」のときに|連絡先へ伝わるよ");
       ul.appendChild(li);
       return;
     }

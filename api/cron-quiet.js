@@ -32,7 +32,7 @@ export default async function handler(req, res) {
       if (await redis("GET", "alerted:" + id)) { await redis("ZREM", "seen", id); continue; }
       const limit = demoMin > 0 ? demoMin * 60 * 1000 : days * DAY;
       if (now - (dev.lastSeen || 0) < limit) continue;
-      const who = dev.name ? honor(dev.name) : "ご家族";
+      const who = dev.name ? honor(dev.name) : "アプリを使っている方";
       const span = demoMin > 0 ? demoMin + "分" : days + "日";
       const pets = petText(dev.pets);
       const text = "📱" + who + "が、" + span + "のあいだアプリを開いていません。\n念のため、連絡をしてみてください📲"
