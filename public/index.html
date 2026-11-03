@@ -1953,7 +1953,8 @@
       speechSynthesis.speak(u);
     } catch {}
   }
-  const voiceText = (text) => String(text).replace(/[🔊🎵📅🚶🏠✓]/gu, "").slice(0, 200);
+  // 声にする文：「わたし」「私」は「ワタシ」にして渡す（声が「わたくし」と読まないように。画面の文字はそのまま）
+  const voiceText = (text) => String(text).replace(/[🔊🎵📅🚶🏠✓]/gu, "").replace(/わたし|私/g, "ワタシ").slice(0, 200);
   // 声を先に作っておく（できたら音のURL、できなければ null）
   async function fetchVoice(text) {
     try {
