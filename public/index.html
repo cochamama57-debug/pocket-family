@@ -563,8 +563,7 @@
     <div class="tabs" role="tablist">
       <button type="button" class="tab on" data-tab="tabMem">思い出</button>
       <button type="button" class="tab" data-tab="tabPlan">予定・お薬</button>
-      <button type="button" class="tab" data-tab="tabPet">ペット</button>
-      <button type="button" class="tab" data-tab="tabFam">連絡先</button>
+      <button type="button" class="tab" data-tab="tabFam">連絡先・ペット</button>
     </div>
     <section id="tabMem">
     <div class="stat">
@@ -579,6 +578,13 @@
     <ul id="memoHabits"></ul>
     <h3 id="memoGiftsTitle" hidden>もらった絵</h3>
     <div id="memoGifts" class="gift-list"></div>
+    <div class="stat swap-box" style="margin-top:20px">
+      <img id="swapImg" alt="" width="72" height="72">
+      <div>
+        <p class="hint-s" style="margin:0 0 6px"><span class="nb">もう一人の家族にも</span><span class="nb">会えます。</span><span class="nb">思い出は、</span><span class="nb">それぞれが</span><span class="nb">覚えています。</span></p>
+        <button type="button" class="big-btn" id="swapBtn" style="margin:0"></button>
+      </div>
+    </div>
     </section>
     <section id="tabPlan" hidden>
       <h3>予定</h3>
@@ -624,9 +630,7 @@
         </select>
       </label>
       <div class="danger" style="margin-top:16px"><button type="button" class="reset" id="famUnlink">登録した連絡先を消す</button></div>
-    </section>
-    <section id="tabPet" hidden>
-      <h3>うちの家族（ペット）</h3>
+      <h3 style="margin-top:28px">うちの家族（ペット）</h3>
     <ul id="petList"></ul>
     <form class="pet-form" id="petForm" autocomplete="off">
       <label>種類
@@ -638,13 +642,6 @@
       <button type="submit" class="add">＋ ペットを登録する</button>
     </form>
     </section>
-    <div class="stat swap-box" style="margin-top:20px">
-      <img id="swapImg" alt="" width="72" height="72">
-      <div>
-        <p class="hint-s" style="margin:0 0 6px"><span class="nb">もう一人の家族にも</span><span class="nb">会えます。</span><span class="nb">思い出は、</span><span class="nb">それぞれが</span><span class="nb">覚えています。</span></p>
-        <button type="button" class="big-btn" id="swapBtn" style="margin:0"></button>
-      </div>
-    </div>
     <div class="stat" style="margin-top:20px">
       <label style="display:flex;align-items:center;gap:10px;font-size:19px"><input type="checkbox" id="voiceToggle" style="width:28px;height:28px;flex:none"> <span><span class="nb">声で話す</span><span class="nb">（返事を</span><span class="nb">読み上げる）</span></span></label>
       <p class="hint-s" style="margin:6px 0 0"><span class="nb">吹き出しの 🔊 を押すと、</span><span class="nb">いつでも聞けます。</span></p>
@@ -2333,7 +2330,7 @@
   document.querySelectorAll(".tab").forEach((tb) => {
     tb.addEventListener("click", () => {
       document.querySelectorAll(".tab").forEach(x => x.classList.toggle("on", x === tb));
-      for (const id of ["tabMem", "tabPlan", "tabPet", "tabFam"]) $(id).hidden = id !== tb.dataset.tab;
+      for (const id of ["tabMem", "tabPlan", "tabFam"]) $(id).hidden = id !== tb.dataset.tab;
       if (tb.dataset.tab === "tabFam") renderFamily();
       if (tb.dataset.tab === "tabPlan") { if (!$("planDate").value) $("planDate").value = today(); renderPlanTab(); }
     });
@@ -2454,11 +2451,11 @@
   helpBtn.addEventListener("click", () => { if (!helpBusy) { statusEl.textContent = "助けてボタンは、長押ししてください"; setTimeout(() => { if (!sending) statusEl.textContent = "お話ししましょう"; }, 3000); } });
 
   // 家族に送る文章の材料（名前とペットだけ。文章はサーバーで組み立てる。薬や住所は送らない）
+  // 「はなこって呼んで」「はなこだよ。」→「はなこ」
+  const cleanCall = (raw) => String(raw || "").replace(/\s+/g, "").replace(/(って|と)?(呼んで|よんで|でいい|がいい|です|だよ|ね|よ|！|!|。)+.*$/, "").slice(0, 12);
   function callName() {
     if (profile && typeof profile.famName === "string" && profile.famName.trim()) return profile.famName.trim().slice(0, 12);
-    const raw = profile && profile.answers.call ? profile.answers.call : "";
-    const m = raw.replace(/\s+/g, "").replace(/(って|と)?(呼んで|よんで|でいい|がいい|です|だよ|ね|よ|！|!|。)+.*$/, "");
-    return m.slice(0, 12);
+    return cleanCall(profile && profile.answers.call);
   }
   function helpPayload(source, action) {
     const pl = profile ? pets() : [];
@@ -2706,7 +2703,7 @@
       : "これからも、|ずっといっしょだよ");
     setPhrases($("memoNotesTitle"), profile.name + "が|覚えていること");
     const firsts = [];
-    if (profile.answers.call) firsts.push("呼び名：" + profile.answers.call);
+    if (profile.answers.call && cleanCall(profile.answers.call)) firsts.push("呼び名：" + cleanCall(profile.answers.call));
     if (profile.answers.song) firsts.push("好きな歌：" + profile.answers.song);
     fillList($("memoNotes"), firsts.concat(g.notes), "これから、|たくさん|覚えていくね");
     setPhrases($("memoHabitsTitle"), profile.name + "の口ぐせ|（一緒に|育ったもの）");
