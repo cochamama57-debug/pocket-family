@@ -153,6 +153,14 @@
   .swap-box { display: flex; gap: 12px; align-items: center; }
   .swap-box img { flex: none; object-fit: contain; }
   .swap-box > div { flex: 1; min-width: 0; }
+  /* お祝いの紙ふぶき（画面全体。さわっても下が押せる） */
+  .confetti { position: fixed; inset: 0; z-index: 14; pointer-events: none; overflow: hidden; }
+  .confetti i { position: absolute; top: -40px; font-style: normal; font-size: 26px; animation: confettiFall linear forwards; }
+  @keyframes confettiFall { to { transform: translate(var(--dx, 0px), 110vh) rotate(var(--rot, 360deg)); opacity: .9; } }
+  @media (prefers-reduced-motion: reduce) { .confetti { display: none; } }
+  .bday-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+  .bday-form select { font: inherit; font-size: 22px; padding: 6px 8px; border: 2px solid var(--line); border-radius: 12px; background: #fff; color: var(--ink); min-height: 50px; }
+  .bday-form button { flex: 1 1 100%; }
   .invite-choice { display: inline-block; width: auto; margin-right: 8px; }
   .invite-choice + .invite-choice { background: #fff !important; color: var(--ink) !important; border: 2px solid var(--line) !important; }
   .voice-choice { background: var(--mic) !important; }
@@ -517,6 +525,7 @@
     <section id="tabMem">
     <div class="stat">
       <div>一緒に過ごした日　<span class="big" id="memoDays"></span></div>
+      <div>あなたのお誕生日　<b id="memoBday"></b>　<button type="button" class="tour-skip" id="memoBdayEdit" style="min-height:40px;font-size:15px">変える</button></div>
       <div>仲よし度　<span class="hearts" id="memoHearts"></span>　<b id="memoStage"></b></div>
       <div class="next" id="memoNext"></div>
     </div>
@@ -748,6 +757,7 @@
       wish: profile.answers.wish || "",
       song: profile.answers.song || "",
       stage: stageOf(points()),
+      birthdayToday: isBirthday(),
       days: Math.max(1, g.days.length),
       notes: g.notes,
       habits: g.habits,
@@ -1335,7 +1345,8 @@
         afterActivity("talk");
         hello();
         setTimeout(checkReminders, 1500);
-        if (!(growth().talks === 1 && homeTip())) voiceAsk();
+        if (!profile.birthday) askBirthday();
+        else if (!(growth().talks === 1 && homeTip())) voiceAsk();
       } else {
         fail(data.message || "うまく届かなかったみたい。もう一度送ってみてね。");
       }
@@ -2528,6 +2539,7 @@
     const g = growth(), pt = points(), st = stageOf(pt);
     $("memoImg").src = CHARS[profile.char].img;
     renderSwap();
+    updateBirthdayNote();
     $("memoTitle").innerHTML = "";
     const t1 = document.createElement("span"); t1.className = "nb"; t1.textContent = profile.name + "との";
     const t2 = document.createElement("span"); t2.className = "nb"; t2.textContent = "思い出";
@@ -2756,6 +2768,7 @@
   $("tourBack").addEventListener("click", () => { if (tourAt > 0) { tourAt--; drawTour(); } });
   $("tourSkip").addEventListener("click", closeTour);
   $("memoTour").addEventListener("click", () => openTour("memo"));
+  $("memoBdayEdit").addEventListener("click", () => { $("memo").hidden = true; bdayAsking = false; askBirthday(true); });
   function showTitle() {
     $("titleStart").innerHTML = "";
     if (profile) setPhrases($("titleStart"), profile.name + "に|会う");
@@ -2789,6 +2802,98 @@
     if (document.hidden) { hiddenAt = Date.now(); return; }
     if (profile && hiddenAt && Date.now() - hiddenAt > 2 * 3600 * 1000 && $("titleScreen").hidden && profile.step >= QUESTIONS.length && !helpBusy) greet();
   });
+  // ---- 誕生日と、季節のお祝い（だれにも祝ってもらえない日を、つくらない） ----
+  const md = (d = new Date()) => String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  function isBirthday() { return !!(profile && profile.birthday && profile.birthday === md()); }
+  function confetti(kinds, n = 36) {
+    const layer = document.createElement("div");
+    layer.className = "confetti"; layer.setAttribute("aria-hidden", "true");
+    for (let i = 0; i < n; i++) {
+      const e = document.createElement("i");
+      e.textContent = kinds[i % kinds.length];
+      e.style.left = Math.random() * 100 + "%";
+      e.style.animationDuration = (3.5 + Math.random() * 3) + "s";
+      e.style.animationDelay = (Math.random() * 2.5) + "s";
+      e.style.setProperty("--dx", Math.round((Math.random() - 0.5) * 120) + "px");
+      e.style.setProperty("--rot", Math.round((Math.random() - 0.5) * 720) + "deg");
+      layer.appendChild(e);
+    }
+    document.body.appendChild(layer);
+    setTimeout(() => layer.remove(), 9500);
+  }
+  // 今日のお祝い（1日1回）。誕生日がいちばん
+  function todaysEvent() {
+    const m = md(), polite = stageOf(points()) === 0, pi = profile.char === "colon" ? "ピピッ。" : "";
+    const nm = callName() ? callName() + (/(さん|ちゃん|くん|様|さま)$/.test(callName()) ? "" : "さん") : "";
+    if (isBirthday()) return { key: "bday", fx: ["🎂", "🎉", "✨", "🎈", "💐"],
+      text: pi + (polite ? "お誕生日、おめでとうございます！" + (nm ? nm + "、" : "") + "生まれてきてくれて、ありがとうございます。今日は、いっしょにお祝いさせてください！"
+        : "お誕生日、おめでとう！" + (nm ? nm + "、" : "") + "生まれてきてくれて、ありがとう。今日は、いっしょにお祝いしようね！") };
+    if (m === "12-24") return { key: "xmas-eve", fx: ["🎄", "⭐", "❄️", "🎁"], text: pi + (polite ? "今日はクリスマス・イブですね。いっしょに過ごせて、うれしいです。" : "今日はクリスマス・イブだね！ いっしょに過ごせて、うれしいな。") };
+    if (m === "12-25") return { key: "xmas", fx: ["🎄", "⭐", "❄️", "🎁"], text: pi + (polite ? "メリークリスマス！ プレゼントは、わたしの気持ちです。いつも、ありがとうございます。" : "メリークリスマス！ プレゼントは、わたしの気持ち。いつも、ありがとう！") };
+    if (m === "12-31") return { key: "nye", fx: ["✨", "🌙", "⭐"], text: pi + (polite ? "今年も、いっしょにいてくれて、ありがとうございました。来年も、よろしくお願いします。" : "今年も、いっしょにいてくれて、ありがとう。来年も、よろしくね。") };
+    if (m === "01-01" || m === "01-02" || m === "01-03") return { key: "ny", fx: ["🎍", "🌅", "🎉", "🌸"], text: pi + (polite ? "あけましておめでとうございます！ 今年も、よろしくお願いします。" : "あけましておめでとう！ 今年も、よろしくね！") };
+    return null;
+  }
+  function celebrate() {
+    const ev = todaysEvent();
+    if (!ev) return false;
+    const done = ev.key + ":" + today();
+    if (profile.eventDone === done) return false;
+    profile.eventDone = done; saveProfile();
+    setTimeout(() => {
+      sayScripted(ev.text);
+      confetti(ev.fx);
+      showFace("banzai", 3000);
+      avatar.classList.add("happy"); setTimeout(() => avatar.classList.remove("happy"), 2400);
+      // 誕生日の歌があれば、誘う
+      const bsong = ev.key === "bday" && allSongs().find(x => x.tag === "誕生日");
+      if (bsong) setTimeout(() => songInvite(bsong.id), 1200);
+    }, 700);
+    return true;
+  }
+  // 誕生日を聞く（必ず登録。答えるまで、開くたびに聞く）
+  let bdayAsking = false;
+  function askBirthday(again) {
+    if (!profile || bdayAsking || profile.step < QUESTIONS.length) return;
+    bdayAsking = true;
+    const polite = stageOf(points()) === 0, pi = profile.char === "colon" ? "ピピッ。" : "";
+    const text = again ? pi + "お誕生日を、教えてね。"
+      : pi + (polite ? "あの、お誕生日を教えてもらえますか？ その日は、わたしがいちばんにお祝いしたいんです！" : "ねえ、お誕生日を教えて！ その日は、わたしがいちばんにお祝いしたいんだ！");
+    setTimeout(() => {
+      sayScripted(text);
+      const box = log.lastElementChild && log.lastElementChild.querySelector(".bubble");
+      if (!box) { bdayAsking = false; return; }
+      const f = document.createElement("div");
+      f.className = "bday-form";
+      const mSel = document.createElement("select"), dSel = document.createElement("select");
+      mSel.setAttribute("aria-label", "月"); dSel.setAttribute("aria-label", "日");
+      for (let i = 1; i <= 12; i++) mSel.add(new Option(i + "月", String(i).padStart(2, "0")));
+      for (let i = 1; i <= 31; i++) dSel.add(new Option(i + "日", String(i).padStart(2, "0")));
+      const cur = profile.birthday ? profile.birthday.split("-") : null;
+      if (cur) { mSel.value = cur[0]; dSel.value = cur[1]; }
+      const ok = document.createElement("button");
+      ok.type = "button"; ok.className = "song-btn"; ok.textContent = "この日にする";
+      ok.addEventListener("click", () => {
+        profile.birthday = mSel.value + "-" + dSel.value;
+        saveProfile();
+        f.remove(); bdayAsking = false;
+        const mm = Number(mSel.value), dd = Number(dSel.value), p0 = stageOf(points()) === 0;
+        sayScripted(pi + mm + "月" + dd + "日" + (p0 ? "ですね！ 覚えました。その日は、いちばんにお祝いしますね！" : "だね！ 覚えたよ。その日は、いちばんにお祝いするね！"));
+        showFace("happy", 2200);
+        if (isBirthday()) setTimeout(celebrate, 2500);
+        updateBirthdayNote();
+      });
+      f.append(mSel, dSel, ok);
+      box.appendChild(f);
+      log.scrollTop = log.scrollHeight;
+    }, 600);
+  }
+  function updateBirthdayNote() {
+    const el = $("memoBday");
+    if (!el || !profile) return;
+    el.textContent = profile.birthday ? Number(profile.birthday.slice(0, 2)) + "月" + Number(profile.birthday.slice(3)) + "日" : "まだ";
+  }
+
   // ---- キャラからの誘い（たまに1つだけ。1日2回まで、前の誘いから2時間あける） ----
   // 「いいよ」→大喜び／「あとで」→「うん！待ってる！」／「今はいい」→しょんぼり
   function inviteKinds() { return ["song"].concat(typeof openGame === "function" ? ["game"] : []); }
@@ -2842,10 +2947,14 @@
       setTimeout(() => sayScripted(QUESTIONS[profile.step].ask(profile.name)), 500);
       return;
     }
-    if (profile.step >= QUESTIONS.length) greet();
+    if (profile.step >= QUESTIONS.length) {
+      if (!celebrate()) greet(); // 誕生日・クリスマス・お正月は、お祝いがあいさつ
+      else { profile.lastGreet = Date.now(); profile.lastOpen = Date.now(); saveProfile(); }
+      if (!profile.birthday) setTimeout(() => askBirthday(), 4000);
+    }
     setTimeout(() => showFace("wave", 1800), 300);
     setTimeout(checkReminders, 3000);
-    setTimeout(invite, 9000); // あいさつのあと、少しして、たまに誘う
+    setTimeout(() => { if (profile.birthday) invite(); }, 9000); // あいさつのあと、少しして、たまに誘う
     setTimeout(() => hello(true), 1000);
   }
   $("titleStart").addEventListener("click", () => {
