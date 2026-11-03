@@ -125,6 +125,9 @@
   .player-stage[data-mood="dance"] { background: radial-gradient(120% 90% at 50% 0%, #fbe7ff 0%, #ead9ff 55%, #dccbfa 100%); }
   .player-stage[data-mood="morning"] { background: linear-gradient(#fff6d6 0%, #ffe9c2 60%, #ffdcb0 100%); }
   .player-stage[data-mood="comfort"] { background: linear-gradient(#e9eff7 0%, #dfe7f2 70%, #d6e0ee 100%); }
+  /* 泣いてもいいの：最後に雨があがって、空が明るくなる */
+  .player-stage::before { content: ""; position: absolute; inset: 0; background: linear-gradient(#dff1ff 0%, #f3f8ff 60%, #fff4dc 100%); opacity: 0; transition: opacity 5s; }
+  .player-stage[data-clear]::before { opacity: 1; }
   .player-stage[data-mood="sleep"] { background: linear-gradient(#2f3a63 0%, #45507e 70%, #5a628f 100%); }
   .player-stage[data-mood="calm"] { background: linear-gradient(#e6f6f3 0%, #d5efea 70%, #c6e7e1 100%); }
   .player-char { position: absolute; left: 50%; bottom: 6px; width: 150px; height: 150px; margin-left: -75px; object-fit: contain; transform-origin: 50% 90%; will-change: transform; }
@@ -154,7 +157,7 @@
   .player-char.cheer { animation: hop .6s ease-in-out 4; }
   .player-title { text-align: center; font-size: 22px; font-weight: 700; margin: 6px 0 2px; }
   .player-note { text-align: center; color: var(--sub); font-size: 15px; margin: 0 0 8px; }
-  .lyrics { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 14px; font-size: 26px; line-height: 1.8; white-space: pre-wrap; text-align: center; max-height: 42vh; overflow-y: auto; }
+  .lyrics { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 14px; font-size: 26px; line-height: 1.8; white-space: pre-wrap; text-align: center; max-height: 42vh; overflow-y: auto; position: relative; }
   .player-ctrl { display: flex; gap: 8px; margin: 12px 0 8px; }
   .player-ctrl button { flex: 1; font-size: 20px; font-weight: 700; min-height: 56px; border-radius: 14px; border: 2px solid var(--line); background: #fff; color: var(--ink); }
   .player-ctrl .play { background: #8a5cc2; border-color: #8a5cc2; color: #fff; flex: 1.4; }
@@ -297,6 +300,11 @@
   .send:disabled, .tool:disabled { opacity: .5; }
   .nb { display: inline-block; }
   .lyrics .nb { max-width: 100%; }
+  .lyrics .gap { height: .9em; }
+  .lyrics .ln { transition: color .4s, opacity .4s, transform .4s; border-radius: 10px; }
+  .lyrics.follow .ln { opacity: .45; }
+  .lyrics.follow .ln.now { opacity: 1; color: #b8501f; font-weight: 700; transform: scale(1.04); }
+  .lyrics.follow .ln.done { opacity: .6; }
   .foot { display: flex; align-items: center; gap: 8px; }
   .foot footer { flex: 1; }
   .help-btn-s { position: relative; flex: none; width: 52px; height: 52px; border-radius: 50%; border: 2px solid #e6a39b; background: #fff5f3; color: #b3261e; font-size: 13px; font-weight: 700; line-height: 1.1; padding: 0; margin-bottom: env(safe-area-inset-bottom, 0px); -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none; }
@@ -559,7 +567,7 @@
     chamu: { label: "ちゃむ", img: "chars/chamu/normal.png" },
     colon: { label: "コロン", img: "chars/colon/normal.png" },
   };
-  const FACES = ["normal", "talk", "happy", "sleepy", "wave", "banzai", "danceL", "danceR"];
+  const FACES = ["normal", "talk", "happy", "sleepy", "wave", "banzai", "danceL", "danceR", "serious", "sad", "cry"];
   const faceSrc = (ch, f) => "chars/" + ch + "/" + f + ".png";
   // 表情の絵を先に読みこんでおく（切りかえたときにチラつかないように）
   function preloadFaces(ch) { for (const f of FACES) { const im = new Image(); im.src = faceSrc(ch, f); } }
@@ -1372,9 +1380,12 @@
       step: num(m.step, 0.1, 2, 0.5),
       energy: typeof m.energy === "string" && /^[0-9]+$/.test(m.energy) ? m.energy : "",
       level: typeof m.level === "string" && /^[0-9]+$/.test(m.level) ? m.level : "",
+      // 1つずつの拍の時刻（曲の途中で速さが変わっても、ずれないように）
+      beats: Array.isArray(m.beats) && m.beats.length > 8 && m.beats.every((v, i, a) => typeof v === "number" && (i === 0 || v > a[i - 1])) ? m.beats : null,
       eS: 0.4, L: 0.3, lastBeat: -99, lastT: 0, t0: performance.now(), raf: 0, rainbow: false, phraseFace: "normal",
     };
     stageEl.dataset.mood = mood;
+    delete stageEl.dataset.clear;
     fxEl.textContent = "";
   }
   function songTime() {
@@ -1389,6 +1400,17 @@
     if (!str) return d;
     const i = Math.min(Math.max(Math.floor(t / mv.step), 0), str.length - 1);
     return (str.charCodeAt(i) - 48) / 9;
+  }
+  // 今が何拍目か（拍の時刻の表があれば、それに合わせる）
+  function beatPos(t) {
+    const B = mv.beats;
+    if (!B) return (t - mv.offset) * mv.bpm / 60;
+    const n = B.length;
+    if (t < B[0]) return (t - B[0]) / (B[1] - B[0]);
+    if (t >= B[n - 1]) return n - 1 + (t - B[n - 1]) / (B[n - 1] - B[n - 2]);
+    let lo = 0, hi = n - 1;
+    while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (B[mid] <= t) lo = mid; else hi = mid; }
+    return lo + (t - B[lo]) / (B[lo + 1] - B[lo]);
   }
   const energyAt = (t) => curveAt(mv.energy, t, 0.6);
   const levelAt = (t) => curveAt(mv.level, t, 0.5);
@@ -1426,10 +1448,11 @@
       if (L > 0.6 && Math.random() < 0.5) fx("petal", { x: rndIn(5, 90), y: -5 });
       else if (Math.random() < 0.15) fx("note", { text: "♪", color: "#e8833a", x: sideX(), y: rndIn(50, 70) });
     } else if (m === "comfort") {
-      if (L < 0.65 && Math.random() < 0.4) fx("drop", { x: rndIn(5, 95), y: -6 });
-      if (L >= 0.65 && Math.random() < 0.35) fx("heart", { text: "♡", x: sideX(), y: rndIn(55, 75) });
-      const len = songLength();
-      if (!mv.rainbow && len && t > len * 0.8) { mv.rainbow = true; fx("rainbow"); }
+      const len = songLength(), late = len && t > len * 0.83;
+      if (!late && Math.random() < (L < 0.65 ? 0.35 : 0.7)) fx("drop", { x: rndIn(5, 95), y: -6 });
+      if (late && Math.random() < 0.3) fx("heart", { text: "♡", x: sideX(), y: rndIn(55, 75) });
+      if (!mv.rainbow && late) { mv.rainbow = true; stageEl.dataset.clear = "1"; fx("rainbow"); }
+      if (mv.rainbow && !late) { mv.rainbow = false; delete stageEl.dataset.clear; }  // 巻きもどしたとき
     } else if (m === "sleep") {
       if (Math.random() < 0.5) fx("star", { text: "✦", x: rndIn(4, 96), y: rndIn(4, 50) });
       if (ph8 === 0) fx("zz", { text: "z", x: rndIn(58, 66), y: rndIn(20, 30) });
@@ -1440,8 +1463,17 @@
     }
     // 8拍ごとに、その間の顔を決める（ゆっくりな曲で顔がちらつかないように）
     if (ph8 === 0) {
-      if (m === "comfort") mv.phraseFace = L < 0.2 ? "sleepy" : L < 0.7 ? "normal" : "happy";
-      else if (m === "sleep") { const len = songLength(); mv.phraseFace = t < 8 ? "normal" : len && t > len * 0.8 ? "sleepy" : L > 0.7 ? "happy" : Math.floor(bi / 8) % 2 ? "sleepy" : "normal"; }
+      const len = songLength(), alt = Math.floor(bi / 8) % 2;
+      if (m === "comfort") {
+        // 泣いてもいいの：まじめに聞く → かなしい → サビでいっしょに泣く → 泣きつかれて眠る → 最後に、そっと笑う
+        if (len && t > len - 7) mv.phraseFace = "normal";
+        else if (len && t > len * 0.83) mv.phraseFace = "sleepy";
+        else if (L < 0.25) mv.phraseFace = "serious";
+        else if (L < 0.55) mv.phraseFace = alt ? "sad" : "serious";
+        else if (L < 0.72) mv.phraseFace = "sad";
+        else mv.phraseFace = alt ? "sad" : "cry";
+      }
+      else if (m === "sleep") mv.phraseFace = t < 8 ? "normal" : len && t > len * 0.8 ? "sleepy" : L > 0.7 ? (alt ? "happy" : "normal") : L < 0.4 ? (alt ? "serious" : "normal") : alt ? "sleepy" : "normal";
       else if (m === "calm") mv.phraseFace = Math.random() < 0.5 ? "happy" : "normal";
       else if (m === "morning") mv.phraseFace = ["normal", "wave", "happy", "waveR"][Math.floor(bi / 8) % 4];
       else mv.phraseFace = Math.random() < 0.5 ? "happy" : "normal";
@@ -1485,6 +1517,11 @@
     } else if (m === "comfort") {                       // ゆっくり、そばで揺れる。息をするように
       x = 6 * S(P * b / 2); r = 3 * S(P * b / 2);
       const br = 0.018 * S(P * b / 4); sx = 1 + br; sy = 1 + br;
+      if (face === "sad" || face === "cry") {           // うつむいて、ゆれは小さく
+        x *= 0.5; r = r * 0.5 + 3; y = 3; sy -= 0.02;
+        if (face === "cry") { const sob = Math.max(0, S(P * b * 2)); y += 1.5 * sob; sx += 0.012 * sob; } // しくしく、肩がふるえる
+      } else if (face === "serious") { x *= 0.6; r *= 0.6; }   // じっと聞く
+      else if (face === "sleepy") { r = 6 + 2 * S(P * b / 4); x = 3; y = 4; }  // こてんと、眠る
     } else if (m === "sleep") {                         // ゆりかご
       r = 5 * S(P * b / 2); x = 5 * S(P * b / 2); y = 2 + 2 * S(P * b);
       const br = 0.012 * S(P * b / 4); sy = 1 - br;
@@ -1496,15 +1533,39 @@
     }
     return { x, y, r, sx, sy, face };
   }
+  // 歌詞を曲に合わせて進める（行ごとの歌い出しの時刻が songs.json にある曲だけ）
+  let lyricLines = [], lineTimes = null, lineNow = -2, userScrollAt = 0;
+  function prepareFollow(sg) {
+    const T = sg && sg.motion && sg.motion.lines;
+    lineTimes = Array.isArray(T) && T.length === lyricLines.length && T.every((v, i) => typeof v === "number" && (i === 0 || v >= T[i - 1])) ? T : null;
+    lineNow = -2;
+    $("lyrics").classList.toggle("follow", !!lineTimes);
+  }
+  // 指でさわって読んでいるあいだは、勝手に動かさない
+  for (const ev of ["touchstart", "wheel", "mousedown"]) $("lyrics").addEventListener(ev, () => { userScrollAt = Date.now(); }, { passive: true });
+  function followLyrics(t) {
+    if (!lineTimes) return;
+    let i = -1;
+    while (i + 1 < lineTimes.length && lineTimes[i + 1] <= t + 0.4) i++;
+    if (i === lineNow) return;
+    lineNow = i;
+    lyricLines.forEach((el, k) => { el.classList.toggle("now", k === i); el.classList.toggle("done", k < i); });
+    const box = $("lyrics"), el = lyricLines[Math.max(0, i)];
+    if (el && Date.now() - userScrollAt > 6000) {
+      const top = el.offsetTop - box.clientHeight * 0.3;
+      box.scrollTo({ top: Math.max(0, top), behavior: reduceMotion ? "auto" : "smooth" });
+    }
+  }
   function tick() {
     if (!mv || !mv.raf) return;
     const t = songTime();
     const dt = Math.min(0.1, Math.max(0, t - mv.lastT)); mv.lastT = t;
     mv.eS += (energyAt(t) - mv.eS) * Math.min(1, dt * 2.5);
     mv.L += (levelAt(t) - mv.L) * Math.min(1, dt * 1.5);
-    const b = (t - mv.offset) * mv.bpm / 60;
+    const b = beatPos(t);
     const bi = Math.floor(b);
     if (bi !== mv.lastBeat) { mv.lastBeat = bi; onBeat(bi, mv.eS, t); }
+    followLyrics(t);
     const p = poseAt(b, mv.eS, t);
     let face = p.face, mirror = 1;
     if (face === "waveR") { face = "wave"; mirror = -1; }  // 反対の手でもふる
@@ -1515,13 +1576,14 @@
   function startMotion() {
     if (!mv) prepareMotion(currentSong);
     playerChar.classList.remove("idle");
-    if (reduceMotion) { setFace("happy", playerChar); return; }
+    if (reduceMotion) { setFace("happy", playerChar); if (!mv.follow) mv.follow = setInterval(() => followLyrics(songTime()), 250); return; }
     if (mv.raf) return;
     mv.lastT = songTime();
     mv.raf = requestAnimationFrame(tick);
   }
   function stopMotion() {
     if (mv && mv.raf) { cancelAnimationFrame(mv.raf); mv.raf = 0; }
+    if (mv && mv.follow) { clearInterval(mv.follow); mv.follow = 0; }
     playerChar.style.transform = "";
   }
   function setPlaying(on) {
@@ -1546,8 +1608,9 @@
     playerChar.classList.remove("cheer");
     $("playerTitle").textContent = sg.title;
     $("playerNote").textContent = sg.credit || "";
-    if (sg.lyrics) setLyrics($("lyrics"), sg.lyrics);
-    else setPhrases($("lyrics"), "（歌詞はありません。|曲に合わせて、|自由に歌ってね）");
+    lyricLines = sg.lyrics ? setLyrics($("lyrics"), sg.lyrics) : [];
+    prepareFollow(sg);
+    if (!sg.lyrics) setPhrases($("lyrics"), "（歌詞はありません。|曲に合わせて、|自由に歌ってね）");
     $("lyrics").scrollTop = 0;
     const isYt = !!sg.youtube;
     $("ytWrap").hidden = !isYt;
@@ -2172,16 +2235,23 @@
   // ---- 思い出ノート ----
   // 「|」のところでだけ改行してよい文を入れる（言葉の途中で切れないように）
   // 歌詞：行ごとに、空白のところでだけ折り返す（言葉の途中で切らない）
+  // 歌詞：1行ずつの箱にする（曲に合わせて、今の行を光らせるため）
   function setLyrics(el, text) {
     el.textContent = "";
-    String(text).split("\n").forEach((line, i) => {
-      if (i) el.appendChild(document.createTextNode("\n"));
+    const lines = [];
+    String(text).split("\n").forEach((line) => {
+      const box = document.createElement("div");
+      if (!line.trim()) { box.className = "gap"; el.appendChild(box); return; }
+      box.className = "ln";
       // 空白＝見える区切り、「|」＝見えない区切り（長い言葉を折り返してよい所）
       line.split(/[ 　]+/).filter(Boolean).forEach((w, j) => {
-        if (j) el.appendChild(document.createTextNode(" "));
-        for (const part of w.split("|").filter(Boolean)) { const sp = document.createElement("span"); sp.className = "nb"; sp.textContent = part; el.appendChild(sp); }
+        if (j) box.appendChild(document.createTextNode(" "));
+        for (const part of w.split("|").filter(Boolean)) { const sp = document.createElement("span"); sp.className = "nb"; sp.textContent = part; box.appendChild(sp); }
       });
+      el.appendChild(box);
+      lines.push(box);
     });
+    return lines;
   }
   function setPhrases(el, text) {
     el.textContent = "";

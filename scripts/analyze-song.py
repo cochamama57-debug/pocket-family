@@ -1,4 +1,4 @@
-"""曲の速さ（bpm）・最初の拍の位置・盛り上がり（energy/level）を測り、songs.json の motion に入れる値を出す。
+"""曲の速さ（bpm）・最初の拍の位置・1つずつの拍の時刻（beats）・盛り上がり（energy/level）を測り、songs.json の motion に入れる値を出す。
 使い方: python3 scripts/analyze-song.py public/songs/xxx.mp3
 必要なもの: numpy、imageio-ffmpeg（ffmpeg を使うため）"""
 import json, subprocess, sys
@@ -34,6 +34,23 @@ def best(fl, fps, bpms, phases):
                 top = (s, bpm, ph / fps)
     return top
 
+def track(fl, fps, bpm, tight=100):
+    """拍を1つずつ見つける（曲の途中で速さが少し変わっても、ついていく）"""
+    period = fps * 60 / bpm
+    f = fl / (fl.std() + 1e-9)
+    n = len(f); score = f.copy(); back = -np.ones(n, int)
+    lo, hi = int(period * 0.75), int(period * 1.33)
+    for i in range(hi, n):
+        prev = np.arange(i - hi, i - lo + 1)
+        c = score[prev] - tight * np.log((i - prev) / period) ** 2
+        j = c.argmax(); score[i] = f[i] + c[j]; back[i] = prev[j]
+    tail = int(period * 2)
+    i = int(np.argmax(score[-tail:])) + n - tail
+    beats = []
+    while i >= 0:
+        beats.append(i); i = back[i]
+    return np.array(beats[::-1]) / fps
+
 def main(path):
     x = load(path)
     hop = 64; fps = SR / hop
@@ -49,7 +66,8 @@ def main(path):
     k = 17
     s = np.convolve(np.pad(e.astype(float), (k // 2, k // 2), mode="edge"), np.ones(k) / k, "valid")
     ranks = s.argsort().argsort() / max(1, len(s) - 1)
-    print(json.dumps({"bpm": round(float(bpm), 2), "offset": round(float(off), 3), "step": round(step, 5),
+    beats = [round(float(b), 2) for b in track(fl, fps, bpm)]
+    print(json.dumps({"bpm": round(float(bpm), 2), "offset": round(float(off), 3), "step": round(step, 5), "beats": beats,
                       "energy": "".join(map(str, e)), "level": "".join(str(min(9, int(r * 10))) for r in ranks)}, ensure_ascii=False))
 
 if __name__ == "__main__":
