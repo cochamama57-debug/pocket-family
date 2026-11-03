@@ -109,6 +109,9 @@
 
   .head-btns { flex: none; display: flex; gap: 6px; }
   .head-btns .memo-btn { min-width: 54px; }
+  .swap-box { display: flex; gap: 12px; align-items: center; }
+  .swap-box img { flex: none; object-fit: contain; }
+  .swap-box > div { flex: 1; min-width: 0; }
   .voice-choice { background: var(--mic) !important; }
   .voice-choice + .voice-choice { background: #fff !important; color: var(--ink) !important; border: 2px solid var(--line) !important; }
   .song-btn { display: block; margin-top: 8px; font-size: 17px; line-height: 1.4; padding-block: 8px !important; font-weight: 700; color: #fff; background: #8a5cc2; border: 0; border-radius: 999px; min-height: 48px; padding: 0 18px; }
@@ -537,8 +540,15 @@
       <button type="submit" class="add">＋ ペットを登録する</button>
     </form>
     </section>
+    <div class="stat swap-box" style="margin-top:20px">
+      <img id="swapImg" alt="" width="72" height="72">
+      <div>
+        <p class="hint-s" style="margin:0 0 6px"><span class="nb">もう一人の家族にも</span><span class="nb">会えるよ。</span><span class="nb">思い出は、</span><span class="nb">それぞれの子が</span><span class="nb">ちゃんと覚えているよ。</span></p>
+        <button type="button" class="big-btn" id="swapBtn" style="margin:0"></button>
+      </div>
+    </div>
     <div class="stat" style="margin-top:20px">
-      <label style="display:flex;align-items:center;gap:10px;font-size:19px"><input type="checkbox" id="voiceToggle" style="width:28px;height:28px"> 声で話す（返事を読み上げる）</label>
+      <label style="display:flex;align-items:center;gap:10px;font-size:19px"><input type="checkbox" id="voiceToggle" style="width:28px;height:28px;flex:none"> <span><span class="nb">声で話す</span><span class="nb">（返事を</span><span class="nb">読み上げる）</span></span></label>
       <p class="hint-s" style="margin:6px 0 0"><span class="nb">吹き出しの 🔊 を押すと、</span><span class="nb">いつでも聞けるよ。</span></p>
     </div>
     <div id="homeGuide" class="stat" style="margin-top:20px">
@@ -1276,7 +1286,7 @@
     clearPhoto();
     save();
     profile = null;
-    try { localStorage.removeItem(PROFILE_KEY); } catch {}
+    try { localStorage.removeItem(PROFILE_KEY); localStorage.removeItem(chatKey("chamu")); localStorage.removeItem(chatKey("colon")); } catch {}
     $("memo").hidden = true;
     render();
     openSetup();
@@ -2414,6 +2424,7 @@
     if (!profile) return;
     const g = growth(), pt = points(), st = stageOf(pt);
     $("memoImg").src = CHARS[profile.char].img;
+    renderSwap();
     $("memoTitle").innerHTML = "";
     const t1 = document.createElement("span"); t1.className = "nb"; t1.textContent = profile.name + "との";
     const t2 = document.createElement("span"); t2.className = "nb"; t2.textContent = "思い出";
@@ -2491,6 +2502,62 @@
   $("memoBtn").addEventListener("click", () => { stopMic(); openMemo(); });
   $("memoClose").addEventListener("click", () => { $("memo").hidden = true; });
 
+  // ---- キャラの交代（ちゃむ⇔コロン）。思い出・なかよし度・会話は、それぞれの子が別々に持つ ----
+  // 予定・お薬・ペット・連絡先・声の設定などは、あなたのものなので、交代しても同じ
+  const CHAR_FIELDS = ["char", "name", "answers", "step", "createdAt", "grow", "walking"];
+  const otherChar = () => (profile && profile.char === "chamu" ? "colon" : "chamu");
+  const chatKey = (ch) => "pf.chat." + ch;
+  let swapping = false;
+  function renderSwap() {
+    if (!profile) return;
+    const o = otherChar(), stash = profile.others && profile.others[o];
+    $("swapImg").src = CHARS[o].img;
+    setPhrases($("swapBtn"), (stash ? stash.name : CHARS[o].label) + "に|会いに行く");
+  }
+  function stashCurrent() {
+    if (!profile.others || typeof profile.others !== "object") profile.others = {};
+    const snap = {};
+    for (const k of CHAR_FIELDS) if (profile[k] !== undefined) snap[k] = profile[k];
+    profile.others[profile.char] = snap;
+    try { localStorage.setItem(chatKey(profile.char), localStorage.getItem(STORE_KEY) || "[]"); } catch {}
+    for (const k of CHAR_FIELDS) delete profile[k];
+  }
+  $("swapBtn").addEventListener("click", () => {
+    if (!profile) return;
+    stopVoice(); stopMic();
+    const target = otherChar();
+    save();
+    stashCurrent();
+    const stash = profile.others[target];
+    $("memo").hidden = true;
+    if (stash && CHARS[stash.char] && typeof stash.name === "string") {
+      Object.assign(profile, stash);
+      delete profile.others[target];
+      try { history = JSON.parse(localStorage.getItem(chatKey(target)) || "[]").filter(m => m && typeof m.content === "string"); } catch { history = []; }
+      save();
+      markDay();
+      saveProfile();
+      applyChar();
+      render();
+      setTimeout(() => showFace("wave", 1800), 300);
+      setTimeout(() => sayScripted(profile.char === "colon" ? "ピピッ。おかえりなさい！ また会えて、うれしいな。" : "わぁ、おかえり！ また会えて、うれしいな。"), 600);
+    } else {
+      // はじめて会う子：名前を付けるところから
+      Object.assign(profile, { char: target, name: CHARS[target].label, answers: {}, step: 0 }); // 名前が決まるまでの仮
+      history = [];
+      save();
+      saveProfile();
+      swapping = true;
+      picked = target;
+      $("pickImg").src = CHARS[target].img;
+      nameInput.value = CHARS[target].label;
+      $("homeFirst").hidden = true;
+      step1.hidden = true;
+      step2.hidden = false;
+      setupEl.hidden = false;
+    }
+  });
+
   // ---- 家族えらび ----
   let picked = null;
   function openSetup() {
@@ -2509,12 +2576,32 @@
       step2.hidden = false;
     });
   });
-  $("backBtn").addEventListener("click", openSetup);
+  $("backBtn").addEventListener("click", () => {
+    if (!swapping) return openSetup();
+    // 交代をやめる：もとの子に戻る
+    swapping = false;
+    setupEl.hidden = true;
+    const prev = otherChar();
+    const st = profile.others && profile.others[prev];
+    if (st) {
+      for (const k of CHAR_FIELDS) delete profile[k];
+      Object.assign(profile, st);
+      delete profile.others[prev];
+      try { history = JSON.parse(localStorage.getItem(chatKey(prev)) || "[]").filter(m => m && typeof m.content === "string"); } catch { history = []; }
+      save();
+      saveProfile();
+      applyChar();
+      render();
+    }
+  });
   nameInput.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("nameOk").click(); } });
   $("nameOk").addEventListener("click", () => {
     if (!picked) return;
     const name = nameInput.value.replace(/\s+/g, " ").trim().slice(0, 12) || CHARS[picked].label;
-    profile = { char: picked, name, answers: {}, step: 0, createdAt: new Date().toISOString() };
+    const fresh = { char: picked, name, answers: {}, step: 0, createdAt: new Date().toISOString() };
+    if (swapping && profile) { delete profile.grow; delete profile.walking; Object.assign(profile, fresh); } // 予定・ペットなどは、そのまま
+    else profile = fresh;
+    swapping = false;
     markDay();
     saveProfile();
     history = [];
