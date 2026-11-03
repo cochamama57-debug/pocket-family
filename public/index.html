@@ -310,10 +310,15 @@
   .lyrics.follow .ln.done { opacity: .6; }
   .foot { display: flex; align-items: center; gap: 8px; }
   .foot footer { flex: 1; }
-  .help-btn-s { position: relative; flex: none; width: 52px; height: 52px; border-radius: 50%; border: 2px solid #e6a39b; background: #fff5f3; color: #b3261e; font-size: 13px; font-weight: 700; line-height: 1.1; padding: 0; margin-bottom: env(safe-area-inset-bottom, 0px); -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none; }
-  .help-btn-s svg { position: absolute; inset: -4px; width: 60px; height: 60px; transform: rotate(-90deg); pointer-events: none; }
-  .help-btn-s circle { fill: none; stroke: #c0392b; stroke-width: 5; stroke-dasharray: 170; stroke-dashoffset: 170; }
-  .foot-spacer { flex: none; width: 52px; }
+  /* 助けて：赤い大きなボタン。長押しすると左から白っぽく満ちていき、満ちたら家族へ */
+  .help-bar { padding: 8px 0 4px; }
+  .help-btn-s { position: relative; overflow: hidden; width: 100%; min-height: 52px; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 4px 14px; border-radius: 16px; border: 0; background: #c62828; color: #fff; box-shadow: 0 2px 0 #8e1b1b; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none; }
+  .help-btn-s .hico { position: relative; font-size: 28px; line-height: 1; }
+  .help-btn-s .htx { position: relative; display: flex; align-items: baseline; flex-wrap: wrap; justify-content: center; column-gap: 10px; line-height: 1.2; }
+  .help-btn-s .htx b { font-size: 24px; letter-spacing: .04em; }
+  .help-btn-s .htx small { font-size: 15px; font-weight: 400; white-space: nowrap; }
+  .help-btn-s .hfill { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; background: rgba(255,255,255,.35); transform: scaleX(0); transform-origin: left center; pointer-events: none; }
+  .help-btn-s.holding { background: #a31515; }
   .help-sheet { position: fixed; inset: 0; z-index: 30; background: #fff5f3; display: flex; align-items: center; justify-content: center; padding: 24px 16px calc(24px + env(safe-area-inset-bottom, 0px)); text-align: center; }
   .help-sheet .box { max-width: 480px; width: 100%; }
   .help-sheet h2 { font-size: 28px; margin: 0 0 8px; color: #8c1d18; }
@@ -345,6 +350,10 @@
       <button class="memo-btn" id="memoBtn" type="button"><span class="ico" aria-hidden="true">📖</span>ノート</button>
     </div>
   </header>
+  <!-- 助けて：誤って押しにくい、画面の上に置く -->
+  <div class="help-bar">
+    <button type="button" class="help-btn-s" id="helpBtn" aria-label="助けて（長押し）"><span class="hfill" id="helpRing" aria-hidden="true"></span><span class="hico" aria-hidden="true">🚨</span><span class="htx"><b>助けて</b><small id="helpHint">長押しで家族へ</small></span></button>
+  </div>
 
   <main class="log" id="log" aria-live="polite"></main>
 
@@ -385,9 +394,7 @@
     </div>
   </form>
   <div class="foot">
-    <button type="button" class="help-btn-s" id="helpBtn" aria-label="助けて（長押し）">助けて<br><span style="font-size:10px;font-weight:400">長押し</span><svg viewBox="0 0 60 60" aria-hidden="true"><circle id="helpRing" cx="30" cy="30" r="27"/></svg></button>
-    <footer>AIポケットファミリー<small>© 2026 nekomori*I’ll</small></footer>
-    <span class="foot-spacer"></span>
+    <footer><span class="nb">AIポケット</span><span class="nb">ファミリー</span><small><span class="nb">© 2026</span> <span class="nb">nekomori*I’ll</span></small></footer>
   </div>
 </div>
 
@@ -1776,9 +1783,10 @@
     const b = document.createElement("button");
     b.type = "button";
     b.className = "song-btn";
-    const s1 = document.createElement("span"); s1.className = "nb"; s1.textContent = "🎵 『" + sg.title + "』";
-    const s2 = document.createElement("span"); s2.className = "nb"; s2.textContent = sg.youtube ? "を聞いてみる" : "をかける";
-    b.append(s1, s2);
+    // 曲名は「、」のところでだけ折り返す（言葉の途中で切れないように）
+    const parts = ("🎵 『" + sg.title + "』").replace(/、/g, "、|").split("|");
+    parts.push(sg.youtube ? "を聞いてみる" : "をかける");
+    for (const t of parts) { const sp = document.createElement("span"); sp.className = "nb"; sp.textContent = t; b.appendChild(sp); }
     b.addEventListener("click", () => openPlayer(sg.id));
     row.querySelector(".bubble").appendChild(b);
     log.scrollTop = log.scrollHeight;
@@ -2136,15 +2144,23 @@
   const HELP_HOLD_MS = 2500, HELP_WAIT = 8;
   const helpBtn = $("helpBtn"), helpRing = $("helpRing");
   let holdStart = 0, holdRaf = 0, helpTimer = null, helpLeft = 0, helpBusy = false;
-  function resetRing() { cancelAnimationFrame(holdRaf); helpRing.style.strokeDashoffset = 170; holdStart = 0; }
+  let holdX = 0, holdY = 0;
+  function resetRing() { cancelAnimationFrame(holdRaf); helpRing.style.transform = "scaleX(0)"; holdStart = 0; helpBtn.classList.remove("holding"); $("helpHint").textContent = "長押しで家族へ"; }
   function holdTick() {
     if (!holdStart) return;
     const r = Math.min(1, (Date.now() - holdStart) / HELP_HOLD_MS);
-    helpRing.style.strokeDashoffset = String(170 * (1 - r));
+    helpRing.style.transform = "scaleX(" + r.toFixed(3) + ")";
     if (r >= 1) { resetRing(); try { navigator.vibrate && navigator.vibrate(200); } catch {} startHelp("button"); return; }
     holdRaf = requestAnimationFrame(holdTick);
   }
-  helpBtn.addEventListener("pointerdown", (e) => { e.preventDefault(); if (helpBusy) return; holdStart = Date.now(); holdRaf = requestAnimationFrame(holdTick); });
+  helpBtn.addEventListener("pointerdown", (e) => {
+    e.preventDefault(); if (helpBusy) return;
+    holdStart = Date.now(); holdX = e.clientX; holdY = e.clientY;
+    helpBtn.classList.add("holding"); $("helpHint").textContent = "そのまま押していてね";
+    holdRaf = requestAnimationFrame(holdTick);
+  });
+  // 指がずれたら（画面をなぞっただけなら）止める
+  helpBtn.addEventListener("pointermove", (e) => { if (holdStart && Math.hypot(e.clientX - holdX, e.clientY - holdY) > 24) resetRing(); });
   ["pointerup", "pointerleave", "pointercancel"].forEach(ev => helpBtn.addEventListener(ev, resetRing));
   helpBtn.addEventListener("contextmenu", (e) => e.preventDefault());
   helpBtn.addEventListener("click", () => { if (!helpBusy) { statusEl.textContent = "助けてボタンは、長押ししてね"; setTimeout(() => { if (!sending) statusEl.textContent = "おしゃべりしよう"; }, 3000); } });
