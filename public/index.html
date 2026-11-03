@@ -1567,8 +1567,8 @@
       x = 6 * S(P * b / 2); r = 3 * S(P * b / 2);
       const br = 0.018 * S(P * b / 4); sx = 1 + br; sy = 1 + br;
       if (face === "sad" || face === "cry") {           // うつむいて、ゆれは小さく
-        x *= 0.5; r = r * 0.5 + 3; y = 3; sy -= 0.02;
-        if (face === "cry") { const sob = Math.max(0, S(P * b * 2)); y += 1.5 * sob; sx += 0.012 * sob; } // しくしく、肩がふるえる
+        x *= 0.5; r = r * 0.5 + 2;
+        if (face === "cry") { const sob = Math.max(0, S(P * b * 2)); y = 3 * sob; } // しくしく、肩がふるえる
       } else if (face === "serious") { x *= 0.6; r *= 0.6; }   // じっと聞く
       else if (face === "sleepy") { r = 6 + 2 * S(P * b / 4); x = 3; y = 4; }  // こてんと、眠る
     } else if (m === "sleep") {                         // ゆりかご
@@ -1619,7 +1619,14 @@
     let face = p.face, mirror = 1;
     if (face === "waveR") { face = "wave"; mirror = -1; }  // 反対の手でもふる
     setFace(face, playerChar);
-    playerChar.style.transform = "translate(" + p.x.toFixed(2) + "px," + p.y.toFixed(2) + "px) rotate(" + p.r.toFixed(2) + "deg) scale(" + (p.sx * mirror).toFixed(3) + "," + p.sy.toFixed(3) + ")";
+    // 振りが変わるときに、体がパッと飛ばないように、なめらかに追いかける
+    const now = performance.now(), wdt = Math.min(0.1, (now - (mv.lastW || now)) / 1000); mv.lastW = now;
+    const k = 1 - Math.exp(-wdt * ({ dance: 16, morning: 10 }[mv.mood] || 6));
+    const tgt = [p.x, p.y, p.r, p.sx, p.sy];   // 左右の向き（mirror）は、なめらかにせず、そのまま
+    if (!mv.sm) mv.sm = tgt.slice();
+    for (let i = 0; i < 5; i++) mv.sm[i] += (tgt[i] - mv.sm[i]) * k;
+    const [x, y, r, sx0, sy] = mv.sm, sx = sx0 * mirror;
+    playerChar.style.transform = "translate(" + x.toFixed(2) + "px," + y.toFixed(2) + "px) rotate(" + r.toFixed(2) + "deg) scale(" + sx.toFixed(3) + "," + sy.toFixed(3) + ")";
     mv.raf = requestAnimationFrame(tick);
   }
   function startMotion() {
@@ -1631,7 +1638,7 @@
     mv.raf = requestAnimationFrame(tick);
   }
   function stopMotion() {
-    if (mv && mv.raf) { cancelAnimationFrame(mv.raf); mv.raf = 0; }
+    if (mv && mv.raf) { cancelAnimationFrame(mv.raf); mv.raf = 0; mv.sm = null; mv.lastW = 0; }
     if (mv && mv.follow) { clearInterval(mv.follow); mv.follow = 0; }
     playerChar.style.transform = "";
   }
