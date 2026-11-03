@@ -109,6 +109,8 @@
 
   .head-btns { flex: none; display: flex; gap: 6px; }
   .head-btns .memo-btn { min-width: 54px; }
+  .voice-choice { background: var(--mic) !important; }
+  .voice-choice + .voice-choice { background: #fff !important; color: var(--ink) !important; border: 2px solid var(--line) !important; }
   .song-btn { display: block; margin-top: 8px; font-size: 17px; line-height: 1.4; padding-block: 8px !important; font-weight: 700; color: #fff; background: #8a5cc2; border: 0; border-radius: 999px; min-height: 48px; padding: 0 18px; }
 
   /* 歌 */
@@ -1232,7 +1234,7 @@
         afterActivity("talk");
         hello();
         setTimeout(checkReminders, 1500);
-        if (growth().talks === 1) homeTip();
+        if (!(growth().talks === 1 && homeTip())) voiceAsk();
       } else {
         fail(data.message || "うまく届かなかったみたい。もう一度送ってみてね。");
       }
@@ -1830,7 +1832,7 @@
   voiceEl.preload = "none";
   let voiceUnlocked = false, voiceUrl = null, voiceSeq = 0;
   const SILENT = "data:audio/wav;base64,UklGRrQBAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YZABAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA";
-  function voiceOn() { return !!(profile && profile.voiceOn === true); } // いまは最初はオフ（Fish Audioの声が用意できたら、最初からオンにする）
+  function voiceOn() { return !!(profile && profile.voiceOn === true); } // 1回目に聞いて決める（voiceAsk）。あとから「ノート」で変えられる
   function unlockVoice() {
     if (voiceUnlocked) return;
     voiceUnlocked = true;
@@ -2299,12 +2301,54 @@
   // ---- ホーム画面に置く ----
   const isStandalone = () => (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
   function homeTip() {
-    if (!profile || isStandalone() || profile.homeTipSaid) return;
+    if (!profile || isStandalone() || profile.homeTipSaid) return false;
     profile.homeTipSaid = true;
     saveProfile();
     setTimeout(() => sayScripted(isIOS
       ? "そうだ、ひとつだけ。わたしを、スマホのホーム画面に置いてくれると、思い出をなくしにくくなるよ。ただ、iPhoneはホーム画面から開くと、はじめからになっちゃうの。置くなら、早いうちがいいよ。置き方は「ノート」の下に書いてあるからね。"
       : "そうだ、ひとつだけ。わたしを、スマホのホーム画面に置いてくれると、すぐ会いに来られるよ。置き方は「ノート」の下に書いてあるからね。"), 2500);
+    return true;
+  }
+  // 声でお話しするか、1回だけ聞く（もう使っている人にも、声が入ったあとに1回だけ）
+  const VOICE_ASK = {
+    chamu: "ねえねえ、わたし、声でお話しできるようになったよ。返事のたびに、声でお話ししてもいい？",
+    colon: "ピピッ。声でお話しできるようになったよ。返事のたびに、声でお話ししてもいい？",
+  };
+  function voiceAsk() {
+    if (!profile || profile.voiceAsked) return;
+    profile.voiceAsked = true;
+    saveProfile();
+    setTimeout(() => {
+      const text = VOICE_ASK[profile.char] || VOICE_ASK.colon;
+      history.push({ role: "assistant", content: text });
+      save();
+      bubble("her", text);
+      talkFace(text);
+      speak(text, true); // どんな声か、聞いてもらう
+      const row = log.lastElementChild;
+      const box = row && row.querySelector(".bubble");
+      if (!box) return;
+      const wrap = document.createElement("div");
+      const choose = (on) => {
+        stopVoice();
+        profile.voiceOn = on;
+        saveProfile();
+        $("voiceToggle").checked = on;
+        wrap.remove();
+        sayScripted(on ? "うれしい！ これからは、声でお話しするね。止めたいときは「ノート」で変えられるよ。"
+          : "わかった。声で聞きたいときは、吹き出しの🔊を押してね。");
+      };
+      for (const [label, on] of [["🔊 声で話してね", true], ["🔊を押したときだけ", false]]) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "song-btn voice-choice";
+        setPhrases(b, label.replace("だけ", "|だけ"));
+        b.addEventListener("click", () => choose(on));
+        wrap.appendChild(b);
+      }
+      box.appendChild(wrap);
+      log.scrollTop = log.scrollHeight;
+    }, 2500);
   }
 
   // ---- 思い出ノート ----
