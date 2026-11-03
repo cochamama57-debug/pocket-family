@@ -1886,6 +1886,10 @@
         if (voiceUrl) URL.revokeObjectURL(voiceUrl);
         voiceUrl = url;
         voiceEl.src = voiceUrl;
+        // コロンは、声を少し高く（音の高さも上がるように再生する）
+        const rate = profile.char === "colon" ? 1.25 : 1;
+        try { voiceEl.preservesPitch = false; voiceEl.webkitPreservesPitch = false; voiceEl.mozPreservesPitch = false; } catch {}
+        voiceEl.defaultPlaybackRate = rate; voiceEl.playbackRate = rate;
         await voiceEl.play();
         return;
       }
