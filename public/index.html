@@ -153,6 +153,8 @@
   .swap-box { display: flex; gap: 12px; align-items: center; }
   .swap-box img { flex: none; object-fit: contain; }
   .swap-box > div { flex: 1; min-width: 0; }
+  .invite-choice { display: inline-block; width: auto; margin-right: 8px; }
+  .invite-choice + .invite-choice { background: #fff !important; color: var(--ink) !important; border: 2px solid var(--line) !important; }
   .voice-choice { background: var(--mic) !important; }
   .voice-choice + .voice-choice { background: #fff !important; color: var(--ink) !important; border: 2px solid var(--line) !important; }
   .song-btn { display: block; margin-top: 8px; font-size: 17px; line-height: 1.4; padding-block: 8px !important; font-weight: 700; color: #fff; background: #8a5cc2; border: 0; border-radius: 999px; min-height: 48px; padding: 0 18px; }
@@ -2760,6 +2762,79 @@
     else $("titleStart").textContent = "始める";
     $("titleScreen").hidden = false;
   }
+  // 開いたときのあいさつ（おはよう・おかえり・こんばんは・おやすみ）。時間と、前に会ってからの長さで変える
+  function greetText() {
+    const h = new Date().getHours(), last = Number(profile.lastOpen) || 0, gap = Date.now() - last;
+    const polite = stageOf(points()) === 0, colon = profile.char === "colon";
+    const pi = colon ? "ピピッ。" : "";
+    const pick = (a, b) => (polite ? a : b);
+    if (last && gap > 2 * 86400000) return pi + pick("おひさしぶりです！ 会えて、うれしいです。", "ひさしぶり！ 会いたかったよ〜。");
+    if (h >= 5 && h < 10) return pi + pick("おはようございます！ よく眠れましたか？", "おはよう！ よく眠れた？");
+    if (h >= 21 || h < 5) return pi + pick("今日はどうでしたか？ そろそろ、おやすみの時間でしょうか。", "今日はどうだった？ そろそろ、おやすみの時間かな？");
+    if (h >= 17) return pi + pick("おかえりなさい！ 今日はどうでしたか？", "おかえり！ 今日はどうだった？");
+    return pi + pick("おかえりなさい！ 待っていました。", "おかえり！ 待ってたよ。");
+  }
+  function greet() {
+    const last = Number(profile.lastGreet) || 0;
+    const text = greetText(); // 前に会った時刻を見てから、今の時刻を記録する
+    profile.lastOpen = Date.now();
+    if (Date.now() - last < 30 * 60 * 1000) { saveProfile(); return; } // 30分以内に、もうあいさつした
+    profile.lastGreet = Date.now();
+    saveProfile();
+    setTimeout(() => { sayScripted(text); showFace("wave", 2000); }, 600);
+  }
+  // ほかのアプリから2時間以上たって戻ってきたときも、あいさつする
+  let hiddenAt = 0;
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) { hiddenAt = Date.now(); return; }
+    if (profile && hiddenAt && Date.now() - hiddenAt > 2 * 3600 * 1000 && $("titleScreen").hidden && profile.step >= QUESTIONS.length && !helpBusy) greet();
+  });
+  // ---- キャラからの誘い（たまに1つだけ。1日2回まで、前の誘いから2時間あける） ----
+  // 「いいよ」→大喜び／「あとで」→「うん！待ってる！」／「今はいい」→しょんぼり
+  function inviteKinds() { return ["song"].concat(typeof openGame === "function" ? ["game"] : []); }
+  function canInvite() {
+    const t = today(), iv = profile.invite && profile.invite.d === t ? profile.invite : { d: t, n: 0, at: 0 };
+    profile.invite = iv;
+    const later = Number(profile.inviteLater) || 0;
+    if (later && Date.now() - later > 60 * 60 * 1000) return true; // 「あとで」から1時間たった
+    return iv.n < 2 && Date.now() - iv.at > 2 * 3600 * 1000;
+  }
+  function pickSong() {
+    const h = new Date().getHours(), list = allSongs().filter(x => x.file);
+    const want = h >= 5 && h < 10 ? "おはよう" : h >= 20 || h < 5 ? "おやすみ" : null;
+    return (want && list.find(x => x.tag === want)) || list[Math.floor(Math.random() * list.length)];
+  }
+  function invite() {
+    if (!profile || profile.step < QUESTIONS.length || sending || helpBusy || !$("player").hidden || !canInvite()) return;
+    const kinds = inviteKinds(), kind = kinds[Math.floor(Math.random() * kinds.length)];
+    const sg = kind === "song" ? pickSong() : null;
+    if (kind === "song" && !sg) return;
+    profile.invite.n++; profile.invite.at = Date.now(); profile.inviteLater = 0;
+    saveProfile();
+    const polite = stageOf(points()) === 0, chamu = profile.char === "chamu", pi = chamu ? "" : "ピピッ。";
+    const ask = kind === "song"
+      ? pi + (polite ? "あの、いっしょに『" + sg.title + "』を聞きませんか？" : (chamu ? "ねえねえ、いっしょに『" + sg.title + "』聞こうよ〜！" : "ねえ、いっしょに『" + sg.title + "』聞かない？"))
+      : pi + (polite ? "あの、いっしょにゲームで遊びませんか？" : (chamu ? "ねえねえ、ゲームで遊ぼうよ〜！" : "ねえ、いっしょにゲームしない？"));
+    history.push({ role: "assistant", content: ask }); save();
+    bubble("her", ask); talkFace(ask); speak(ask);
+    const box = log.lastElementChild && log.lastElementChild.querySelector(".bubble");
+    if (!box) return;
+    const wrap = document.createElement("div");
+    const say = (text, face) => { wrap.remove(); sayScripted(text); if (face) setTimeout(() => showFace(face, 2600), 300); };
+    const opts = [
+      ["いいよ！", () => { say(pi + (polite ? "やったあ！ うれしいです！" : "やったあ！ うれしい！"), "banzai"); setTimeout(() => kind === "song" ? openPlayer(sg.id) : openGame(), 1400); }],
+      ["あとで", () => { profile.inviteLater = Date.now(); saveProfile(); say(pi + (polite ? "はい！ 待っていますね！" : "うん！ 待ってる！"), "happy"); }],
+      ["今はいい", () => { say(pi + (polite ? "そうですか…。また今度、ぜひ。" : (chamu ? "そっかぁ…。また今度ね。" : "そっか…。また今度ね。")), "sad"); }],
+    ];
+    for (const [label, fn] of opts) {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "song-btn invite-choice"; b.textContent = label;
+      b.addEventListener("click", fn, { once: true });
+      wrap.appendChild(b);
+    }
+    box.appendChild(wrap);
+    log.scrollTop = log.scrollHeight;
+  }
   function beginSession() {
     markDay();
     saveProfile();
@@ -2767,8 +2842,10 @@
       setTimeout(() => sayScripted(QUESTIONS[profile.step].ask(profile.name)), 500);
       return;
     }
+    if (profile.step >= QUESTIONS.length) greet();
     setTimeout(() => showFace("wave", 1800), 300);
-    setTimeout(checkReminders, 700);
+    setTimeout(checkReminders, 3000);
+    setTimeout(invite, 9000); // あいさつのあと、少しして、たまに誘う
     setTimeout(() => hello(true), 1000);
   }
   $("titleStart").addEventListener("click", () => {
