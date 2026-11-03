@@ -3140,6 +3140,21 @@
     profile.lastGreet = Date.now();
     saveProfile();
     setTimeout(() => { sayScripted(text); showFace("wave", 2000); }, 600);
+    const h = new Date().getHours();
+    if (h >= 5 && h < 11 && profile.morningSong !== today()) setTimeout(morningSong, 3800);
+  }
+  function morningSong() {
+    if (!profile || inActivity() || profile.diaryMode || helpBusy || profile.morningSong === today()) return;
+    const sg = allSongs().find(x => x.file && x.tag === "おはよう");
+    if (!sg) return;
+    profile.morningSong = today();
+    if (profile.invite && profile.invite.d === today()) profile.invite.at = Date.now(); else profile.invite = { d: today(), n: 0, at: Date.now() }; // すぐ次の誘いが重ならないように
+    saveProfile();
+    const polite = stageOf(points()) === 0, chamu = profile.char === "chamu", pi = chamu ? "" : "ピピッ。";
+    askChoice(pi + (polite ? "朝の歌『" + sg.title + "』で、気持ちよく一日を始めませんか？" : (chamu ? "朝の歌『" + sg.title + "』、いっしょに聞いて、元気に始めようよ！" : "朝の歌『" + sg.title + "』聞いて、気持ちよく始めない？")), [
+      ["聞く！", () => { showFace("banzai", 1500); setTimeout(() => openPlayer(sg.id), 700); }],
+      ["今はいい", () => sayScripted(pi + (polite ? "はい。今日も、よい一日になりますように。" : "うん！ 今日も、いい日になりますように。"))],
+    ]);
   }
   // ほかのアプリから2時間以上たって戻ってきたときも、あいさつする
   let hiddenAt = 0;
@@ -3329,7 +3344,7 @@
     try {
       const d = device();
       const r = await fetch("/api/diary", { method: "POST", signal: ctrl.signal, headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: d.id, secret: d.secret, kind: dm.kind, messages: msgs.slice(-160), base: dm.cont ? contBase(dm.cont) : undefined, call: callName(), charName: profile.name, date: dm.day || today(), draft: prev ? prev.title + "\n" + prev.body : undefined, fix: fix || undefined }) });
+        body: JSON.stringify({ id: d.id, secret: d.secret, kind: dm.kind, messages: msgs.slice(-160), base: dm.cont ? contBase(dm.cont) : undefined, call: callName(), charName: profile.name, char: profile.char, polite: stageOf(points()) === 0, date: dm.day || today(), draft: prev ? prev.title + "\n" + prev.body : undefined, fix: fix || undefined }) });
       data = await r.json().catch(() => ({}));
     } catch {}
     clearTimeout(timer);
@@ -3337,7 +3352,7 @@
     if (!profile || !profile.diaryMode) return;
     if (!data.ok) { addNote(data.message || "うまくまとめられませんでした。少ししてから「まとめる」を押してください。"); return; }
     const polite = stageOf(points()) === 0, pi = profile.char === "chamu" ? "" : "ピピッ。";
-    const draft = { title: data.title, body: data.body, kind: dm.kind };
+    const draft = { title: data.title, body: data.body, kind: dm.kind, mood: data.mood, note: data.note };
     const text = pi + (fix ? (polite ? "直してみました。どうですか？" : "直してみたよ。どうかな？") : (polite ? "こんなふうに書いてみました。どうですか？" : "こんなふうに書いてみたよ。どうかな？"));
     history.push({ role: "assistant", content: text, dd: draft }); save();
     bubble("her", text); talkFace(text); speak(text);
@@ -3363,8 +3378,44 @@
     addScore("diary"); saveProfile(); updateHearts();
     endDiary();
     const polite = stageOf(points()) === 0, pi = profile.char === "chamu" ? "" : "ピピッ。";
+    const hard = draft.mood === "hard";
     sayScripted(pi + (polite ? "日記帳に、しまっておきました！ ノートの「日記」で、いつでも読めます。" : "日記帳に、しまっておいたよ！ ノートの「日記」で、いつでも読めるからね。"));
-    showFace("happy", 2200);
+    showFace(hard ? "serious" : "happy", 2200);
+    // 今日のいいこと（つらい日は、寄り添うひとこと）。そのあと、必要なら曲にそっと誘う
+    setTimeout(() => {
+      if (!profile || inActivity()) return;
+      if (draft.note) { sayScripted(draft.note); showFace(hard ? "sad" : "happy", 2600); }
+      setTimeout(() => careSong(hard), draft.note ? 3500 : 0);
+    }, 2600);
+  }
+  // 日記のあとの曲：つらい日は寄り添いの曲、夜はおやすみの曲（あれば）。断ってもよい
+  function careSong(hard) {
+    if (!profile || inActivity()) return;
+    const h = new Date().getHours(), list = allSongs().filter(x => x.file);
+    const sg = hard ? list.find(x => x.tag === "寄り添い") : (h >= 19 || h < 4) ? list.find(x => x.tag === "おやすみ") : null;
+    if (!sg) return;
+    const polite = stageOf(points()) === 0, pi = profile.char === "chamu" ? "" : "ピピッ。";
+    const ask = pi + (hard ? (polite ? "よかったら、『" + sg.title + "』を、いっしょに聞きませんか？" : "よかったら、『" + sg.title + "』、いっしょに聞かない？")
+      : (polite ? "おやすみの前に、『" + sg.title + "』を聞きませんか？" : "寝る前に、『" + sg.title + "』聞こうか？"));
+    askChoice(ask, [
+      [hard ? "聞く" : "聞く！", () => setTimeout(() => openPlayer(sg.id), 600)],
+      ["今はいい", () => sayScripted(pi + (polite ? "はい。いつでも言ってくださいね。" : "うん。いつでも言ってね。"))],
+    ]);
+  }
+  // キャラの言葉に、選ぶボタンをつける（押したら、ボタンは消える）
+  function askChoice(text, choices) {
+    sayScripted(text);
+    const box = log.lastElementChild && log.lastElementChild.querySelector(".bubble");
+    if (!box) return;
+    const wrap = document.createElement("div");
+    for (const [label, fn] of choices) {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "song-btn invite-choice"; b.textContent = label;
+      b.addEventListener("click", () => { wrap.remove(); fn(); }, { once: true });
+      wrap.appendChild(b);
+    }
+    box.appendChild(wrap);
+    log.scrollTop = log.scrollHeight;
   }
   // 日記帳を、文字のファイルにして渡す（iPhone・Androidは共有から「ファイルに保存」など。パソコンは保存）
   function diaryFileText(list) {
