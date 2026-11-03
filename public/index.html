@@ -220,6 +220,7 @@
   /* 顔の絵をぜんぶ重ねておき、新しい顔を上にふわっと重ねる（絵の入れかえでチラつかないように） */
   .player-char .pf { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; pointer-events: none; }
   .player-char .pf.on { opacity: 1; transition: opacity var(--fade, .3s) ease-out; }
+  .player-char .pf.flip { transform: scaleX(-1); }
   .player-char.idle { animation: bob 3.2s ease-in-out infinite; }
   .stage-fx { position: absolute; inset: 0; pointer-events: none; }
   .fx { position: absolute; line-height: 1; pointer-events: none; will-change: transform, opacity; }
@@ -1039,6 +1040,10 @@
       if (im.decode) im.decode().catch(() => {});
       box.appendChild(im); stageFaces[f] = im;
     }
+    // 反対の手でふる絵（左右を反転した1枚）。体ごと反転すると、切りかえのときに前の絵まで反転して、カクッと見えるため
+    const wr = new Image();
+    wr.className = "pf flip"; wr.alt = ""; wr.decoding = "async"; wr.src = faceSrc(ch, "wave");
+    box.appendChild(wr); stageFaces.waveR = wr;
   }
   function showStageFace(f) {
     buildStageFaces(profile.char);
@@ -1667,7 +1672,7 @@
     };
     stageEl.dataset.mood = mood;
     delete stageEl.dataset.clear;
-    playerChar.style.setProperty("--fade", { dance: ".1s", morning: ".25s", comfort: ".7s", sleep: ".7s", calm: ".5s" }[mood] || ".3s");
+    playerChar.style.setProperty("--fade", { dance: ".08s", morning: ".12s", comfort: ".7s", sleep: ".7s", calm: ".5s" }[mood] || ".3s");
     fxEl.textContent = "";
   }
   function rawSongTime() {
@@ -1866,8 +1871,7 @@
     if (bi !== mv.lastBeat) { mv.lastBeat = bi; onBeat(bi, mv.eS, t); }
     followLyrics(t);
     const p = poseAt(b, mv.eS, t);
-    let face = p.face, mirror = 1;
-    if (face === "waveR") { face = "wave"; mirror = -1; }  // 反対の手でもふる
+    const face = p.face, mirror = 1; // 反対の手でふる絵（waveR）は、絵そのものを反転して用意してある
     setFace(face, playerChar);
     // 振りが変わるときに、体がパッと飛ばないように、なめらかに追いかける
     const now = performance.now(), wdt = Math.min(0.1, (now - (mv.lastW || now)) / 1000); mv.lastW = now;
