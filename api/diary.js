@@ -64,7 +64,7 @@ export default async function handler(req, res) {
   if (process.env.PF_MOCK === "1") return reply(res, 200, fix ? { ...MOCK, body: MOCK.body + "\n\n（直し：" + fix + "）" } : MOCK);
   if (!process.env.ANTHROPIC_API_KEY) return reply(res, 503, { error: "no_key", message: "ただいま準備中です。" });
   const gate = await dailyGate("diary", body?.id, body?.secret, DEVICE_DAILY);
-  if (!gate.ok) return reply(res, 429, { error: gate.reason, message: "今日は、もうたくさんまとめました。また明日お願いします。" });
+  if (!gate.ok) return reply(res, 429, { error: gate.reason, message: gate.reason === "daily" ? "今日は、もうたくさんまとめました。また明日お願いします。" : "うまくまとめられませんでした。アプリを開き直してから、もう一度お試しください。" });
 
   const input = [
     "書くもの：" + (kind === "memoir" ? "思い出話（昔のことを書きとめる回顧録）" : "今日の日記") + (date ? "（" + date + "）" : ""),

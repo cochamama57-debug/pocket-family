@@ -220,7 +220,8 @@ export default async function handler(req, res) {
     const { clean: t1, plan } = takePlan(tw);
     const { clean: t2, id } = takeSong(t1, songs);
     const { clean: t3, ready } = takeDiary(t2);
-    const clean = t3.replace(/\[\[[^\]]*\]\]/g, "").trim(); // 書きまちがえた印も見せない
+    // 書きまちがえた印や、まぎれこんだ記号（<…>、```）も見せない
+    const clean = t3.replace(/\[\[[^\]]*\]\]/g, "").replace(/<\/?[A-Za-z][^>]{0,80}>/g, "").replace(/```[a-z]*/g, "").replace(/\n{3,}/g, "\n\n").trim();
     // 日記の時間は、歌・お散歩・予定の誘いは出さない（緊急だけは、いつでも）
     if (mode) return reply(res, 200, { reply: clean || "……うん、聞いてるよ。", help: help || undefined, diaryReady: ready || undefined });
     return reply(res, 200, { reply: clean || "……うん、聞いてるよ。", song: id || undefined, plan: plan || undefined, help: help || undefined, walk: walk || undefined });
