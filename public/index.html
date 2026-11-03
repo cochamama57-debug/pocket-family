@@ -100,7 +100,9 @@
     .head-btns .memo-btn { min-width: 48px; padding: 4px; font-size: 12px; }
     .who .name .hearts { display: block; margin-left: 0; font-size: 14px; }
   }
-  .who .name .hearts { font-size: 16px; color: #e0607e; letter-spacing: 1px; margin-left: 6px; font-weight: 400; vertical-align: 2px; }
+  /* なかよし度のハートは、名前の下の行に（名前が長くても欠けないように） */
+  .who .name .hearts { display: block; font-size: 16px; line-height: 1.2; color: #e0607e; letter-spacing: 1px; margin-left: 0; font-weight: 400; }
+  @media (max-width: 360px) { .who .name .hearts { font-size: 14px; } }
   .memo-btn { flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 13px; line-height: 1.2; color: var(--ink); background: #fff; border: 2px solid var(--line); border-radius: 14px; min-width: 60px; min-height: 56px; padding: 4px 6px; }
   .memo-btn .ico { font-size: 22px; line-height: 1; }
   .memo-btn.new { border-color: #e0607e; }
@@ -313,7 +315,7 @@
   /* 助けて：赤い大きなボタン。長押しすると左から白っぽく満ちていき、満ちたら家族へ */
   .help-bar { padding: 8px 0 4px; }
   .help-btn-s { position: relative; overflow: hidden; width: 100%; min-height: 52px; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 4px 14px; border-radius: 16px; border: 0; background: #c62828; color: #fff; box-shadow: 0 2px 0 #8e1b1b; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none; }
-  .help-btn-s .hico { position: relative; font-size: 28px; line-height: 1; }
+  .help-btn-s .hico { position: relative; flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: #fff; font-size: 28px; line-height: 1; }
   .help-btn-s .htx { position: relative; display: flex; align-items: baseline; flex-wrap: wrap; justify-content: center; column-gap: 10px; line-height: 1.2; }
   .help-btn-s .htx b { font-size: 24px; letter-spacing: .04em; }
   .help-btn-s .htx small { font-size: 15px; font-weight: 400; white-space: nowrap; }
@@ -352,7 +354,7 @@
   </header>
   <!-- 助けて：誤って押しにくい、画面の上に置く -->
   <div class="help-bar">
-    <button type="button" class="help-btn-s" id="helpBtn" aria-label="助けて（長押し）"><span class="hfill" id="helpRing" aria-hidden="true"></span><span class="hico" aria-hidden="true">🚨</span><span class="htx"><b>助けて</b><small id="helpHint">長押しで家族へ</small></span></button>
+    <button type="button" class="help-btn-s" id="helpBtn" aria-label="助けて（長押し）"><span class="hfill" id="helpRing" aria-hidden="true"></span><span class="hico" aria-hidden="true">🚑</span><span class="htx"><b>助けて</b><small id="helpHint">長押しで家族へ連絡します</small></span></button>
   </div>
 
   <main class="log" id="log" aria-live="polite"></main>
@@ -2145,7 +2147,7 @@
   const helpBtn = $("helpBtn"), helpRing = $("helpRing");
   let holdStart = 0, holdRaf = 0, helpTimer = null, helpLeft = 0, helpBusy = false;
   let holdX = 0, holdY = 0;
-  function resetRing() { cancelAnimationFrame(holdRaf); helpRing.style.transform = "scaleX(0)"; holdStart = 0; helpBtn.classList.remove("holding"); $("helpHint").textContent = "長押しで家族へ"; }
+  function resetRing() { cancelAnimationFrame(holdRaf); helpRing.style.transform = "scaleX(0)"; holdStart = 0; helpBtn.classList.remove("holding"); $("helpHint").textContent = "長押しで家族へ連絡します"; }
   function holdTick() {
     if (!holdStart) return;
     const r = Math.min(1, (Date.now() - holdStart) / HELP_HOLD_MS);
