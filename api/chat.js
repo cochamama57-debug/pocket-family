@@ -1,7 +1,7 @@
 // AIポケットファミリー: おしゃべりの中継（サーバー側）
 // APIキーはサーバーの環境変数 ANTHROPIC_API_KEY だけに置く。画面には出さない。
 import {
-  MODEL, CHARACTERS, cleanProfile, profileBlock, cleanText, nowBlock, validDate, fromOurPage, rateLimited, clientIp, readBody, reply, getClient, replyApiError,
+  MODEL, CHARACTERS, HEART, cleanProfile, profileBlock, cleanText, nowBlock, validDate, fromOurPage, rateLimited, clientIp, readBody, reply, getClient, replyApiError,
 } from "../lib/shared.js";
 
 // いっしょに歌える曲（オーナーの自作曲）。曲の一覧は画面側から受け取る
@@ -166,7 +166,7 @@ export default async function handler(req, res) {
       fallbacks: "default",
       system: [
         { type: "text", text: SYSTEM_PROMPT },
-        { type: "text", text: CHARACTERS[profile.char], cache_control: { type: "ephemeral" } },
+        { type: "text", text: CHARACTERS[profile.char] + "\n\n" + HEART, cache_control: { type: "ephemeral" } },
         { type: "text", text: HELP_RULE },
         { type: "text", text: PLAN_RULE },
         { type: "text", text: WALK_RULE },

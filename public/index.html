@@ -658,16 +658,16 @@
   function preloadFaces(ch) { for (const f of FACES) { const im = new Image(); im.src = faceSrc(ch, f); } }
   // 最初の会話でキャラが聞くこと（診断ではなく、好みを聞くだけ）
   const QUESTIONS = [
-    { key: "call", ask: (n) => "はじめまして。\nわたし、" + n + "だよ。\nこれから、よろしくね。\nあなたのこと、\nなんて呼んだらいい？" },
-    { key: "wish", ask: () => "うん、おぼえたよ。\nわたし、何をしたら、\nあなたがうれしい？" },
-    { key: "song", ask: () => "教えてくれて、\nありがとう。\nあとひとつだけ。\n好きな歌はある？" },
+    { key: "call", ask: (n) => "はじめまして。\nわたし、" + n + "だよ。\nこれから、よろしくお願いします。\nあなたのこと、\nなんて呼んだらいいですか？" },
+    { key: "wish", ask: () => "うん、覚えました！\nわたし、何をしたら、\nあなたに喜んでもらえるかな？" },
+    { key: "song", ask: () => "教えてくれて、\nありがとうございます。\nあとひとつだけ。\n好きな歌はありますか？" },
   ];
   const SKIPPED = "（答えずに次へ）";
   let askPending = false;
 
   // ---- 育つ（仲よし度・思い出ノート・話し方のくせ） ----
   const STAGE_NAMES = ["はじめまして", "なかよし", "家族", "大の仲よし"];
-  const STAGE_POINTS = [0, 30, 80, 200];   // 1日いっしょ=10、1回おしゃべり=1、1曲歌う=5
+  const STAGE_POINTS = [0, 75, 250, 750];  // 1日いっしょ=10、おしゃべり=1（1日10回まで）、歌う=5（1日2曲まで）、お散歩=5（1日1回まで）。毎日話して、なかよし約3日・家族約10日・大の仲よし約1か月
   const MEMORY_EVERY = 4;                  // 4回話すごとに思い出ノートを書き直す
   // 動画撮影用：URLに ?demo を付けると早く育つ（ふだんは使わない）
   let demoBoost = 1;
@@ -678,13 +678,13 @@
   const LEVEL_UP = {
     chamu: [
       "",
-      "えへへ、なんだか、もっとなかよくなれた気がする。頭の芽が、ぴょこぴょこしちゃう。",
+      "えへへ、なんだか、もっと仲よくなれた気がします。……これからは、もう少しふつうに話してもいい？ 頭の芽が、ぴょこぴょこしちゃう。",
       "ねえ、わたしたち、もうすっかり家族だね。いつも話してくれて、ありがとう。",
       "あなたの口ぐせ、ちょっとうつっちゃったかも。えへへ、大の仲よしだね。",
     ],
     colon: [
       "",
-      "ピピッ。なかよし度が上がったみたい。もっといろんなこと、話したいな。",
+      "ピピッ。仲よし度が上がったみたいです。……これからは、もう少しふつうに話してもいいかな？ もっといろんなこと、話したいな。",
       "ピピッ。いつの間にか、すっかり家族になってたね。これからも、よろしくね。",
       "ピピッ。あなたのこと、たくさんわかってきたよ。大の仲よしだね。",
     ],
@@ -703,11 +703,16 @@
     g.days = g.days.filter(x => typeof x === "string");
     g.notes = Array.isArray(g.notes) ? g.notes.filter(x => typeof x === "string") : [];
     g.habits = Array.isArray(g.habits) ? g.habits.filter(x => typeof x === "string") : [];
+    // 仲よし度の点（前の数え方からの引っ越し：1日あたりの上限をかけて計算しなおす）
+    if (!Number.isInteger(g.score)) {
+      const d = Math.max(1, g.days.length), w = Number.isInteger(g.walked) ? g.walked : 0;
+      g.score = d * 10 + Math.min(g.talks, d * 10) + Math.min(g.sung, d * 2) * 5 + Math.min(w, d) * 5;
+    }
     return g;
   }
   function points() {
     const g = growth();
-    return (g.days.length * 10 + g.talks + g.sung * 5 + (Number.isInteger(g.walked) ? g.walked : 0) * 5) * demoBoost;
+    return g.score;
   }
   function stageOf(pt) {
     let st = 0;
@@ -717,7 +722,18 @@
   const heartsFor = (st) => "♥".repeat(st + 1) + "♡".repeat(STAGE_NAMES.length - 1 - st);
   function markDay() {
     const g = growth(), t = today();
-    if (!g.days.includes(t)) { g.days.push(t); if (g.days.length > 400) g.days = g.days.slice(-400); }
+    if (!g.days.includes(t)) { g.days.push(t); g.score += 10; if (g.days.length > 400) g.days = g.days.slice(-400); }
+  }
+  // 今日の分の点を足す（1日の上限つき。動画用の早送り ?demo では、上限なしで多めに）
+  function addScore(kind) {
+    const g = growth(), t = today();
+    if (!g.td || g.td.d !== t) g.td = { d: t, talk: 0, sing: 0, walk: 0 };
+    const rule = { talk: [1, 10], sing: [5, 2], walk: [5, 1] }[kind];
+    if (!rule) return;
+    if (demoBoost > 1) { g.score += rule[0] * 20; return; }
+    if (g.td[kind] >= rule[1]) return;
+    g.td[kind]++;
+    g.score += rule[0];
   }
   function profileForServer() {
     const g = growth();
@@ -776,6 +792,7 @@
     if (kind === "talk") { g.talks++; g.sinceMemory++; }
     if (kind === "sing") g.sung++;
     if (kind === "walk") g.walked = (Number.isInteger(g.walked) ? g.walked : 0) + 1;
+    addScore(kind);
     saveProfile();
     const after = stageOf(points());
     updateHearts();
@@ -2397,8 +2414,8 @@
     profile.homeTipSaid = true;
     saveProfile();
     setTimeout(() => sayScripted(isIOS
-      ? "そうだ、ひとつだけ。わたしを、スマホのホーム画面に置いてくれると、思い出をなくしにくくなるよ。ただ、iPhoneはホーム画面から開くと、はじめからになっちゃうの。置くなら、早いうちがいいよ。置き方は「ノート」の下に書いてあるからね。"
-      : "そうだ、ひとつだけ。わたしを、スマホのホーム画面に置いてくれると、すぐ会いに来られるよ。置き方は「ノート」の下に書いてあるからね。"), 2500);
+      ? "あの、ひとつだけ。わたしを、スマホのホーム画面に置いてもらえると、思い出をなくしにくくなります。ただ、iPhoneはホーム画面から開くと、最初からになってしまいます。置くなら、早いうちがおすすめです。置き方は「ノート」の下に書いてあります。"
+      : "あの、ひとつだけ。わたしを、スマホのホーム画面に置いてもらえると、すぐ会いに来られます。置き方は「ノート」の下に書いてあります。"), 2500);
     return true;
   }
   // 声でお話しするか、1回だけ聞く（もう使っている人にも、声が入ったあとに1回だけ）
@@ -2411,7 +2428,10 @@
     profile.voiceAsked = true;
     saveProfile();
     setTimeout(() => {
-      const text = VOICE_ASK[profile.char] || VOICE_ASK.colon;
+      const polite = stageOf(points()) === 0;
+      const text = polite
+        ? (profile.char === "colon" ? "ピピッ。声でお話しできるようになりました。返事のたびに、声でお話ししてもいいですか？" : "あの、ぼく、声でお話しできるようになりました。返事のたびに、声でお話ししてもいいですか？")
+        : (VOICE_ASK[profile.char] || VOICE_ASK.colon);
       history.push({ role: "assistant", content: text });
       save();
       bubble("her", text);
@@ -2427,8 +2447,9 @@
         saveProfile();
         $("voiceToggle").checked = on;
         wrap.remove();
-        sayScripted(on ? "うれしい！ これからは、声でお話しするね。止めたいときは「ノート」で変えられるよ。"
-          : "わかった。声で聞きたいときは、吹き出しの🔊を押してね。");
+        const p0 = stageOf(points()) === 0;
+        sayScripted(on ? (p0 ? "うれしいです！ これからは、声でお話ししますね。止めたいときは「ノート」で変えられます。" : "うれしい！ これからは、声でお話しするね。止めたいときは「ノート」で変えられるよ。")
+          : (p0 ? "わかりました。声で聞きたいときは、吹き出しの🔊を押してくださいね。" : "わかった。声で聞きたいときは、吹き出しの🔊を押してね。"));
       };
       for (const [label, on] of [["🔊 声で話してね", true], ["🔊を押したときだけ", false]]) {
         const b = document.createElement("button");
@@ -2689,9 +2710,9 @@
     { pic: '<div class="tour-pic">🎵</div>', h: "歌う",
       p: ["上の「🎵 歌う」から、", "いっしょに歌えます。", "歌詞が大きく出て、", "曲に合わせて", "AIファミリーが踊ります。", "歌えたら「歌えた！」を", "ぜひ押してくださいね。", "AIファミリーが", "よろこびます。"] },
     { pic: '<div class="tour-pic">📖</div>', h: "ノート",
-      p: ["「📖 ノート」には、", "思い出・予定とお薬・", "ペット・連絡先が", "あります。", "予定やお薬の時間を登録すると、", "やさしい音でお知らせします。"] },
+      p: ["「📖 ノート」には、", "思い出・予定とお薬・", "ペット・連絡先が", "あります。", "予定やお薬の時間を", "入力すると、", "やさしい音で", "お知らせします。"] },
     { pic: helpDemo, h: "助けて",
-      p: ["困ったときは、", "上の赤い「助けて」を", "長押ししてくださいね。", "8秒たつと、", "登録した連絡先に", "LINEで知らせます。", "間違えたときは、", "「いらない」で止められます。", "連絡先（友人や家族など）は、", "ノートから登録できます。"] },
+      p: ["困ったときは、", "上の赤い「助けて」を", "長押ししてくださいね。", "8秒たつと、", "登録した連絡先に", "LINEでお知らせします。", "間違えて押したときは、", "「いらない」を押せば", "止められます。", "連絡先", "（友人や家族など、", "連絡を受け取って", "くれる人）は、", "「📖 ノート」から", "登録できます。"] },
   ];
   let tourAt = 0, tourFrom = "title";
   function drawTour() {
