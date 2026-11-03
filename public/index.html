@@ -302,6 +302,17 @@
     overflow-wrap: anywhere;
     line-break: strict;
   }
+  .msg.her { position: relative; flex-wrap: wrap; }
+  .react-add { display: inline-block; vertical-align: middle; font-size: 22px; line-height: 1; background: transparent; border: 0; padding: 6px; min-width: 40px; min-height: 40px; color: var(--sub); opacity: .75; }
+  .msg.her .bubble { position: relative; }
+  .msg.her.has-react { margin-bottom: 26px; }
+  .react-badge { position: absolute; right: -6px; bottom: -24px; z-index: 1; font-size: 22px; line-height: 1; background: #fff; border: 2px solid var(--line); border-radius: 999px; min-width: 44px; min-height: 40px; padding: 4px 8px; box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+  .react-pick { flex-basis: 100%; display: flex; gap: 6px; margin-top: 6px; }
+  .react-pick button { font-size: 28px; line-height: 1; min-width: 56px; min-height: 52px; background: #fff; border: 2px solid var(--line); border-radius: 16px; }
+  .react-pick button.on { border-color: var(--mic); background: #e8f4ef; }
+  .avatar { position: relative; }
+  .react-float { position: absolute; left: 50%; top: 10%; font-size: 28px; pointer-events: none; animation: reactUp 1.4s ease-out forwards; }
+  @keyframes reactUp { from { transform: translate(-50%, 0) scale(.6); opacity: 0; } 20% { opacity: 1; transform: translate(-50%, -8px) scale(1.1); } to { transform: translate(-50%, -46px) scale(1); opacity: 0; } }
   .say-btn { display: inline-block; margin-left: 6px; vertical-align: middle; font-size: 18px; line-height: 1; background: transparent; border: 0; padding: 6px; min-width: 40px; min-height: 40px; opacity: .7; }
   .msg.her .bubble { background: var(--her); border: 1px solid var(--line); border-top-left-radius: 6px; }
   .msg.me { justify-content: flex-end; }
@@ -790,9 +801,10 @@
   // 今日の分の点を足す（1日の上限つき。動画用の早送り ?demo では、上限なしで多めに）
   function addScore(kind) {
     const g = growth(), t = today();
-    if (!g.td || g.td.d !== t) g.td = { d: t, talk: 0, sing: 0, walk: 0, game: 0 };
+    if (!g.td || g.td.d !== t) g.td = { d: t, talk: 0, sing: 0, walk: 0, game: 0, react: 0 };
     if (!Number.isInteger(g.td.game)) g.td.game = 0;
-    const rule = { talk: [1, 10], sing: [5, 2], walk: [5, 1], game: [5, 2] }[kind];
+    if (!Number.isInteger(g.td.react)) g.td.react = 0;
+    const rule = { talk: [1, 10], sing: [5, 2], walk: [5, 1], game: [5, 2], react: [1, 5] }[kind];
     if (!rule) return;
     if (demoBoost > 1) { g.score += rule[0] * 20; return; }
     if (g.td[kind] >= rule[1]) return;
@@ -917,7 +929,7 @@
   function save() {
     try {
       // 写真そのものは残さない（容量のため）。「写真を見せた」という印だけ残す
-      const slim = history.slice(-MAX_KEEP).map(m => ({ role: m.role, content: m.content, photo: m.photo ? true : undefined, song: typeof m.song === "string" ? m.song : undefined, remind: m.remind && typeof m.remind === "object" ? m.remind : undefined, walk: m.walk === "go" || m.walk === "back" ? m.walk : undefined, gift: Number.isInteger(m.gift) ? m.gift : undefined }));
+      const slim = history.slice(-MAX_KEEP).map(m => ({ role: m.role, content: m.content, photo: m.photo ? true : undefined, song: typeof m.song === "string" ? m.song : undefined, remind: m.remind && typeof m.remind === "object" ? m.remind : undefined, walk: m.walk === "go" || m.walk === "back" ? m.walk : undefined, gift: Number.isInteger(m.gift) ? m.gift : undefined, react: REACTS.includes(m.react) ? m.react : undefined }));
       localStorage.setItem(STORE_KEY, JSON.stringify(slim));
     } catch {
       if (canSave) {
@@ -928,7 +940,7 @@
   }
 
   // ---- 表示 ----
-  function bubble(cls, text, imgUrl) {
+  function bubble(cls, text, imgUrl, msg) {
     const row = document.createElement("div");
     row.className = "msg " + cls;
     const b = document.createElement("div");
@@ -945,6 +957,9 @@
       sp.type = "button"; sp.className = "say-btn"; sp.setAttribute("aria-label", "声で聞く"); sp.textContent = "🔊";
       sp.addEventListener("click", () => speak(text, true));
       b.appendChild(sp);
+      // スタンプ（👍❤️😊😢）：ふきだしを長押し、または「☺」で選ぶ
+      if (!msg) for (let i = history.length - 1; i >= 0 && i >= history.length - 4; i--) if (history[i].role === "assistant" && history[i].content === text) { msg = history[i]; break; }
+      if (msg) addReactUI(row, b, msg);
     }
     row.appendChild(b);
     log.appendChild(row);
@@ -952,6 +967,61 @@
     return row;
   }
   const addNote = (t) => bubble("note", t);
+  // ---- スタンプ（LINEのように、キャラのふきだしに👍❤️😊😢を付ける。キャラは言葉では返さず、喜ぶだけ） ----
+  const REACTS = ["👍", "❤️", "😊", "😢"];
+  function addReactUI(row, b, msg) {
+    const add = document.createElement("button");
+    add.type = "button"; add.className = "react-add"; add.setAttribute("aria-label", "スタンプを付ける"); add.textContent = "☺";
+    b.appendChild(add);
+    const badge = document.createElement("button");
+    badge.type = "button"; badge.className = "react-badge"; badge.setAttribute("aria-label", "付けたスタンプ（押すと変えられます）");
+    const show = () => { badge.textContent = msg.react || ""; badge.hidden = !msg.react; add.hidden = !!msg.react; row.classList.toggle("has-react", !!msg.react); };
+    show();
+    b.appendChild(badge); // ふきだしの右下に付ける
+    const open = () => {
+      document.querySelectorAll(".react-pick").forEach(x => x.remove());
+      const pick = document.createElement("div"); pick.className = "react-pick"; pick.setAttribute("role", "group"); pick.setAttribute("aria-label", "スタンプを選ぶ");
+      for (const r of REACTS) {
+        const btn = document.createElement("button"); btn.type = "button"; btn.textContent = r;
+        if (msg.react === r) btn.className = "on";
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const first = !msg.react;
+          msg.react = msg.react === r ? undefined : r; // 同じものを押すと、はずれる
+          save(); show(); pick.remove();
+          if (msg.react) reacted(msg.react, first);
+        });
+        pick.appendChild(btn);
+      }
+      row.appendChild(pick);
+      const opened = Date.now();
+      setTimeout(() => document.addEventListener("click", function off(e) {
+        if (Date.now() - opened < 450) return; // 長押しの指を離したときの「押した」は、数えない
+        if (!pick.contains(e.target)) { pick.remove(); document.removeEventListener("click", off, true); }
+      }, true), 0);
+      if (row === log.lastElementChild) log.scrollTop = log.scrollHeight;
+    };
+    add.addEventListener("click", (e) => { e.stopPropagation(); open(); });
+    badge.addEventListener("click", (e) => { e.stopPropagation(); open(); });
+    // 長押し（0.5秒）でも選べる
+    let t = 0, sx = 0, sy = 0;
+    b.addEventListener("pointerdown", (e) => { if (e.target.closest("button")) return; sx = e.clientX; sy = e.clientY; t = setTimeout(() => { t = 0; open(); }, 500); });
+    b.addEventListener("pointermove", (e) => { if (t && Math.hypot(e.clientX - sx, e.clientY - sy) > 10) { clearTimeout(t); t = 0; } });
+    ["pointerup", "pointercancel", "pointerleave"].forEach(ev => b.addEventListener(ev, () => { if (t) { clearTimeout(t); t = 0; } }));
+    b.addEventListener("contextmenu", (e) => e.preventDefault());
+  }
+  // キャラは、言葉では返さず、体で喜ぶ（😢のときは、いっしょにしんみり）
+  function reacted(r, first) {
+    if (r === "😢") showFace("sad", 1800);
+    else {
+      showFace("happy", 1800);
+      avatar.classList.remove("happy"); void avatar.offsetWidth; avatar.classList.add("happy");
+      setTimeout(() => avatar.classList.remove("happy"), 2600);
+      const h = document.createElement("div"); h.className = "react-float"; h.textContent = r; avatar.appendChild(h);
+      setTimeout(() => h.remove(), 1400);
+    }
+    if (first) { addScore("react"); saveProfile(); updateHearts(); }
+  }
   const shown = (m) => m.photo && m.content === PHOTO_TEXT ? "📷 写真を見せたよ" : (m.photo ? "📷 " + m.content : m.content);
 
   // ---- 表情（まばたき・話す口・うれしい・ねむい） ----
@@ -1044,7 +1114,7 @@
   function render() {
     log.textContent = "";
     for (const m of history) {
-      bubble(m.role === "user" ? "me" : "her", shown(m));
+      bubble(m.role === "user" ? "me" : "her", shown(m), undefined, m.role === "assistant" ? m : undefined);
       if (m.song) songInvite(m.song);
       if (m.remind) remindBubble(m);
       if (Number.isInteger(m.gift) && profile && gifts()[m.gift]) { const bx = log.lastElementChild && log.lastElementChild.querySelector(".bubble"); if (bx) bx.appendChild(giftCard(gifts()[m.gift])); }
