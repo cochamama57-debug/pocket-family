@@ -910,7 +910,10 @@
     }
   }
   // キャラが自分から話す（最初の質問など。AIは呼ばない）
+  // ちゃむは自分のことを「ぼく」、コロンは「わたし」と言う
+  const myWord = (text) => (profile && profile.char === "chamu" ? String(text).replace(/わたし/g, "ぼく") : text);
   function sayScripted(text) {
+    text = myWord(text);
     history.push({ role: "assistant", content: text });
     save();
     bubble("her", text);
@@ -1896,8 +1899,8 @@
         if (voiceUrl) URL.revokeObjectURL(voiceUrl);
         voiceUrl = url;
         voiceEl.src = voiceUrl;
-        // コロンは、声を少し高く（音の高さも上がるように再生する）
-        const rate = profile.char === "colon" ? 1.25 : 1;
+        // 声を高くして子どもらしく（音の高さも上がるように再生する）：コロンは少し、ちゃむはもう少し
+        const rate = profile.char === "colon" ? 1.25 : 1.41;
         try { voiceEl.preservesPitch = false; voiceEl.webkitPreservesPitch = false; voiceEl.mozPreservesPitch = false; } catch {}
         voiceEl.defaultPlaybackRate = rate; voiceEl.playbackRate = rate;
         await voiceEl.play();
@@ -2340,7 +2343,7 @@
   }
   // 声でお話しするか、1回だけ聞く（もう使っている人にも、声が入ったあとに1回だけ）
   const VOICE_ASK = {
-    chamu: "ねえねえ、わたし、声でお話しできるようになったよ。返事のたびに、声でお話ししてもいい？",
+    chamu: "ねえねえ、ぼく、声でお話しできるようになったよ。返事のたびに、声でお話ししてもいい？",
     colon: "ピピッ。声でお話しできるようになったよ。返事のたびに、声でお話ししてもいい？",
   };
   function voiceAsk() {

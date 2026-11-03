@@ -33,8 +33,8 @@ export default async function handler(req, res) {
     const r = await fetch("https://api.fish.audio/v1/tts", {
       method: "POST",
       headers: { Authorization: "Bearer " + key, "Content-Type": "application/json", model: MODEL },
-      // コロンは、声を少し高くして子どもらしくする（画面で速く再生して高くするので、ここでは少しゆっくり話させる）
-      body: JSON.stringify({ text, reference_id: voice, format: "mp3", mp3_bitrate: 64, latency: "balanced", language: "ja", prosody: { speed: char === "colon" ? 0.8 : 1 } }),
+      // 声を高くして子どもらしくする（画面で速く再生して高くするので、ここではそのぶんゆっくり話させる）
+      body: JSON.stringify({ text, reference_id: voice, format: "mp3", mp3_bitrate: 64, latency: "balanced", language: "ja", prosody: { speed: char === "colon" ? 0.8 : 0.71 } }),
       signal: AbortSignal.timeout(15000),
     });
     if (!r.ok) {
