@@ -1,5 +1,6 @@
 """曲の速さ（bpm）・最初の拍の位置・1つずつの拍の時刻（beats）・盛り上がり（energy/level）を測り、songs.json の motion に入れる値を出す。
-使い方: python3 scripts/analyze-song.py public/songs/xxx.mp3
+使い方: python3 scripts/analyze-song.py public/songs/xxx.mp3 [だいたいのbpm]
+（速さを2/3や3/2にまちがえるときは、だいたいのbpmを足す。例：朝の曲は 106）
 必要なもの: numpy、imageio-ffmpeg（ffmpeg を使うため）"""
 import json, subprocess, sys
 import numpy as np, imageio_ffmpeg
@@ -51,11 +52,12 @@ def track(fl, fps, bpm, tight=100):
         beats.append(i); i = back[i]
     return np.array(beats[::-1]) / fps
 
-def main(path):
+def main(path, hint=None):
     x = load(path)
     hop = 64; fps = SR / hop
     fl = onset(x, hop)
-    _, b0, _ = best(fl, fps, np.arange(60, 170, 0.1), 16)
+    rng = np.arange(hint - 4, hint + 4, 0.1) if hint else np.arange(60, 170, 0.1)
+    _, b0, _ = best(fl, fps, rng, 16)
     _, bpm, off = best(fl, fps, np.arange(b0 - 0.3, b0 + 0.3, 0.01), 64)
     # 盛り上がり：約0.49秒ごとの音の大きさ（0〜9）
     per = 21 * 256; step = per / SR
@@ -71,4 +73,4 @@ def main(path):
                       "energy": "".join(map(str, e)), "level": "".join(str(min(9, int(r * 10))) for r in ranks)}, ensure_ascii=False))
 
 if __name__ == "__main__":
-    main(sys.argv[1])
+    main(sys.argv[1], float(sys.argv[2]) if len(sys.argv) > 2 else None)
