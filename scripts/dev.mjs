@@ -5,7 +5,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 const handlers = { chat: (await import("../api/chat.js")).default, memory: (await import("../api/memory.js")).default, help: (await import("../api/help.js")).default, "yt-search": (await import("../api/yt-search.js")).default, voice: (await import("../api/voice.js")).default,
-  family: (await import("../api/family.js")).default, "line-webhook": (await import("../api/line-webhook.js")).default, "cron-quiet": (await import("../api/cron-quiet.js")).default, drawing: (await import("../api/drawing.js")).default };
+  family: (await import("../api/family.js")).default, "line-webhook": (await import("../api/line-webhook.js")).default, "cron-quiet": (await import("../api/cron-quiet.js")).default, drawing: (await import("../api/drawing.js")).default, ics: (await import("../api/ics.js")).default };
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "public");
 const types = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".png": "image/png", ".svg": "image/svg+xml", ".mp3": "audio/mpeg", ".json": "application/json", ".webmanifest": "application/manifest+json" };
@@ -22,7 +22,7 @@ http
       }
       req.body = raw;
       const realFamily = process.env.PF_FAMILY_REAL && ["family", "help", "line-webhook", "cron-quiet"].includes(apiName);
-      if (process.env.PF_MOCK && apiName === "drawing") return handlers[apiName](req, res); // 絵は、関数の中の試し用の絵を返す
+      if (process.env.PF_MOCK && (apiName === "drawing" || apiName === "ics")) return handlers[apiName](req, res); // 絵は、関数の中の試し用の絵を返す
       if (process.env.PF_MOCK && !realFamily) {
         // 見た目の確認用：AIを呼ばずに決まった返事を返す
         res.setHeader("Content-Type", "application/json; charset=utf-8");

@@ -125,12 +125,12 @@ export default async function handler(req, res) {
   if (!fromOurPage(req)) return reply(res, 403, { error: "forbidden" });
 
   if (rateLimited("chat:" + clientIp(req), RATE_MAX)) {
-    return reply(res, 429, { error: "busy", message: "ちょっと話しすぎちゃったみたい。少し休んでから、また話そうね。" });
+    return reply(res, 429, { error: "busy", message: "続けて話しすぎたようです。少し休んでから、また話してください。" });
   }
 
   const body = readBody(req);
   const messages = cleanHistory(body?.messages);
-  if (!messages) return reply(res, 400, { error: "bad_request", message: "うまく聞き取れなかったみたい。もう一度送ってね。" });
+  if (!messages) return reply(res, 400, { error: "bad_request", message: "うまく受け取れませんでした。もう一度送ってください。" });
 
   // 写真（いちばん新しい発言にだけ付けられる）
   const image = body?.image;
@@ -142,7 +142,7 @@ export default async function handler(req, res) {
       image.data.length > 0 &&
       image.data.length <= MAX_IMAGE_B64 &&
       /^[A-Za-z0-9+/]+=*$/.test(image.data);
-    if (!ok) return reply(res, 400, { error: "bad_image", message: "写真がうまく届かなかったみたい。もう一度えらんでみてね。" });
+    if (!ok) return reply(res, 400, { error: "bad_image", message: "写真がうまく届きませんでした。もう一度選んでみてください。" });
     const last = messages[messages.length - 1];
     last.content = [
       { type: "image", source: { type: "base64", media_type: "image/jpeg", data: image.data } },

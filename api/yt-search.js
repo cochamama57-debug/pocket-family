@@ -48,7 +48,7 @@ export default async function handler(req, res) {
     const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!r.ok) {
       console.error("youtube search", r.status); // 合いかぎはログに出さない
-      return reply(res, 502, { error: "api", message: r.status === 403 ? "きょうは、もう探せないみたい。また明日ためしてね。" : "うまく探せなかったみたい。少ししてから、また探してね。" });
+      return reply(res, 502, { error: "api", message: r.status === 403 ? "今日は、もう探せません。また明日お試しください。" : "うまく探せませんでした。少ししてから、また探してください。" });
     }
     const data = await r.json();
     const items = (data.items || [])
@@ -65,6 +65,6 @@ export default async function handler(req, res) {
     return reply(res, 200, { configured: true, items });
   } catch (err) {
     console.error("youtube search failed", err?.name);
-    return reply(res, 502, { error: "network", message: "うまく探せなかったみたい。少ししてから、また探してね。" });
+    return reply(res, 502, { error: "network", message: "うまく探せませんでした。少ししてから、また探してください。" });
   }
 }

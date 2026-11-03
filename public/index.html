@@ -276,7 +276,10 @@
   .hint-s { font-size: 15px; color: var(--sub); margin: 0 0 8px; }
   .remind-btn { display: inline-block; margin: 8px 8px 0 0; font-size: 19px; font-weight: 700; color: #fff; background: var(--mic); border: 0; border-radius: 999px; min-height: 48px; padding: 0 18px; }
   .remind-btn.done { background: #bbb; }
-  .pet-row { display: flex; align-items: center; gap: 8px; }
+  .pet-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .pet-row > span:first-child { flex: 1 1 140px; }
+  .pet-row .cal-btn span { flex: none; }
+  .pet-row .cal-btn { flex: none; font: inherit; font-size: 15px; font-weight: 700; line-height: 1.3; min-height: 48px; padding: 4px 10px; border: 2px solid var(--mic); border-radius: 12px; background: #fff; color: var(--mic); }
   .pet-row span { flex: 1; }
   .pet-row button { flex: none; font-size: 15px; color: var(--sub); background: transparent; border: 1px solid var(--line); border-radius: 999px; min-height: 44px; padding: 0 12px; }
   .pet-form { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 12px; display: grid; gap: 10px; }
@@ -466,7 +469,7 @@
         </svg>
       </div>
       <div id="guideText"></div>
-      <button class="close" type="button" id="guideClose" aria-label="案内をとじる">✕<br>とじる</button>
+      <button class="close" type="button" id="guideClose" aria-label="案内を閉じる">✕<br>閉じる</button>
     </div>
     <button type="submit" class="skip" id="skip" hidden formnovalidate>答えずに次へ</button>
     <div class="tools">
@@ -500,7 +503,7 @@
     <div class="sheet-head">
       <img id="songsImg" alt="">
       <h2><span class="nb">一緒に</span><span class="nb">歌いましょう</span></h2>
-      <button type="button" class="close-btn" id="songsClose">とじる</button>
+      <button type="button" class="close-btn" id="songsClose">閉じる</button>
     </div>
     <ul class="song-list" id="songList"></ul>
     <h3>私の好きな曲</h3>
@@ -518,7 +521,7 @@
   <div class="sheet-in">
     <div class="sheet-head" style="margin-bottom:0">
       <h2></h2>
-      <button type="button" class="close-btn" id="playerClose">とじる</button>
+      <button type="button" class="close-btn" id="playerClose">閉じる</button>
     </div>
     <div class="player-stage" id="playerStage" data-mood="listen">
       <div class="stage-fx" id="stageFx" aria-hidden="true"></div>
@@ -543,7 +546,7 @@
     <div class="sheet-head">
       <img id="memoImg" alt="">
       <h2 id="memoTitle"></h2>
-      <button type="button" class="close-btn" id="memoClose">とじる</button>
+      <button type="button" class="close-btn" id="memoClose">閉じる</button>
     </div>
     <div class="tabs" role="tablist">
       <button type="button" class="tab on" data-tab="tabMem">思い出</button>
@@ -919,7 +922,7 @@
     } catch {
       if (canSave) {
         canSave = false;
-        addNote("この画面では、お話を残しておけないみたい。閉じると消えてしまうよ。");
+        addNote("この画面では、お話を残しておけません。閉じると消えてしまいます。");
       }
     }
   }
@@ -1086,7 +1089,7 @@
       preview.hidden = false;
       log.scrollTop = log.scrollHeight;
     } catch {
-      addNote("この写真は読みこめなかったみたい。ほかの写真でためしてね。");
+      addNote("この写真は読み込めませんでした。ほかの写真でお試しください。");
     }
   });
   previewRemove.addEventListener("click", clearPhoto);
@@ -1246,13 +1249,13 @@
     r.onerror = (e) => {
       if (rec !== r) return;
       if (e.error === "not-allowed" || e.error === "service-not-allowed") {
-        addNote("マイクが使えないみたい。スマホの設定で、このページ（Safari や Chrome）にマイクを許可してね。");
+        addNote("マイクが使えないようです。スマホの設定で、このページ（Safari や Chrome）にマイクを許可してください。");
       } else if (e.error === "no-speech") {
-        addNote("声が聞こえなかったみたい。もう一度「話す」を押してね。");
+        addNote("声が聞こえませんでした。もう一度「話す」を押してください。");
       } else if (e.error === "audio-capture") {
-        addNote("マイクがほかのアプリで使われているみたい。ほかのアプリを閉じて、もう一度押してね。");
+        addNote("マイクがほかのアプリで使われているようです。ほかのアプリを閉じて、もう一度押してください。");
       } else if (e.error !== "aborted") {
-        addNote("うまく聞き取れなかったみたい。もう一度「話す」を押してね。");
+        addNote("うまく聞き取れませんでした。もう一度「話す」を押してください。");
       }
       if (e.error === "not-allowed" || e.error === "service-not-allowed" || e.error === "network") {
         useKeyboardMic = true; // 次からはキーボードのマイクで
@@ -1269,11 +1272,11 @@
       r.start();
       setListening(true);
       // 何も聞こえないまま長く待たせない
-      silenceTimer = setTimeout(() => { if (rec === r && !heard) { stopMic(); addNote("声が聞こえなかったみたい。もう一度「話す」を押してね。"); } }, NOTHING_MS);
+      silenceTimer = setTimeout(() => { if (rec === r && !heard) { stopMic(); addNote("声が聞こえませんでした。もう一度「話す」を押してください。"); } }, NOTHING_MS);
     } catch {
       setListening(false);
       dropRec();
-      addNote("マイクの準備ができなかったみたい。少し待って、もう一度「話す」を押してね。");
+      addNote("マイクの準備ができませんでした。少し待って、もう一度「話す」を押してください。");
     }
   });
 
@@ -1293,7 +1296,7 @@
     // 最初の会話（質問への答えを、最初の思い出として残す）
     if (profile && profile.step < QUESTIONS.length && askPending) return;
     if (profile && profile.step < QUESTIONS.length && photo) {
-      addNote("写真は、このあと見せてね。まずは質問に答えてくれると、うれしいな。");
+      addNote("写真は、このあと見せてくださいね。まずは質問に答えてもらえると、うれしいです。");
       return;
     }
     if (profile && profile.step < QUESTIONS.length) {
@@ -1397,10 +1400,10 @@
         if (!profile.birthday) askBirthday();
         else if (!(growth().talks === 1 && homeTip())) voiceAsk();
       } else {
-        fail(data.message || "うまく届かなかったみたい。もう一度送ってみてね。");
+        fail(data.message || "うまく届きませんでした。もう一度送ってみてください。");
       }
     } catch {
-      fail("電波がとどかなかったみたい。もう一度送ってみてね。");
+      fail("電波が届きませんでした。もう一度送ってみてください。");
     } finally {
       clearTimeout(timer);
       sending = false;
@@ -1861,7 +1864,7 @@
   playBtn.addEventListener("click", async () => {
     if (!currentSong) return;
     if (!audio.paused) { audio.pause(); return; }
-    try { await audio.play(); } catch { addNote("曲がうまく流れなかったみたい。もう一度押してみてね。"); }
+    try { await audio.play(); } catch { addNote("曲がうまく流れませんでした。もう一度押してみてください。"); }
   });
   $("restartBtn").addEventListener("click", async () => {
     audio.currentTime = 0;
@@ -2183,21 +2186,41 @@
     const t = today();
     const list = plans().filter(x => x.date >= t);
     if (!list.length) { const li = document.createElement("li"); li.className = "empty"; setPhrases(li, "まだありません。|おしゃべりで|話しても、|登録できます。"); pl.appendChild(li); }
-    for (const x of list) pl.appendChild(itemRow(jpDate(x.date) + (x.time ? " " + x.time : "") + "　" + x.text, () => { profile.plans = plans().filter(y => y.id !== x.id); saveProfile(); renderPlanTab(); }));
+    for (const x of list) pl.appendChild(itemRow(jpDate(x.date) + (x.time ? "|" + x.time : "") + "|" + x.text, () => { profile.plans = plans().filter(y => y.id !== x.id); saveProfile(); renderPlanTab(); }, () => toCalendar(x.text, x.date, x.time, false)));
     const ml = $("medList"); ml.textContent = "";
     if (!meds().length) { const li = document.createElement("li"); li.className = "empty"; li.textContent = "まだありません"; ml.appendChild(li); }
-    for (const x of meds()) ml.appendChild(itemRow("毎日 " + x.time + "　" + (x.label || "お薬"), () => { profile.meds = meds().filter(y => y.id !== x.id); saveProfile(); renderPlanTab(); }));
+    for (const x of meds()) ml.appendChild(itemRow("毎日|" + x.time + "|" + (x.label || "お薬"), () => { profile.meds = meds().filter(y => y.id !== x.id); saveProfile(); renderPlanTab(); }, () => toCalendar(x.label || "お薬の時間", today(), x.time, true)));
   }
-  function itemRow(text, onDelete) {
+  // スマホのカレンダーに入れる（iPhone＝カレンダーのファイル、Android＝Googleカレンダー）。アプリを閉じていても、カレンダーが知らせてくれる
+  function toCalendar(title, date, time, daily) {
+    let url;
+    if (isAndroid) {
+      const d = date.replace(/-/g, "");
+      let dates;
+      if (time) { const [h, m] = time.split(":").map(Number), e = new Date(2000, 0, 1, h, m + 30); dates = d + "T" + time.replace(":", "") + "00/" + d + "T" + String(e.getHours()).padStart(2, "0") + String(e.getMinutes()).padStart(2, "0") + "00"; }
+      else { const n = new Date(date + "T00:00:00"); n.setDate(n.getDate() + 1); dates = d + "/" + n.getFullYear() + String(n.getMonth() + 1).padStart(2, "0") + String(n.getDate()).padStart(2, "0"); }
+      url = "https://calendar.google.com/calendar/render?" + new URLSearchParams(Object.assign({ action: "TEMPLATE", text: title, dates, ctz: "Asia/Tokyo", details: "AIポケットファミリーより" }, daily ? { recur: "RRULE:FREQ=DAILY" } : {})).toString();
+    } else {
+      url = "/api/ics?" + new URLSearchParams(Object.assign({ t: title, d: date }, time ? { h: time } : {}, daily ? { r: "daily" } : {})).toString();
+    }
+    window.open(url, "_blank");
+  }
+  function itemRow(text, onDelete, onCal) {
     const li = document.createElement("li");
     li.className = "pet-row";
-    const sp = document.createElement("span"); sp.textContent = text;
+    const sp = document.createElement("span"); setPhrases(sp, String(text).split("|").join("　|")); // 区切りのところでだけ折り返す
+    if (onCal) {
+      const cal = document.createElement("button"); cal.type = "button"; cal.className = "cal-btn";
+      setPhrases(cal, "📅 カレンダー|に入れる");
+      cal.addEventListener("click", onCal);
+      li.append(sp, cal);
+    }
     const del = document.createElement("button"); del.type = "button"; del.textContent = "消す";
     del.addEventListener("click", () => {
       if (del.dataset.armed !== "1") { del.dataset.armed = "1"; del.textContent = "もう一度押すと消えます"; setTimeout(() => { del.dataset.armed = ""; del.textContent = "消す"; }, 3000); return; }
       onDelete();
     });
-    li.append(sp, del);
+    li.append(onCal ? del : sp, ...(onCal ? [] : [del]));
     return li;
   }
   $("planForm").addEventListener("submit", (e) => {
