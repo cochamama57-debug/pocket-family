@@ -304,7 +304,7 @@
   }
   .msg.her { position: relative; flex-wrap: wrap; }
   .react-add { display: inline-block; vertical-align: middle; font-size: 22px; line-height: 1; background: transparent; border: 0; padding: 6px; min-width: 40px; min-height: 40px; color: var(--sub); opacity: .75; }
-  .msg.her .bubble { position: relative; }
+  .msg.her .bubble { position: relative; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   .msg.her.has-react { margin-bottom: 26px; }
   .react-badge { position: absolute; right: -6px; bottom: -24px; z-index: 1; font-size: 22px; line-height: 1; background: #fff; border: 2px solid var(--line); border-radius: 999px; min-width: 44px; min-height: 40px; padding: 4px 8px; box-shadow: 0 1px 4px rgba(0,0,0,.12); }
   .react-pick { flex-basis: 100%; display: flex; gap: 6px; margin-top: 6px; }
@@ -411,7 +411,7 @@
   .foot { display: flex; align-items: center; gap: 8px; }
   .foot footer { flex: 1; }
   /* 助けて：赤い大きなボタン。長押しすると左から白っぽく満ちていき、満ちたら連絡先へ */
-  .help-bar { padding: 8px 0 4px; }
+  .help-bar { padding: 8px 0 2px; }
   .help-btn-s { position: relative; overflow: hidden; width: 100%; min-height: 52px; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 4px 14px; border-radius: 16px; border: 0; background: #c62828; color: #fff; box-shadow: 0 2px 0 #8e1b1b; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none; }
   .help-btn-s .hico { position: relative; flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: #ffd23f; box-shadow: 0 0 0 2px #fff3b0; font-size: 28px; line-height: 1; }
   .help-btn-s .htx { position: relative; display: flex; align-items: baseline; flex-wrap: wrap; justify-content: center; column-gap: 10px; line-height: 1.2; }
@@ -439,6 +439,10 @@
 </head>
 <body>
 <div class="app">
+  <!-- 助けて：いちばん上（ふだん使うボタンから離して、誤って押しにくく） -->
+  <div class="help-bar">
+    <button type="button" class="help-btn-s" id="helpBtn" aria-label="助けて（長押し）"><span class="hfill" id="helpRing" aria-hidden="true"></span><span class="hico" aria-hidden="true">🚑</span><span class="htx"><b>助けて</b><small id="helpHint">長押しで連絡先に知らせます</small></span></button>
+  </div>
   <header>
     <div class="avatar" id="avatar" aria-hidden="true"><img id="avatarImg" alt=""></div>
     <div class="who">
@@ -451,10 +455,6 @@
       <button class="memo-btn" id="memoBtn" type="button"><span class="ico" aria-hidden="true">📖</span>ノート</button>
     </div>
   </header>
-  <!-- 助けて：誤って押しにくい、画面の上に置く -->
-  <div class="help-bar">
-    <button type="button" class="help-btn-s" id="helpBtn" aria-label="助けて（長押し）"><span class="hfill" id="helpRing" aria-hidden="true"></span><span class="hico" aria-hidden="true">🚑</span><span class="htx"><b>助けて</b><small id="helpHint">長押しで連絡先に知らせます</small></span></button>
-  </div>
 
   <main class="log" id="log" aria-live="polite"></main>
 
@@ -994,6 +994,7 @@
         pick.appendChild(btn);
       }
       row.appendChild(pick);
+      try { pick.scrollIntoView({ block: "nearest", behavior: "smooth" }); } catch {}
       const opened = Date.now();
       setTimeout(() => document.addEventListener("click", function off(e) {
         if (Date.now() - opened < 450) return; // 長押しの指を離したときの「押した」は、数えない
