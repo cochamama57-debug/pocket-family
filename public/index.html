@@ -193,6 +193,7 @@
   .gift-card svg { display: block; width: 100%; height: auto; border-radius: 8px; }
   .gift-cap { font-size: 15px; color: var(--sub); margin-top: 4px; }
   .gift-list { display: grid; gap: 12px; }
+  .gift-flower { display: block; width: 60%; max-width: 260px; margin: 8px auto; }
   .swap-box { display: flex; gap: 12px; align-items: center; }
   .swap-box img { flex: none; object-fit: contain; }
   .swap-box > div { flex: 1; min-width: 0; }
@@ -201,6 +202,51 @@
   .confetti i { position: absolute; top: -40px; font-style: normal; font-size: 26px; animation: confettiFall linear forwards; }
   @keyframes confettiFall { to { transform: translate(var(--dx, 0px), 110vh) rotate(var(--rot, 360deg)); opacity: .9; } }
   @media (prefers-reduced-motion: reduce) { .confetti { display: none; } }
+  /* お祝いの場面（画面いっぱいのアニメ） */
+  .scene { position: fixed; inset: 0; z-index: 30; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+    padding: calc(env(safe-area-inset-top, 0px) + 18px) 16px calc(env(safe-area-inset-bottom, 0px) + 22px); color: #fff; opacity: 0; transition: opacity .45s ease; }
+  .scene.on { opacity: 1; }
+  .scene.bday { background: radial-gradient(120% 90% at 50% 45%, #fff3e6 0%, #ffd2dc 45%, #ff9fb8 100%); color: #7a2140; }
+  .scene.ny { background: linear-gradient(#1c2a5a 0%, #6d4a8a 38%, #f08a5d 70%, #ffd27a 100%); }
+  .scene.nye { background: radial-gradient(130% 90% at 50% 20%, #2b3f7a 0%, #14204a 55%, #0a1030 100%); }
+  .scene.xmas { background: radial-gradient(120% 90% at 50% 40%, #2f7a55 0%, #1d5a3c 55%, #123d29 100%); }
+  .sc-rays { position: absolute; left: 50%; top: 46%; width: 180vmax; height: 180vmax; margin: -90vmax 0 0 -90vmax; pointer-events: none; opacity: .35;
+    background: repeating-conic-gradient(rgba(255,255,255,.55) 0deg 9deg, rgba(255,255,255,0) 9deg 22.5deg); animation: scSpin 40s linear infinite; }
+  .scene.nye .sc-rays, .scene.xmas .sc-rays { display: none; }
+  .scene.ny .sc-rays { top: 78%; opacity: .25; }
+  @keyframes scSpin { to { transform: rotate(360deg); } }
+  .sc-sun { position: absolute; left: 50%; bottom: -30vmin; width: 60vmin; height: 60vmin; margin-left: -30vmin; border-radius: 50%; pointer-events: none;
+    background: radial-gradient(circle, #fff7d6 0%, #ffd36b 45%, rgba(255,170,80,0) 72%); transition: transform 4s cubic-bezier(.2,.7,.2,1); }
+  .scene:not(.ny) .sc-sun { display: none; }
+  .scene.ny.rise .sc-sun { transform: translateY(-34vh); }
+  .sc-moon { position: absolute; right: 12%; top: 12%; width: 16vmin; height: 16vmin; border-radius: 50%; box-shadow: -4vmin 2vmin 0 0 #fff4c2; transform: rotate(-20deg); pointer-events: none; }
+  .scene:not(.nye) .sc-moon { display: none; }
+  .sc-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .sc-title { position: relative; z-index: 2; margin: 46px 0 0; text-align: center; font-weight: 800; font-size: clamp(30px, 9vw, 56px); line-height: 1.25; letter-spacing: .02em;
+    text-shadow: 0 3px 0 rgba(255,255,255,.7), 0 6px 18px rgba(0,0,0,.18); transform: scale(0); }
+  .scene.bday .sc-title { color: #e2456f; }
+  .scene.ny .sc-title { color: #ffe08a; text-shadow: 0 3px 0 #a3402c, 0 6px 18px rgba(0,0,0,.35); }
+  .scene.nye .sc-title, .scene.xmas .sc-title { color: #fff6d6; text-shadow: 0 3px 0 rgba(0,0,0,.25), 0 0 22px rgba(255,240,180,.6); }
+  .sc-stage { position: relative; z-index: 1; flex: 1; width: 100%; display: flex; align-items: center; justify-content: center; min-height: 0; }
+  .sc-char { position: relative; width: min(74vw, 44vh, 420px); aspect-ratio: 1; }
+  .sc-char .sc-body { position: absolute; inset: 0; transform-origin: 50% 92%; }
+  .sc-char img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; transition: opacity .22s ease; -webkit-user-select: none; user-select: none; pointer-events: none; }
+  .sc-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 3; }
+  .sc-bouquet { position: absolute; z-index: 4; width: min(60vw, 38vh, 340px); aspect-ratio: 1; left: 50%; top: 50%; margin: calc(min(60vw, 38vh, 340px) / -2) 0 0 calc(min(60vw, 38vh, 340px) / -2);
+    object-fit: contain; pointer-events: none; opacity: 0; }
+  .sc-bottom { position: relative; z-index: 5; width: 100%; max-width: 560px; display: grid; gap: 12px; justify-items: center; }
+  .sc-line { min-height: 3.2em; margin: 0; padding: 12px 18px; border-radius: 18px; background: rgba(255,255,255,.92); color: var(--ink); font-size: 21px; line-height: 1.55; text-align: center;
+    box-shadow: 0 6px 20px rgba(0,0,0,.15); opacity: 0; transform: translateY(10px); transition: opacity .35s ease, transform .35s ease; }
+  .sc-line.show { opacity: 1; transform: none; }
+  .sc-btns { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+  .sc-btn { font: inherit; font-size: 21px; font-weight: 700; min-height: 56px; padding: 10px 26px; border-radius: 999px; border: 0; background: #fff; color: #c2385f; box-shadow: 0 6px 18px rgba(0,0,0,.18); cursor: pointer; }
+  .sc-btn.main { background: #ff6f91; color: #fff; animation: scPulse 1.6s ease-in-out infinite; }
+  .scene.ny .sc-btn.main { background: #d9452f; } .scene.nye .sc-btn.main, .scene.xmas .sc-btn.main { background: #f2b33d; color: #3b2a07; }
+  @keyframes scPulse { 50% { transform: scale(1.06); } }
+  .sc-skip { position: absolute; z-index: 6; top: calc(env(safe-area-inset-top, 0px) + 10px); right: 12px; font: inherit; font-size: 16px; min-height: 44px; padding: 6px 14px; border-radius: 999px;
+    border: 0; background: rgba(0,0,0,.18); color: #fff; cursor: pointer; }
+  .scene.bday .sc-skip { background: rgba(122,33,64,.15); color: #7a2140; }
+  @media (prefers-reduced-motion: reduce) { .sc-rays { animation: none; } .sc-btn.main { animation: none; } }
   .bday-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
   .bday-form select { font: inherit; font-size: 22px; padding: 6px 8px; border: 2px solid var(--line); border-radius: 12px; background: #fff; color: var(--ink); min-height: 50px; }
   .bday-form button { flex: 1 1 100%; }
@@ -675,6 +721,9 @@
       <label style="display:flex;align-items:center;gap:10px;font-size:19px"><input type="checkbox" id="voiceToggle" style="width:28px;height:28px;flex:none"> <span><span class="nb">声で話す</span><span class="nb">（返事を</span><span class="nb">読み上げる）</span></span></label>
       <p class="hint-s" style="margin:6px 0 0"><span class="nb">吹き出しの 🔊 を押すと、</span><span class="nb">いつでも聞けます。</span></p>
     </div>
+    <div class="stat" id="bgmBox" style="margin-top:12px" hidden>
+      <label style="display:flex;align-items:center;gap:10px;font-size:19px"><input type="checkbox" id="bgmToggle" style="width:28px;height:28px;flex:none"> <span><span class="nb">うしろで</span><span class="nb">静かな音楽を流す</span></span></label>
+    </div>
     <button type="button" class="title-link" id="memoTour" style="margin-top:20px">📘 使い方を見る</button>
     <div id="homeGuide" class="stat" style="margin-top:20px">
       <b>ホーム画面に置こう</b>
@@ -686,6 +735,23 @@
   </div>
 </div>
 
+<div class="scene" id="scene" hidden role="dialog" aria-label="お祝い">
+  <div class="sc-rays" aria-hidden="true"></div>
+  <div class="sc-sun" aria-hidden="true"></div>
+  <div class="sc-moon" aria-hidden="true"></div>
+  <canvas class="sc-canvas" id="scCanvas" aria-hidden="true"></canvas>
+  <button type="button" class="sc-skip" id="scSkip">閉じる</button>
+  <h2 class="sc-title" id="scTitle"></h2>
+  <div class="sc-stage">
+    <div class="sc-char" id="scChar"><div class="sc-body" id="scBody"><img id="scImgA" alt=""><img id="scImgB" alt="" style="opacity:0"></div></div>
+  </div>
+  <img class="sc-bouquet" id="scBouquet" alt="花束" src="events/bouquet.png">
+  <div class="sc-bottom">
+    <p class="sc-line" id="scLine" aria-live="polite"></p>
+    <div class="sc-btns" id="scBtns"></div>
+  </div>
+  <div class="sc-flash" id="scFlash" aria-hidden="true"></div>
+</div>
 <div class="sheet game" id="game" hidden role="dialog" aria-label="神経衰弱">
   <div class="game-in">
     <div class="game-top">
@@ -1161,7 +1227,7 @@
   // ちゃむは自分のことを「ぼく」、コロンは「わたし」と言う
   const myWord = (text) => (profile && profile.char === "chamu" ? String(text).replace(/わたし/g, "ぼく") : text);
   // 遊んでいる・曲を聞いている間（キャラは自分から話しかけない）
-  function inActivity() { return !$("game").hidden || !$("player").hidden; }
+  function inActivity() { return !$("game").hidden || !$("player").hidden || !$("scene").hidden; }
   let gameVoice = false; // ゲームの中のキャラの声だけは出す
   function sayScripted(text) {
     text = myWord(text);
@@ -2780,6 +2846,7 @@
     renderPets();
     $("homeGuide").hidden = isStandalone();
     $("voiceToggle").checked = voiceOn();
+    $("bgmToggle").checked = !!(profile && profile.bgmOn === true);
     $("homeHowIos").hidden = isAndroid;
     $("homeHowAndroid").hidden = isIOS;
     document.querySelector('.tab[data-tab="tabMem"]').click();
@@ -2833,6 +2900,37 @@
     profile.voiceOn = $("voiceToggle").checked;
     saveProfile();
     if (!profile.voiceOn) stopVoice();
+  });
+  // ---- チャットのうしろで流れる、静かな音楽（songs/bgm.mp3 があるときだけ。最初は止めておく） ----
+  // iPhoneは音量をページから変えられないので、音の通り道（WebAudio）で小さくする
+  const bgmEl = new Audio(); bgmEl.loop = true; bgmEl.preload = "none";
+  let bgmGain = null, bgmReady = false, bgmVol = 0;
+  fetch("songs/bgm.mp3", { method: "HEAD" }).then(r => { if (r.ok) { bgmReady = true; $("bgmBox").hidden = false; } }).catch(() => {});
+  function bgmWanted() {
+    if (!bgmReady || !profile || profile.bgmOn !== true || document.hidden) return 0;
+    if (inActivity() || !$("titleScreen").hidden || !$("tour").hidden) return 0; // 曲・遊び・お祝いの場面・タイトルの間は止める
+    const talking = !voiceEl.paused || (window.speechSynthesis && speechSynthesis.speaking);
+    return talking ? 0.05 : 0.16; // キャラが話している間は、もっと小さく
+  }
+  function bgmTick() {
+    const want = bgmWanted();
+    if (want > 0 && bgmEl.paused) {
+      try {
+        if (!bgmEl.src) bgmEl.src = "songs/bgm.mp3";
+        if (!bgmGain && actx) { const src = actx.createMediaElementSource(bgmEl); bgmGain = actx.createGain(); bgmGain.gain.value = 0; src.connect(bgmGain).connect(actx.destination); }
+        if (!bgmGain) return; // 音の通り道がまだ（画面にさわったあとで始める）
+        const pr = bgmEl.play(); if (pr) pr.catch(() => {});
+      } catch {}
+    }
+    bgmVol += (want - bgmVol) * 0.25; if (Math.abs(want - bgmVol) < 0.004) bgmVol = want;
+    if (bgmGain) bgmGain.gain.value = bgmVol;
+    if (want === 0 && bgmVol === 0 && !bgmEl.paused) bgmEl.pause();
+  }
+  setInterval(bgmTick, 250);
+  $("bgmToggle").addEventListener("change", () => {
+    if (!profile) return;
+    profile.bgmOn = $("bgmToggle").checked; saveProfile();
+    unlockAudio();
   });
   $("memoBtn").addEventListener("click", () => { stopMic(); openMemo(); });
   $("memoClose").addEventListener("click", () => { $("memo").hidden = true; });
@@ -3083,6 +3181,7 @@
   function giftCard(gift) {
     const wrap = document.createElement("div");
     wrap.className = "gift-card";
+    if (gift.kind === "flower") { const im = document.createElement("img"); im.src = "events/bouquet.png"; im.alt = gift.title || "花束"; im.className = "gift-flower"; wrap.appendChild(im); return wrap; }
     const svg = drawingSVG(gift); svg.setAttribute("aria-label", "絵：" + (gift.title || ""));
     wrap.appendChild(svg);
     return wrap;
@@ -3503,14 +3602,263 @@
     if (m === "01-01" || m === "01-02" || m === "01-03") return { key: "ny", fx: ["🎍", "🌅", "🎉", "🌸"], text: pi + (polite ? "あけましておめでとうございます！ 今年も、よろしくお願いします。" : "あけましておめでとう！ 今年も、よろしくね！") };
     return null;
   }
+  // ---- お祝いの場面（画面いっぱいのアニメ。誕生日・クリスマス・大みそか・お正月） ----
+  // 紙ふぶき・花びら・雪・星はコードで描く。キャラのポーズの絵（クラッカー・花束・おじぎ）を切りかえ、体ごと動かす
+  const POSE_EXTRA = ["cracker", "flowers", "bow"];
+  const POP_AT = { chamu: [0.89, 0.23], colon: [0.88, 0.28] }; // クラッカーの口の位置（キャラの絵の中の割合）
+  let scene = null; // 再生中の場面 { seq, timers, raf, parts }
+  const scWait = (ms) => new Promise((ok) => { const s = scene; const t = setTimeout(ok, ms); if (s) s.timers.push(t); });
+  const scAlive = (s) => scene === s && !$("scene").hidden;
+  function scenePose(ch, pose) { return POSE_EXTRA.includes(pose) ? "chars/" + ch + "/" + pose + ".png" : faceSrc(ch, pose); }
+  function setScenePose(pose) {
+    const a = $("scImgA"), b = $("scImgB"), showB = a.style.opacity !== "0";
+    const next = showB ? b : a, prev = showB ? a : b;
+    const src = scenePose(profile.char, pose);
+    const swap = () => { next.style.opacity = "1"; prev.style.opacity = "0"; };
+    next.onerror = () => { next.onerror = null; next.src = faceSrc(profile.char, "banzai"); };
+    if (next.getAttribute("src") === src && next.complete) swap();
+    else { next.onload = swap; next.src = src; }
+  }
+  function scMove(frames, opt) { try { return $("scBody").animate(frames, Object.assign({ easing: "ease-out", fill: "forwards" }, opt)); } catch { return null; } }
+  // ---- 紙ふぶき・花びら・雪・星（キャンバス） ----
+  const SC_COLORS = { bday: ["#ff6f91", "#ffc75f", "#7bd389", "#6ec6ff", "#c69cff", "#ffffff"], ny: ["#ffd36b", "#ff6b4a", "#ffffff", "#f7a8c4"], nye: ["#fff6d6", "#ffd36b", "#bcd4ff"], xmas: ["#ff5d5d", "#ffd36b", "#ffffff", "#7bd389"] };
+  function scCanvas() {
+    const cv = $("scCanvas"), dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = Math.round(innerWidth * dpr); cv.height = Math.round(innerHeight * dpr);
+    const cx = cv.getContext("2d"); cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return cx;
+  }
+  function scBurst(x, y, ang, spread, n, speed, kind) {
+    if (!scene) return;
+    const cols = SC_COLORS[scene.kind] || SC_COLORS.bday;
+    for (let i = 0; i < n; i++) {
+      const a = ang + (Math.random() - 0.5) * spread, v = speed * (0.45 + Math.random() * 0.75);
+      scene.parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, r: Math.random() * 6.3, vr: (Math.random() - 0.5) * 0.4,
+        w: 6 + Math.random() * 7, h: 9 + Math.random() * 9, c: cols[i % cols.length], k: kind || (Math.random() < 0.18 ? "dot" : "paper"), life: 0, ph: Math.random() * 6 });
+    }
+  }
+  function scRain(kind, n) { // 上から、ゆっくり降ってくる
+    if (!scene) return;
+    const cols = SC_COLORS[scene.kind] || SC_COLORS.bday;
+    for (let i = 0; i < n; i++) scene.parts.push({ x: Math.random() * innerWidth, y: -20 - Math.random() * innerHeight * 0.6, vx: (Math.random() - 0.5) * 0.6, vy: 0.6 + Math.random() * 1.1,
+      r: Math.random() * 6.3, vr: (Math.random() - 0.5) * 0.08, w: 7 + Math.random() * 6, h: 10 + Math.random() * 8, c: kind === "snow" ? "#ffffff" : kind === "petal" ? ["#ffc2d4", "#ffd9e4", "#ff9fbc"][i % 3] : cols[i % cols.length],
+      k: kind, life: 0, ph: Math.random() * 6, slow: true });
+  }
+  function scTwinkle(n) { // 夜空の星（またたく）
+    if (!scene) return;
+    for (let i = 0; i < n; i++) scene.parts.push({ x: Math.random() * innerWidth, y: Math.random() * innerHeight * 0.55, k: "star", c: "#fff8dc", w: 1 + Math.random() * 2.2, ph: Math.random() * 6, fixed: true, life: 0 });
+  }
+  function scLoop() {
+    const s = scene; if (!s) return;
+    const cx = s.cx, W = innerWidth, H = innerHeight;
+    cx.clearRect(0, 0, W, H);
+    const keep = [];
+    for (const p of s.parts) {
+      p.life++;
+      if (p.fixed) {
+        cx.globalAlpha = 0.45 + 0.55 * Math.abs(Math.sin(p.ph + p.life * 0.04));
+        cx.fillStyle = p.c; cx.beginPath(); cx.arc(p.x, p.y, p.w, 0, 7); cx.fill();
+        keep.push(p); continue;
+      }
+      if (p.slow) { p.x += p.vx + Math.sin(p.ph + p.life * 0.03) * 0.6; p.y += p.vy; p.r += p.vr; }
+      else { p.vx *= 0.975; p.vy = p.vy * 0.975 + 0.16; p.x += p.vx; p.y += p.vy; p.r += p.vr; }
+      if (p.y > H + 40 || p.x < -60 || p.x > W + 60) continue;
+      cx.globalAlpha = 1;
+      cx.save(); cx.translate(p.x, p.y); cx.rotate(p.r); cx.fillStyle = p.c;
+      if (p.k === "dot" || p.k === "snow") { cx.beginPath(); cx.arc(0, 0, p.k === "snow" ? p.w * 0.35 : p.w * 0.45, 0, 7); cx.fill(); }
+      else if (p.k === "petal") { cx.beginPath(); cx.ellipse(0, 0, p.w * 0.45, p.h * 0.5, 0, 0, 7); cx.fill(); }
+      else if (p.k === "spark") { cx.globalAlpha = Math.max(0, 1 - p.life / 70); cx.beginPath(); for (let i = 0; i < 4; i++) { cx.rotate(Math.PI / 2); cx.moveTo(0, 0); cx.quadraticCurveTo(1.5, 1.5, 0, p.w); } cx.lineWidth = 2.2; cx.strokeStyle = p.c; cx.stroke(); }
+      else { const sq = Math.cos(p.ph + p.life * 0.2); cx.fillRect(-p.w / 2, -p.h / 2 * sq, p.w, p.h * sq); } // 紙がひらひら裏返る
+      cx.restore();
+      if (p.k !== "spark" || p.life < 70) keep.push(p);
+    }
+    s.parts = keep.length > 900 ? keep.slice(-900) : keep;
+    s.raf = requestAnimationFrame(scLoop);
+  }
+  // ---- 音（コードで作る。ファイルは使わない） ----
+  function scAudio() { try { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); if (actx.state !== "running") actx.resume(); return actx; } catch { return null; } }
+  function popSound() { // クラッカーの「パン！」
+    const a = scAudio(); if (!a) return;
+    const t0 = a.currentTime + 0.01, len = 0.35, buf = a.createBuffer(1, Math.floor(a.sampleRate * len), a.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 4);
+    const src = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+    src.buffer = buf; f.type = "bandpass"; f.frequency.value = 1800; f.Q.value = 0.7;
+    g.gain.setValueAtTime(0.9, t0); g.gain.exponentialRampToValueAtTime(0.001, t0 + len);
+    src.connect(f).connect(g).connect(a.destination); src.start(t0);
+    const o = a.createOscillator(), g2 = a.createGain(); o.type = "sine"; o.frequency.setValueAtTime(160, t0); o.frequency.exponentialRampToValueAtTime(50, t0 + 0.15);
+    g2.gain.setValueAtTime(0.5, t0); g2.gain.exponentialRampToValueAtTime(0.001, t0 + 0.18); o.connect(g2).connect(a.destination); o.start(t0); o.stop(t0 + 0.2);
+  }
+  function notes(list, type, vol) { // [[周波数, 開始秒, 長さ秒], ...]
+    const a = scAudio(); if (!a) return;
+    const t0 = a.currentTime + 0.03;
+    for (const [fq, dt, len] of list) {
+      const o = a.createOscillator(), g = a.createGain(); o.type = type || "sine"; o.frequency.value = fq;
+      g.gain.setValueAtTime(0.0001, t0 + dt); g.gain.exponentialRampToValueAtTime(vol || 0.14, t0 + dt + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dt + len);
+      o.connect(g).connect(a.destination); o.start(t0 + dt); o.stop(t0 + dt + len + 0.05);
+    }
+  }
+  const N = (n) => 440 * Math.pow(2, (n - 69) / 12); // 音の番号 → 周波数（60＝ド）
+  function fanfare() { notes([[N(72), 0, 0.18], [N(76), 0.12, 0.18], [N(79), 0.24, 0.18], [N(84), 0.38, 0.7], [N(76), 0.38, 0.7], [N(79), 0.38, 0.7]], "triangle", 0.12); }
+  function musicBox() { // ハッピーバースデーの最初のところ（オルゴール風）
+    const m = [[67, 0, .3], [67, .3, .15], [69, .45, .45], [67, .9, .45], [72, 1.35, .45], [71, 1.8, .9], [67, 2.7, .3], [67, 3, .15], [69, 3.15, .45], [67, 3.6, .45], [74, 4.05, .45], [72, 4.5, .9]];
+    notes(m.map(([n, t, l]) => [N(n + 12), t, l + 0.6]), "sine", 0.1); notes(m.map(([n, t, l]) => [N(n + 24), t, 0.25]), "triangle", 0.025);
+  }
+  function kotoPluck() { notes([[N(64), 0, 1.2], [N(65), 0.25, 1.2], [N(69), 0.5, 1.2], [N(71), 0.75, 1.2], [N(72), 1.0, 1.6], [N(76), 1.5, 2.0]], "triangle", 0.12); }
+  function bell() { notes([[110, 0, 5], [220.5, 0, 4], [331, 0, 3], [446, 0, 2]], "sine", 0.12); } // 除夜の鐘
+  function jingle() { notes([[N(76), 0, .25], [N(76), .25, .25], [N(76), .5, .5], [N(76), 1, .25], [N(76), 1.25, .25], [N(76), 1.5, .5], [N(76), 2, .25], [N(79), 2.25, .25], [N(72), 2.5, .35], [N(74), 2.85, .15], [N(76), 3, .9]].map(([f, t, l]) => [f, t, l + 0.4]), "sine", 0.1); }
+  // ---- 場面の文 ----
+  function sceneLines(kind) { // 「|」は、改行してよいところ（声にするときは消す）
+    const polite = stageOf(points()) === 0, pi = profile.char === "colon" ? "ピピッ！|" : "";
+    const nm = callName() ? callName() + (/(さん|ちゃん|くん|様|さま)$/.test(callName()) ? "" : "さん") : "";
+    const L = (p, c) => myWord(polite ? p : c);
+    if (kind === "bday") return { title: "お誕生日|おめでとう！",
+      a: L(pi + (nm ? nm + "、|" : "") + "お誕生日、|おめでとうございます！|生まれてきてくれて、|ありがとうございます。", pi + (nm ? nm + "、|" : "") + "お誕生日、|おめでとう！|生まれてきてくれて、|ありがとう！"),
+      b: L("これ、わたしからです。|受け取ってください！", "これ、わたしから。|受け取ってね！"),
+      c: L("受け取ってくれて、|ありがとうございます！|今日は、いっぱい|お祝いしましょうね。", "えへへ、よかった！|今日は、いっぱい|お祝いしようね！") };
+    if (kind === "ny") return { title: "あけまして|おめでとう！",
+      a: L("あけまして|おめでとうございます！", "あけまして|おめでとう！"),
+      b: L("今年も、いっしょに|楽しく過ごしましょうね。|よろしくお願いします！", "今年も、いっしょに|楽しく過ごそうね。|よろしくね！") };
+    if (kind === "nye") return { title: "今年も|ありがとう",
+      a: L("今年も、|お世話になりました。|いっしょにいてくれて、|ありがとうございました。", "今年も、|お世話になりました。|いっしょにいてくれて、|ありがとう。"),
+      b: L("来年も、|よろしくお願いします。", "来年も、|よろしくね！") };
+    return { title: "メリー|クリスマス！",
+      a: L(pi + "メリークリスマス！|いつも、|ありがとうございます。", pi + "メリークリスマス！|いつも、ありがとう！"),
+      b: L("今日は、いっしょに|ゆっくり|過ごしましょうね。", "今日は、いっしょに|ゆっくり過ごそうね！") };
+  }
+  function scSay(text, pre) {
+    // 文の終わり（。！？）では、かならず改行する
+    const el = $("scLine"); el.textContent = "";
+    text.split("|").forEach((part, i, all) => { const sp = document.createElement("span"); sp.className = "nb"; sp.textContent = part; el.appendChild(sp); if (i < all.length - 1 && /[。！？]$/.test(part)) el.appendChild(document.createElement("br")); });
+    el.classList.add("show");
+    const plain = text.replace(/\|/g, "");
+    speak(plain, false, pre);
+    return 900 + plain.length * 120; // 読み終わるまでの時間のめやす
+  }
+  function hop(h, n) { try { $("scChar").animate([{ transform: "translateY(0) scale(1,1)" }, { transform: "translateY(4px) scale(1.06,.92)", offset: .15 }, { transform: "translateY(-" + h + "px) scale(.96,1.05)", offset: .5 }, { transform: "translateY(0) scale(1.04,.96)", offset: .85 }, { transform: "translateY(0) scale(1,1)" }], { duration: 620, iterations: n || 1, easing: "ease-in-out" }); } catch {} }
+  function scButtons(list) {
+    const box = $("scBtns"); box.textContent = "";
+    for (const [label, main, fn] of list) { const b = document.createElement("button"); b.type = "button"; b.className = "sc-btn" + (main ? " main" : ""); b.textContent = label; b.addEventListener("click", fn, { once: true }); box.appendChild(b); }
+  }
+  function popPoint() { // クラッカーの口の、画面の中の位置
+    const r = $("scChar").getBoundingClientRect(), at = POP_AT[profile.char] || [0.8, 0.14];
+    return [r.left + r.width * at[0], r.top + r.height * at[1]];
+  }
+  // 場面を流す。終わったら done() を呼ぶ（閉じるを押しても呼ぶ）
+  function playScene(kind, done) {
+    if (!profile || scene) return false;
+    stopVoice(); stopMic();
+    const el = $("scene");
+    el.className = "scene " + kind; el.hidden = false;
+    const s = scene = { kind, seq: 0, timers: [], parts: [], raf: 0, cx: scCanvas(), done };
+    for (const p of [...POSE_EXTRA, "banzai", "happy", "wave"]) { const im = new Image(); im.src = scenePose(profile.char, p); }
+    const lines = sceneLines(kind);
+    const pv = (t) => (voiceOn() && t ? fetchVoice(voiceText(t.replace(/\|/g, ""))) : null);
+    const voiceA = pv(lines.a), voiceB = pv(lines.b), voiceC = pv(lines.c);
+    setPhrases($("scTitle"), lines.title); $("scTitle").style.transform = "scale(0)";
+    $("scLine").classList.remove("show"); $("scLine").textContent = ""; $("scBtns").textContent = "";
+    $("scBouquet").style.opacity = "0"; $("scBouquet").getAnimations?.().forEach(a => a.cancel());
+    $("scImgA").style.opacity = "1"; $("scImgB").style.opacity = "0"; $("scImgA").src = faceSrc(profile.char, "happy");
+    requestAnimationFrame(() => el.classList.add("on"));
+    s.raf = requestAnimationFrame(scLoop);
+    const title = () => { try { $("scTitle").animate([{ transform: "scale(0) rotate(-8deg)" }, { transform: "scale(1.18) rotate(3deg)", offset: .6 }, { transform: "scale(1) rotate(0)" }], { duration: 700, easing: "cubic-bezier(.3,1.4,.5,1)", fill: "forwards" }); } catch { $("scTitle").style.transform = "none"; } };
+    const flash = () => { try { $("scFlash").animate([{ opacity: .85 }, { opacity: 0 }], { duration: 380, easing: "ease-out" }); } catch {} };
+    const finish = () => { if (scAlive(s)) scButtons([["閉じる", true, closeScene]]); };
+    (async () => {
+      // キャラが下から、はずんで出てくる
+      try { $("scChar").animate([{ transform: "translateY(70vh)" }, { transform: "translateY(-18px)", offset: .7 }, { transform: "translateY(0)" }], { duration: 900, easing: "cubic-bezier(.2,.8,.3,1)" }); } catch {}
+      await scWait(1000); if (!scAlive(s)) return;
+      if (kind === "bday" || kind === "xmas") {
+        setScenePose("cracker");
+        await scWait(500); if (!scAlive(s)) return;
+        scMove([{ transform: "rotate(0) scale(1)" }, { transform: "rotate(-6deg) scale(1.04,.94)" }], { duration: 380 }); // ためて…
+        await scWait(450); if (!scAlive(s)) return;
+        scMove([{ transform: "rotate(-6deg) scale(1.04,.94)" }, { transform: "rotate(4deg) scale(.97,1.05)" }, { transform: "rotate(0) scale(1)" }], { duration: 420 });
+        popSound(); flash();
+        const [px, py] = popPoint(); scBurst(px, py, -Math.PI / 2 + 0.35, 1.3, 140, 15); scBurst(px, py, -Math.PI / 2 + 0.35, 0.8, 30, 11, "spark");
+        title(); hop(40, 1);
+        setTimeout(fanfare, 250);
+        scRain(kind === "xmas" ? "snow" : "paper", kind === "xmas" ? 70 : 40);
+        await scWait(1200); if (!scAlive(s)) return;
+        setScenePose(kind === "xmas" ? "happy" : "banzai"); hop(24, 2);
+        let t = scSay(lines.a, voiceA); await scWait(t); if (!scAlive(s)) return;
+        if (kind === "bday") {
+          setScenePose("flowers");
+          scMove([{ transform: "scale(1)" }, { transform: "scale(1.1) translateY(4%)" }], { duration: 600, easing: "ease-in-out" });
+          t = scSay(lines.b, voiceB); await scWait(Math.min(t, 2200)); if (!scAlive(s)) return;
+          scButtons([["💐 受け取る", true, () => receiveFlowers(s, lines, voiceC)], ["閉じる", false, closeScene]]);
+          return;
+        }
+        t = scSay(lines.b, voiceB); jingle(); await scWait(t); finish();
+      } else if (kind === "ny") {
+        el.classList.add("rise"); kotoPluck();
+        await scWait(900); if (!scAlive(s)) return;
+        setScenePose("bow");
+        scMove([{ transform: "rotate(0)" }, { transform: "rotate(0) translateY(3%)" }], { duration: 900, easing: "ease-in-out" });
+        title(); scRain("petal", 26);
+        let t = scSay(lines.a, voiceA); await scWait(Math.max(t, 2400)); if (!scAlive(s)) return;
+        setScenePose("banzai"); scMove([{ transform: "translateY(3%)" }, { transform: "translateY(0)" }], { duration: 400 }); hop(34, 2);
+        scBurst(innerWidth / 2, innerHeight * 0.5, -Math.PI / 2, 2.4, 90, 13);
+        t = scSay(lines.b, voiceB); await scWait(t); finish();
+      } else { // 大みそか：夜空と、鐘の音と、おじぎ
+        scTwinkle(70); bell();
+        await scWait(1200); if (!scAlive(s)) return;
+        setScenePose("bow"); title();
+        scMove([{ transform: "rotate(0)" }, { transform: "translateY(3%)" }], { duration: 1100, easing: "ease-in-out" });
+        let t = scSay(lines.a, voiceA); await scWait(Math.max(t, 3000)); if (!scAlive(s)) return;
+        setScenePose("happy"); scMove([{ transform: "translateY(3%)" }, { transform: "translateY(0)" }], { duration: 500 }); hop(20, 1);
+        scRain("snow", 40);
+        t = scSay(lines.b, voiceB); await scWait(t); finish();
+      }
+    })();
+    return true;
+  }
+  function receiveFlowers(s, lines, voiceC) {
+    if (!scAlive(s)) return;
+    $("scBtns").textContent = "";
+    const cr = $("scChar").getBoundingClientRect(), bq = $("scBouquet");
+    const fromX = cr.left + cr.width / 2 - innerWidth / 2, fromY = cr.top + cr.height * 0.62 - innerHeight / 2;
+    bq.style.opacity = "1";
+    try { bq.animate([{ transform: `translate(${fromX}px, ${fromY}px) scale(.35) rotate(-10deg)`, opacity: .4 }, { transform: "translate(0, -19vh) scale(.98) rotate(4deg)", opacity: 1, offset: .7 }, { transform: "translate(0, -17vh) scale(.9) rotate(0)", opacity: 1 }], { duration: 900, easing: "cubic-bezier(.2,.8,.3,1)", fill: "forwards" }); } catch {}
+    setTimeout(() => { if (!scAlive(s)) return; scBurst(innerWidth / 2, innerHeight * 0.33, 0, 6.3, 60, 9, "petal"); scBurst(innerWidth / 2, innerHeight * 0.33, 0, 6.3, 24, 8, "spark"); scRain("petal", 30); musicBox(); }, 700);
+    setScenePose("banzai"); scMove([{ transform: "scale(1.1) translateY(4%)" }, { transform: "scale(.8) translateY(30%)" }], { duration: 700, easing: "ease-in-out" }); // キャラは少し下がって、花束を見せる
+    // 思い出（もらったもの）に残す
+    const list = gifts(); list.push({ kind: "flower", date: today(), title: "お誕生日の花束", char: profile.char }); if (list.length > 20) list.splice(0, list.length - 20);
+    saveProfile(); addScore("react");
+    setTimeout(async () => {
+      if (!scAlive(s)) return;
+      hop(26, 2);
+      const t = scSay(lines.c, voiceC); await scWait(t);
+      if (scAlive(s)) scButtons([["閉じる", true, closeScene]]);
+    }, 1100);
+  }
+  function closeScene() {
+    const s = scene; if (!s) return;
+    scene = null;
+    s.timers.forEach(clearTimeout); cancelAnimationFrame(s.raf);
+    stopVoice();
+    const el = $("scene"); el.classList.remove("on");
+    setTimeout(() => { if (!scene) { el.hidden = true; el.classList.remove("rise"); s.cx.clearRect(0, 0, innerWidth, innerHeight); } }, 450);
+    try { s.done && s.done(); } catch {}
+  }
+  $("scSkip").addEventListener("click", closeScene);
   function celebrate() {
     const ev = todaysEvent();
     if (!ev) return false;
     const done = ev.key + ":" + today();
     if (profile.eventDone === done) return false;
     profile.eventDone = done; saveProfile();
+    const kind = { bday: "bday", "xmas-eve": "xmas", xmas: "xmas", nye: "nye", ny: "ny" }[ev.key];
+    const withScene = !!kind && !reduceMotion;
     setTimeout(() => {
-      sayScripted(ev.text);
+      if (withScene && playScene(kind, () => setTimeout(() => afterCelebrate(ev, true), 300))) return;
+      afterCelebrate(ev, false);
+    }, 700);
+    return true;
+  }
+  function afterCelebrate(ev, sceneShown) {
+    {
+      if (sceneShown) { const t = myWord(ev.text); history.push({ role: "assistant", content: t }); save(); bubble("her", t); } // 声は場面で話したので、ここでは話さない
+      else sayScripted(ev.text);
       // お祝いの日の絵（ちゃむとコロンが、いっしょにお祝い）
       const img = { bday: "bday", "xmas-eve": "xmas", xmas: "xmas", nye: "nye", ny: "ny" }[ev.key];
       const bx = log.lastElementChild && log.lastElementChild.querySelector(".bubble");
@@ -3522,15 +3870,14 @@
         bx.appendChild(im);
         log.scrollTop = log.scrollHeight;
       }
-      confetti(ev.fx);
+      if (!sceneShown) confetti(ev.fx);
       showFace("banzai", 3000);
       avatar.classList.add("happy"); setTimeout(() => avatar.classList.remove("happy"), 2400);
       // 誕生日の歌があれば、誘う
       const bsong = ev.key === "bday" && allSongs().find(x => x.tag === "誕生日");
       if (bsong) setTimeout(() => songInvite(bsong.id), 1200);
       if (ev.key === "bday") setTimeout(() => giveDrawing("bday"), 5000);
-    }, 700);
-    return true;
+    }
   }
   // 誕生日を聞く（必ず登録。答えるまで、開くたびに聞く）
   let bdayAsking = false;
@@ -3657,6 +4004,7 @@
       const polite = stageOf(points()) === 0, pi = profile.char === "chamu" ? "" : "ピピッ。";
       sayScripted(pi + (polite ? "そういえば、" + Number(dm.day.slice(5, 7)) + "月" + Number(dm.day.slice(8)) + "日の日記が、書きかけです。下の「まとめる」を押すと、日記にできます。書かないときは「やめる」を押してくださいね。" : "そういえば、" + Number(dm.day.slice(5, 7)) + "月" + Number(dm.day.slice(8)) + "日の日記、書きかけだよ。下の「まとめる」で日記にできるよ。書かないなら「やめる」を押してね。"));
     }, 6000);
+    { const sc = new URLSearchParams(location.search).get("scene"); if (["bday", "ny", "nye", "xmas"].includes(sc)) setTimeout(() => playScene(sc, null), 1500); }
     setTimeout(checkReminders, 3000);
     setTimeout(() => { if (profile.birthday) invite(); }, 9000); // あいさつのあと、少しして、たまに誘う
     setTimeout(maybeGift, 20000); // たまに、絵を持ってくる
