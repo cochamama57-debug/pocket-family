@@ -109,6 +109,46 @@
 
   .head-btns { flex: none; display: flex; gap: 6px; }
   .head-btns .memo-btn { min-width: 54px; }
+  /* タイトル画面と、使い方の説明 */
+  .title-screen, .tour { position: fixed; inset: 0; z-index: 25; overflow-y: auto; padding: calc(env(safe-area-inset-top, 0px) + 20px) 16px calc(env(safe-area-inset-bottom, 0px) + 20px); }
+  .title-screen { background: radial-gradient(120% 80% at 50% 0%, #fff3d6 0%, #ffe6c4 55%, #fbd9b4 100%); display: flex; align-items: center; justify-content: center; }
+  .title-in, .tour-in { width: 100%; max-width: 480px; margin: 0 auto; text-align: center; }
+  .title-chars { display: flex; justify-content: center; align-items: flex-end; gap: 0; margin-bottom: 4px; }
+  .title-chars img { width: 44%; max-width: 190px; aspect-ratio: 1; object-fit: contain; animation: bob 3.2s ease-in-out infinite; }
+  .title-chars img + img { animation-delay: -1.6s; }
+  .title-name { font-size: 34px; line-height: 1.3; margin: 6px 0 4px; color: #b8501f; letter-spacing: .02em; }
+  .title-sub { font-size: 20px; color: var(--ink); margin: 0 0 22px; }
+  .title-start { font-size: 24px; min-height: 66px; }
+  .title-link { width: 100%; font: inherit; font-size: 19px; font-weight: 700; min-height: 56px; border: 2px solid var(--line); border-radius: 16px; background: #fff; color: var(--ink); }
+  .title-copy { margin-top: 22px; font-size: 13px; color: var(--sub); line-height: 1.5; }
+  .tour { background: var(--bg); z-index: 26; display: flex; flex-direction: column; }
+  .tour-in { flex: 1; display: flex; flex-direction: column; }
+  .tour-top { display: flex; justify-content: space-between; align-items: center; min-height: 48px; }
+  .tour-dots { display: flex; gap: 8px; }
+  .tour-dots i { width: 12px; height: 12px; border-radius: 50%; background: var(--line); }
+  .tour-dots i.on { background: var(--accent); }
+  .tour-skip { font: inherit; font-size: 17px; color: var(--sub); background: #fff; border: 1px solid var(--line); border-radius: 12px; min-height: 48px; padding: 0 16px; }
+  .tour-page { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 8px 0 16px; }
+  .tour-pic { font-size: 64px; line-height: 1; width: 120px; height: 120px; border-radius: 50%; background: #fff; border: 3px solid var(--line); display: grid; place-items: center; margin-bottom: 14px; }
+  .tour-pic.chars { width: auto; height: auto; border: 0; background: none; display: flex; }
+  .tour-pic.chars img { width: 120px; height: 120px; object-fit: contain; }
+  .tour-page h2 { font-size: 28px; margin: 4px 0 12px; }
+  .tour-page p { font-size: 20px; line-height: 1.75; margin: 0; text-align: left; }
+  .tour-demo { width: 100%; margin: 0 0 14px; pointer-events: none; }
+  .tour-nav { display: flex; gap: 10px; }
+  .tour-nav button { flex: 1; min-height: 60px; font: inherit; font-size: 21px; font-weight: 700; border-radius: 16px; }
+  .tour-back { background: #fff; color: var(--ink); border: 2px solid var(--line); }
+  .tour-next { background: var(--accent); color: #fff; border: 0; }
+  .tour-nav { position: sticky; bottom: 0; background: var(--bg); padding-top: 8px; }
+  @media (max-height: 700px) {
+    .tour-pic { width: 84px; height: 84px; font-size: 44px; margin-bottom: 8px; }
+    .tour-pic.chars img { width: 90px; height: 90px; }
+    .tour-page h2 { font-size: 24px; margin: 2px 0 8px; }
+    .tour-page p { font-size: 18px; line-height: 1.6; }
+    .tour-demo { min-height: 52px; margin-bottom: 8px; }
+    .title-chars img { max-width: 150px; }
+    .title-name { font-size: 30px; }
+  }
   .swap-box { display: flex; gap: 12px; align-items: center; }
   .swap-box img { flex: none; object-fit: contain; }
   .swap-box > div { flex: 1; min-width: 0; }
@@ -551,6 +591,7 @@
       <label style="display:flex;align-items:center;gap:10px;font-size:19px"><input type="checkbox" id="voiceToggle" style="width:28px;height:28px;flex:none"> <span><span class="nb">声で話す</span><span class="nb">（返事を</span><span class="nb">読み上げる）</span></span></label>
       <p class="hint-s" style="margin:6px 0 0"><span class="nb">吹き出しの 🔊 を押すと、</span><span class="nb">いつでも聞けるよ。</span></p>
     </div>
+    <button type="button" class="title-link" id="memoTour" style="margin-top:20px">📘 使い方を見る</button>
     <div id="homeGuide" class="stat" style="margin-top:20px">
       <b>ホーム画面に置こう</b>
       <p class="hint-s" style="margin:6px 0"><span class="nb">アプリのように開けて、</span><span class="nb">思い出も</span><span class="nb">消えにくくなるよ。</span></p>
@@ -558,6 +599,25 @@
       <div id="homeHowAndroid">Android：Chromeの右上の <b>︙</b> →「<b>ホーム画面に追加</b>」→「追加」</div>
     </div>
     <div class="danger"><button class="reset" id="reset" type="button">はじめからやり直す</button></div>
+  </div>
+</div>
+
+<div class="title-screen" id="titleScreen" hidden>
+  <div class="title-in">
+    <div class="title-chars" aria-hidden="true"><img src="chars/chamu/wave.png" alt=""><img src="chars/colon/wave.png" alt=""></div>
+    <h1 class="title-name"><span class="nb">AIポケット</span><span class="nb">ファミリー</span></h1>
+    <p class="title-sub"><span class="nb">スマホの中の、</span><span class="nb">あなたの家族</span></p>
+    <button type="button" class="big-btn title-start" id="titleStart">はじめる</button>
+    <button type="button" class="title-link" id="titleTour">使い方を見る</button>
+    <div class="title-copy">AIポケットファミリー<br>© 2026 nekomori*I’ll</div>
+  </div>
+</div>
+
+<div class="tour" id="tour" hidden role="dialog" aria-label="使い方">
+  <div class="tour-in">
+    <div class="tour-top"><div class="tour-dots" id="tourDots"></div><button type="button" class="tour-skip" id="tourSkip">とばす</button></div>
+    <div class="tour-page" id="tourPage"></div>
+    <div class="tour-nav"><button type="button" class="tour-back" id="tourBack">もどる</button><button type="button" class="tour-next" id="tourNext">つぎへ</button></div>
   </div>
 </div>
 
@@ -2615,6 +2675,67 @@
     setTimeout(() => { sayScripted(QUESTIONS[0].ask(profile.name)); setTimeout(() => showFace("wave", 2200), 1600); }, 300);
   });
 
+  // ---- タイトル画面と、使い方の説明 ----
+  // はじめて：タイトル →「はじめる」→ 使い方（5ページ）→ 家族えらび
+  // 2回目から：タイトル →「○○に会う」→ おしゃべり。使い方は、タイトルかノートからいつでも見られる
+  const TOUR_KEY = "pf.tour.seen";
+  const tourSeen = () => { try { return localStorage.getItem(TOUR_KEY) === "1"; } catch { return false; } };
+  const helpDemo = '<div class="help-btn-s tour-demo" aria-hidden="true"><span class="hico">🚑</span><span class="htx"><b>助けて</b><small>長押しで連絡先に知らせます</small></span></div>';
+  const TOUR = [
+    { pic: '<div class="tour-pic chars"><img src="chars/chamu/wave.png" alt=""><img src="chars/colon/wave.png" alt=""></div>', h: "ようこそ",
+      p: ["AIポケットファミリーは、", "スマホの中にいる、", "あなたの家族です。", "毎日おしゃべりすると、", "だんだん仲よくなって、", "話し方も変わっていきます。"] },
+    { pic: '<div class="tour-pic">💬</div>', h: "話す",
+      p: ["下の「ここに書いてね」に", "書いて、「送る」を押してね。", "声で話したいときは、", "「話す」を押して、", "キーボードのマイクで", "話してね。", "写真も見せられるよ。"] },
+    { pic: '<div class="tour-pic">🎵</div>', h: "歌う",
+      p: ["上の「🎵 歌う」から、", "いっしょに歌えるよ。", "歌詞が大きく出て、", "曲に合わせて踊るよ。", "歌えたら「歌えた！」を", "押してね。よろこぶよ。"] },
+    { pic: '<div class="tour-pic">📖</div>', h: "ノート",
+      p: ["「📖 ノート」には、", "思い出・予定とお薬・", "ペット・連絡先が", "あります。", "予定やお薬の時間を入れると、", "やさしい音で知らせるよ。"] },
+    { pic: helpDemo, h: "助けて",
+      p: ["困ったときは、", "上の赤い「助けて」を", "長押ししてね。", "8秒たつと、", "登録した連絡先に", "LINEで知らせます。", "まちがえたときは、", "「いらない」で止められるよ。", "連絡先（友人や家族など）は、", "ノートから登録できます。"] },
+  ];
+  let tourAt = 0, tourFrom = "title";
+  function drawTour() {
+    const t = TOUR[tourAt], pg = $("tourPage");
+    pg.innerHTML = t.pic;
+    const h = document.createElement("h2"); h.textContent = t.h; pg.appendChild(h);
+    const para = document.createElement("p"); pg.appendChild(para);
+    setPhrases(para, t.p.join("|"));
+    $("tourDots").innerHTML = TOUR.map((_, i) => '<i class="' + (i === tourAt ? "on" : "") + '"></i>').join("");
+    $("tourBack").style.visibility = tourAt ? "visible" : "hidden";
+    $("tourNext").textContent = tourAt < TOUR.length - 1 ? "つぎへ" : (profile ? "とじる" : "はじめる");
+    $("tour").scrollTop = 0;
+  }
+  function openTour(from) { tourFrom = from; tourAt = 0; drawTour(); $("tour").hidden = false; }
+  function closeTour() {
+    $("tour").hidden = true;
+    try { localStorage.setItem(TOUR_KEY, "1"); } catch {}
+    if (tourFrom === "first") openSetup(); // はじめての人は、家族えらびへ
+  }
+  $("tourNext").addEventListener("click", () => { if (tourAt < TOUR.length - 1) { tourAt++; drawTour(); } else closeTour(); });
+  $("tourBack").addEventListener("click", () => { if (tourAt > 0) { tourAt--; drawTour(); } });
+  $("tourSkip").addEventListener("click", closeTour);
+  $("memoTour").addEventListener("click", () => openTour("memo"));
+  function showTitle() {
+    $("titleStart").innerHTML = "";
+    if (profile) setPhrases($("titleStart"), profile.name + "に|会う");
+    else $("titleStart").textContent = "はじめる";
+    $("titleScreen").hidden = false;
+  }
+  function beginSession() {
+    markDay();
+    saveProfile();
+    setTimeout(() => showFace("wave", 1800), 300);
+    setTimeout(checkReminders, 700);
+    setTimeout(() => hello(true), 1000);
+  }
+  $("titleStart").addEventListener("click", () => {
+    $("titleScreen").hidden = true;
+    if (profile) beginSession();
+    else if (!tourSeen()) openTour("first");
+    else openSetup();
+  });
+  $("titleTour").addEventListener("click", () => openTour("title"));
+
   load();
   loadProfile();
   loadSongs().then(() => { if (profile) render(); });
@@ -2622,16 +2743,11 @@
     history = []; // 家族を決める前の古い会話は使わない
     save();
     render();
-    openSetup();
   } else {
-    markDay();
-    saveProfile();
     applyChar();
     render();
-    setTimeout(() => showFace("wave", 1800), 400);
-    setTimeout(checkReminders, 800);
-    setTimeout(() => hello(true), 1200);
   }
+  showTitle();
 })();
 </script>
 </body>
