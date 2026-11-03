@@ -115,7 +115,16 @@
   @media (max-width: 360px) { .head-btns { gap: 4px; } .head-btns .memo-btn { min-width: 44px; padding: 2px; } }
   /* タイトル画面と、使い方の説明 */
   .title-screen, .tour { position: fixed; inset: 0; z-index: 25; overflow-y: auto; padding: calc(env(safe-area-inset-top, 0px) + 20px) 16px calc(env(safe-area-inset-bottom, 0px) + 20px); }
-  .title-screen { background: radial-gradient(120% 80% at 50% 0%, #fff3d6 0%, #ffe6c4 55%, #fbd9b4 100%); display: flex; align-items: center; justify-content: center; }
+  /* オープニングの絵（ポケットから、ちゃむとコロン）。上の空いたところに題名、下のポケットのところにボタン */
+  .title-screen { background: linear-gradient(#fbe9d4, #fbe3d6 45%, #f7c0ba); display: flex; align-items: stretch; justify-content: center; }
+  .title-screen .title-in { display: flex; flex-direction: column; min-height: 100%; }
+  .title-top { flex: 0 0 auto; }
+  .title-gap { flex: 1 1 auto; min-height: 30vh; position: relative; margin: 0 -16px; }
+  .title-gap img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%;
+    -webkit-mask-image: radial-gradient(75% 70% at 50% 50%, #000 62%, transparent 100%); mask-image: radial-gradient(75% 70% at 50% 50%, #000 62%, transparent 100%); }
+  .title-foot { flex: 0 0 auto; display: grid; gap: 10px; }
+  .title-foot .title-link { background: rgba(255,255,255,.88); }
+  .title-foot .title-copy { margin-top: 4px; color: #6b4a44; }
   .title-in, .tour-in { width: 100%; max-width: 480px; margin: 0 auto; text-align: center; }
   .title-chars { display: flex; justify-content: center; align-items: flex-end; gap: 0; margin-bottom: 4px; }
   .title-chars img { width: 44%; max-width: 190px; aspect-ratio: 1; object-fit: contain; animation: bob 3.2s ease-in-out infinite; }
@@ -771,12 +780,16 @@
 <div class="title-screen" id="titleScreen" hidden>
   <div class="title-in">
     <button type="button" class="help-btn-s title-help" id="titleHelp" aria-label="助けて（長押し）"><span class="hfill" aria-hidden="true"></span><span class="hico" aria-hidden="true">🚑</span><span class="htx"><b>助けて</b><small>長押しで連絡先に知らせます</small></span></button>
-    <div class="title-chars" aria-hidden="true"><img src="chars/chamu/wave.png" alt=""><img src="chars/colon/wave.png" alt=""></div>
-    <h1 class="title-name"><span class="nb">AIポケット</span><span class="nb">ファミリー</span></h1>
-    <p class="title-sub"><span class="nb">スマホの中の、</span><span class="nb">あなたの家族</span></p>
-    <button type="button" class="big-btn title-start" id="titleStart">始める</button>
-    <button type="button" class="title-link" id="titleTour">使い方を見る</button>
-    <div class="title-copy">AIポケットファミリー<br>© 2026 nekomori*I’ll</div>
+    <div class="title-top">
+      <h1 class="title-name"><span class="nb">AIポケット</span><span class="nb">ファミリー</span></h1>
+      <p class="title-sub"><span class="nb">スマホの中の、</span><span class="nb">あなたの家族</span></p>
+    </div>
+    <div class="title-gap"><img src="events/opening.jpg" alt="ポケットの中から、ちゃむとコロンが手をふっています"></div>
+    <div class="title-foot">
+      <button type="button" class="big-btn title-start" id="titleStart">始める</button>
+      <button type="button" class="title-link" id="titleTour">使い方を見る</button>
+      <div class="title-copy">AIポケットファミリー<br>© 2026 nekomori*I’ll</div>
+    </div>
   </div>
 </div>
 
@@ -1143,13 +1156,15 @@
     const im = stageFaces[f] || stageFaces.normal;
     if (!im || stageFaceNow === f) return;
     const box = $("playerChar"), first = !stageFaceNow;
+    const lip = f === "talk" || stageFaceNow === "talk"; // 歌っている口の開け閉めは、すばやく切りかえる
     stageFaceNow = f;
+    im.style.transitionDuration = lip ? ".06s" : "";
     im.style.zIndex = ++stageZ;
     if (first) { im.style.transition = "none"; im.classList.add("on"); void im.offsetWidth; im.style.transition = ""; }  // 最初の1枚は、すぐ出す
     else im.classList.add("on");
     // 新しい顔が重なり終わったら、下の顔を片づける
     clearTimeout(stageFaceTimer);
-    const ms = parseFloat(getComputedStyle(box).getPropertyValue("--fade")) * 1000 || 0;
+    const ms = lip ? 60 : parseFloat(getComputedStyle(box).getPropertyValue("--fade")) * 1000 || 0;
     stageFaceTimer = setTimeout(() => { for (const k in stageFaces) if (stageFaces[k] !== im) stageFaces[k].classList.remove("on"); }, first ? 0 : ms + 60);
   }
   function setFace(f, el) {
@@ -1990,6 +2005,15 @@
       box.scrollTo({ top: Math.max(0, top), behavior: reduceMotion ? "auto" : "smooth" });
     }
   }
+  // 今、歌詞のどこかの行を歌っているところか（次の行の少し前まで。長い間奏は、6秒で歌い終わりとみなす）
+  function singingAt(t) {
+    if (!lineTimes) return false;
+    for (let i = 0; i < lineTimes.length; i++) {
+      const st = lineTimes[i], nx = i + 1 < lineTimes.length ? lineTimes[i + 1] : Infinity;
+      if (t >= st && t < Math.min(nx - 0.25, st + 6)) return true;
+    }
+    return false;
+  }
   function tick() {
     if (!mv || !mv.raf) return;
     const t = songTime();
@@ -2001,7 +2025,9 @@
     if (bi !== mv.lastBeat) { mv.lastBeat = bi; onBeat(bi, mv.eS, t); }
     followLyrics(t);
     const p = poseAt(b, mv.eS, t);
-    const face = p.face, mirror = 1; // 反対の手でふる絵（waveR）は、絵そのものを反転して用意してある
+    let face = p.face; const mirror = 1;
+    // 歌詞を歌っているあいだは、いっしょに歌う（口を開けたり閉じたり）。踊る曲と、泣いている顔のときはしない
+    if (mv.mood !== "dance" && (face === "normal" || face === "happy") && singingAt(t)) face = Math.floor(b * 2) % 2 === 0 ? "talk" : face; // 反対の手でふる絵（waveR）は、絵そのものを反転して用意してある
     setFace(face, playerChar);
     // 振りが変わるときに、体がパッと飛ばないように、なめらかに追いかける
     const now = performance.now(), wdt = Math.min(0.1, (now - (mv.lastW || now)) / 1000); mv.lastW = now;
