@@ -8,7 +8,7 @@
 import { fromOurPage, rateLimited, clientIp, readBody, reply, cleanText } from "../lib/shared.js";
 import { storeReady, redis, loadDevice } from "../lib/store.js";
 import crypto from "node:crypto";
-import { lineReady, pushMessages, sticker } from "../lib/line.js";
+import { lineReady, pushMessages, pushText, sticker } from "../lib/line.js";
 
 const WAIT_MS = 8000;
 const DAILY_MAX = 10; // 1台あたり1日に送れる回数
@@ -31,6 +31,23 @@ export function buildHelpText(body) {
     + "様子を見に行くか、連絡をしてください📲"
     + (pets ? "\n\n🐾 " + pets : "")
     + "\n\n（AIポケットファミリーより）";
+}
+
+// 「いらない」が間に合わず、もう届いていたときに、連絡先へ送るお知らせ（オーナーの文）
+export function buildClearText(body) {
+  const name = cleanText(body?.name, 12).replace(/[<>\[\]{}]/g, "");
+  return "先ほどの「助けて」は、まちがいでした。\n"
+    + (name ? honor(name) + "は、" : "")
+    + "大丈夫だそうです🙇‍♀️"
+    + "\n\n（AIポケットファミリーより）";
+}
+async function sendAllClear(id, dev, body, attempt) {
+  // 同じ回に1度だけ
+  const ok = await redis("SET", "help:clear:" + id + ":" + (attempt || "x"), "1", "NX", "EX", "3600");
+  if (!ok || !dev.family.length) return false;
+  const text = buildClearText({ name: dev.name || body?.name });
+  const results = await Promise.all(dev.family.map((to) => pushText(to, text, crypto.randomUUID())));
+  return results.some(Boolean);
 }
 
 // attempt：1回の「助けて」ごとの合言葉。「いらない」は同じ合言葉のときだけ効く（前の回の「いらない」が残っていても、新しい回を止めない）
@@ -88,9 +105,10 @@ export default async function handler(req, res) {
     const attempt = attemptOf(body);
     if (body.action === "cancel") {
       await redis("SET", "help:cancel:" + id, attempt || "1", "EX", "60");
-      // 「いらない」が間に合わず、もう送っていたら、そう伝える
+      // 「いらない」が間に合わず、もう送っていたら、連絡先に「大丈夫だそうです」と送って、そう伝える
       const already = await wasSent(id, attempt);
-      return reply(res, 200, { cancelled: !already, sent: already, configured: true });
+      const cleared = already ? await sendAllClear(id, dev, body, attempt) : false;
+      return reply(res, 200, { cancelled: !already, sent: already, cleared, configured: true });
     }
     if (body.action === "now") {
       const r = await sendToFamily(id, dev, body);

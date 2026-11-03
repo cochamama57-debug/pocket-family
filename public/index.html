@@ -2379,7 +2379,7 @@
     // サーバーに「いらない」を確実に伝える（届かなかったら、もう一度）
     let d = await helpPost(helpPayload("stop", "cancel"), true);
     if (!d.cancelled && !d.sent) d = await helpPost(helpPayload("stop", "cancel"), true);
-    sayScripted(d.sent ? "止めるのが、間に合わなかったみたい。連絡先にはもう届いているよ。まちがいなら、「まちがいでした」と伝えてね。"
+    sayScripted(d.sent ? (d.cleared ? "止めるのが、間に合わなかったみたい。でも、連絡先に「大丈夫だそうです」って、送っておいたよ。" : "止めるのが、間に合わなかったみたい。連絡先にはもう届いているよ。まちがいなら、「まちがいでした」と伝えてね。")
       : d.cancelled ? "うん、わかった。止めたよ。そばにいるからね。"
       : "止める合図が、うまく届かなかったかもしれない。連絡先の人にLINEが届いたら「まちがいでした」と伝えてね。");
   });
