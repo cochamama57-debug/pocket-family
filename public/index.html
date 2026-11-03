@@ -1212,12 +1212,19 @@
       try { data = await r.json(); } catch {}
       if (!profile) { typing.remove(); return; }
       if (r.ok && data.reply) {
+        // 声で話すときは、声ができるのを少し待ってから、文字と声をいっしょに出す（緊急のときは待たない）
+        let pre = null;
+        if (voiceOn() && $("player").hidden && data.help !== "now") {
+          pre = fetchVoice(data.reply);
+          await Promise.race([pre, new Promise((res) => setTimeout(res, 4000))]);
+          if (!profile) { typing.remove(); return; }
+        }
         typing.remove();
         history.push({ role: "assistant", content: data.reply });
         save();
         bubble("her", data.reply);
         talkFace(data.reply);
-        speak(data.reply);
+        speak(data.reply, false, pre);
         if (data.help === "now") setTimeout(() => startHelp("chat"), 600);
         else if (data.help === "ask") helpInvite();
         if (data.walk === true) { history[history.length - 1].walk = "go"; save(); walkButton("go"); }
@@ -1856,20 +1863,28 @@
       speechSynthesis.speak(u);
     } catch {}
   }
-  async function speak(text, force) {
+  const voiceText = (text) => String(text).replace(/[🔊🎵📅🚶🏠✓]/gu, "").slice(0, 200);
+  // 声を先に作っておく（できたら音のURL、できなければ null）
+  async function fetchVoice(text) {
+    try {
+      const r = await fetch("/api/voice", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: voiceText(text), char: profile.char }) });
+      if (r.status !== 200) return null;
+      return URL.createObjectURL(await r.blob());
+    } catch { return null; }
+  }
+  // pre：先に作り始めた声（あれば、それを使う）
+  async function speak(text, force, pre) {
     if (!profile || !text || (!force && !voiceOn())) return;
     if (!$("player").hidden) return; // 曲を流しているときは話さない
     stopVoice();
     const my = voiceSeq;
-    const clean = String(text).replace(/[🔊🎵📅🚶🏠✓]/gu, "").slice(0, 200);
+    const clean = voiceText(text);
     try {
-      const r = await fetch("/api/voice", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: clean, char: profile.char }) });
-      if (my !== voiceSeq) return;
-      if (r.status === 200) {
-        const blob = await r.blob();
-        if (my !== voiceSeq) return;
+      const url = await (pre || fetchVoice(clean));
+      if (my !== voiceSeq) { if (url) URL.revokeObjectURL(url); return; }
+      if (url) {
         if (voiceUrl) URL.revokeObjectURL(voiceUrl);
-        voiceUrl = URL.createObjectURL(blob);
+        voiceUrl = url;
         voiceEl.src = voiceUrl;
         await voiceEl.play();
         return;
