@@ -641,7 +641,7 @@
       <div class="game-say" id="gameSay" aria-live="polite"></div>
       <button type="button" class="tour-skip game-close" id="gameClose">✕<br>閉じる</button>
     </div>
-    <div class="game-score"><span>あなた <b id="gameYou">0</b>まい</span><span><span id="gameCharName"></span> <b id="gameMe">0</b>まい</span></div>
+    <div class="game-score"><span>あなた <b id="gameYou">0</b>枚</span><span><span id="gameCharName"></span> <b id="gameMe">0</b>枚</span></div>
     <div class="game-board" id="gameBoard"></div>
     <div class="game-end" id="gameEnd" hidden>
       <button type="button" class="big-btn" id="gameAgain">もう一回</button>
@@ -2864,6 +2864,8 @@
     ["梅雨", "つゆ"], ["桜色", "さくらいろ"], ["満月", "まんげつ"], ["流星", "りゅうせい"], ["潮風", "しおかぜ"], ["砂浜", "すなはま"],
     ["灯台", "とうだい"], ["田舎", "いなか"], ["故郷", "ふるさと"], ["親子", "おやこ"], ["祖母", "そぼ"], ["祖父", "そふ"],
   ];
+  // 逆の順でめくっても言葉になるもの（めくった順の言葉で読む）
+  const REVERSE = { "火花": "ひばな", "乳牛": "にゅうぎゅう", "和平": "わへい", "歌唱": "かしょう", "風潮": "ふうちょう", "分節": "ぶんせつ" };
   // 最近出た熟語は、しばらく出さない（毎日ちがう問題になるように）
   function pickWords(n) {
     const recent = new Set(Array.isArray(profile.gameRecent) ? profile.gameRecent : []);
@@ -2929,7 +2931,7 @@
       board.appendChild(b);
     });
     const polite = stageOf(points()) === 0;
-    gameSay(polite ? "熟語の神経衰弱をしましょう！ 2まいで熟語ができたら、そろいです。先にどうぞ！" : "熟語の神経衰弱しよう！ 2まいで熟語ができたら、そろいだよ。先にどうぞ！", "wave");
+    gameSay(polite ? "熟語の神経衰弱をしましょう！ 2枚で熟語ができたら、そろいです。先にどうぞ！" : "熟語の神経衰弱しよう！ 2枚で熟語ができたら、そろいだよ。先にどうぞ！", "wave");
     $("game").hidden = false;
   }
   function flip(i, who) {
@@ -2940,7 +2942,8 @@
     if (gm.open.length < 2) return;
     gm.busy = true;
     const [a, b] = gm.open, hit = gm.deck[a].w === gm.deck[b].w;
-    const word = hit ? gm.words[gm.deck[a].w] : null;
+    let word = hit ? gm.words[gm.deck[a].w] : null;
+    if (hit) { const asFlipped = gm.deck[a].ch + gm.deck[b].ch; if (REVERSE[asFlipped]) word = [asFlipped, REVERSE[asFlipped]]; }
     setTimeout(() => {
       if (!gm) return;
       if (hit) {
