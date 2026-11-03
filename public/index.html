@@ -131,6 +131,9 @@
   .player-stage[data-mood="sleep"] { background: linear-gradient(#2f3a63 0%, #45507e 70%, #5a628f 100%); }
   .player-stage[data-mood="calm"] { background: linear-gradient(#e6f6f3 0%, #d5efea 70%, #c6e7e1 100%); }
   .player-char { position: absolute; left: 50%; bottom: 6px; width: 150px; height: 150px; margin-left: -75px; object-fit: contain; transform-origin: 50% 90%; will-change: transform; }
+  /* 顔の絵をぜんぶ重ねておき、新しい顔を上にふわっと重ねる（絵の入れかえでチラつかないように） */
+  .player-char .pf { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; pointer-events: none; }
+  .player-char .pf.on { opacity: 1; transition: opacity var(--fade, .3s) ease-out; }
   .player-char.idle { animation: bob 3.2s ease-in-out infinite; }
   .stage-fx { position: absolute; inset: 0; pointer-events: none; }
   .fx { position: absolute; line-height: 1; pointer-events: none; will-change: transform, opacity; }
@@ -425,7 +428,7 @@
     </div>
     <div class="player-stage" id="playerStage" data-mood="listen">
       <div class="stage-fx" id="stageFx" aria-hidden="true"></div>
-      <img class="player-char" id="playerChar" alt="">
+      <div class="player-char" id="playerChar" aria-hidden="true"></div>
     </div>
     <div class="player-title" id="playerTitle"></div>
     <p class="player-note" id="playerNote"></p>
@@ -789,8 +792,36 @@
 
   // ---- 表情（まばたき・話す口・うれしい・ねむい） ----
   let faceLock = null, faceTimer = null, talkTimer = null, lastActive = Date.now();
+  // 歌の舞台のキャラ：表情ごとの絵を重ねて置いておく
+  let stageFaces = {}, stageFaceNow = "", stageFaceTimer = 0, stageZ = 1;
+  function buildStageFaces(ch) {
+    const box = $("playerChar");
+    if (box.dataset.ch === ch) return;
+    box.dataset.ch = ch; box.textContent = ""; stageFaces = {}; stageFaceNow = "";
+    for (const f of FACES) {
+      const im = new Image();
+      im.className = "pf"; im.alt = ""; im.decoding = "async"; im.src = faceSrc(ch, f);
+      if (im.decode) im.decode().catch(() => {});
+      box.appendChild(im); stageFaces[f] = im;
+    }
+  }
+  function showStageFace(f) {
+    buildStageFaces(profile.char);
+    const im = stageFaces[f] || stageFaces.normal;
+    if (!im || stageFaceNow === f) return;
+    const box = $("playerChar"), first = !stageFaceNow;
+    stageFaceNow = f;
+    im.style.zIndex = ++stageZ;
+    if (first) { im.style.transition = "none"; im.classList.add("on"); void im.offsetWidth; im.style.transition = ""; }  // 最初の1枚は、すぐ出す
+    else im.classList.add("on");
+    // 新しい顔が重なり終わったら、下の顔を片づける
+    clearTimeout(stageFaceTimer);
+    const ms = parseFloat(getComputedStyle(box).getPropertyValue("--fade")) * 1000 || 0;
+    stageFaceTimer = setTimeout(() => { for (const k in stageFaces) if (stageFaces[k] !== im) stageFaces[k].classList.remove("on"); }, first ? 0 : ms + 60);
+  }
   function setFace(f, el) {
     if (!profile) return;
+    if (el && el.id === "playerChar") return showStageFace(f);
     const img = el || $("avatarImg");
     const src = faceSrc(profile.char, f);
     if (img.getAttribute("src") !== src) img.setAttribute("src", src);
@@ -1386,14 +1417,32 @@
     };
     stageEl.dataset.mood = mood;
     delete stageEl.dataset.clear;
+    playerChar.style.setProperty("--fade", { dance: ".1s", morning: ".25s", comfort: ".7s", sleep: ".7s", calm: ".5s" }[mood] || ".3s");
     fxEl.textContent = "";
   }
-  function songTime() {
+  function rawSongTime() {
     if (currentSong && currentSong.youtube) {
       try { const t = ytPlayer && ytPlayer.getCurrentTime && ytPlayer.getCurrentTime(); if (typeof t === "number" && t > 0) return t; } catch {}
       return (performance.now() - mv.t0) / 1000;
     }
     return audio.currentTime || 0;
+  }
+  // iPhoneは再生位置をとびとびに知らせてくるので、間を時計でおぎなって、なめらかに進める
+  function songTime() {
+    const raw = rawSongTime(), now = performance.now();
+    const paused = currentSong && !currentSong.youtube && audio.paused;
+    if (!mv || paused) { if (mv) mv.clk = null; return raw; }
+    const c = mv.clk;
+    if (!c) { mv.clk = { t: raw, w: now, last: raw }; return raw; }
+    let est = c.t + (now - c.w) / 1000 * (currentSong && !currentSong.youtube ? audio.playbackRate || 1 : 1);
+    if (raw !== c.last) {
+      c.last = raw;
+      const err = raw - est;
+      if (Math.abs(err) > 0.3) est = raw;     // 巻きもどし・とばし
+      else est += err * 0.15;                 // 少しずつ合わせる
+      c.t = est; c.w = now;
+    }
+    return Math.min(est, c.last + 0.6);       // 読みこみで止まったときは、先に行きすぎない
   }
   // energy＝その瞬間の音の大きさ（動きの大きさに使う）／level＝前後4秒をならした曲の場面（0＝前奏・終わり、9＝いちばん盛り上がるサビ）
   function curveAt(str, t, d) {
@@ -1570,7 +1619,7 @@
     let face = p.face, mirror = 1;
     if (face === "waveR") { face = "wave"; mirror = -1; }  // 反対の手でもふる
     setFace(face, playerChar);
-    playerChar.style.transform = "translate(" + p.x.toFixed(1) + "px," + p.y.toFixed(1) + "px) rotate(" + p.r.toFixed(2) + "deg) scale(" + (p.sx * mirror).toFixed(3) + "," + p.sy.toFixed(3) + ")";
+    playerChar.style.transform = "translate(" + p.x.toFixed(2) + "px," + p.y.toFixed(2) + "px) rotate(" + p.r.toFixed(2) + "deg) scale(" + (p.sx * mirror).toFixed(3) + "," + p.sy.toFixed(3) + ")";
     mv.raf = requestAnimationFrame(tick);
   }
   function startMotion() {
