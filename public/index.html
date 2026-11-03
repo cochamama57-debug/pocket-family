@@ -746,7 +746,7 @@
 <script>
 (() => {
   const STORE_KEY = "pf.chat.v1";
-  const MAX_KEEP = 60;
+  const MAX_KEEP = 120; // 長い思い出話の途中でも、始まりの印が消えないように
   const PHOTO_TEXT = "（写真を見せたよ）";
   const PROFILE_KEY = "pf.profile.v1";
   const CHARS = {
@@ -957,7 +957,7 @@
   function save() {
     try {
       // 写真そのものは残さない（容量のため）。「写真を見せた」という印だけ残す
-      const slim = history.slice(-MAX_KEEP).map(m => ({ role: m.role, content: m.content, photo: m.photo ? true : undefined, song: typeof m.song === "string" ? m.song : undefined, remind: m.remind && typeof m.remind === "object" ? m.remind : undefined, walk: m.walk === "go" || m.walk === "back" ? m.walk : undefined, gift: Number.isInteger(m.gift) ? m.gift : undefined, react: REACTS.includes(m.react) ? m.react : undefined, ds: m.ds ? 1 : undefined, dd: m.dd && typeof m.dd === "object" ? { title: String(m.dd.title || "").slice(0, 20), body: String(m.dd.body || "").slice(0, 10000), kind: m.dd.kind === "memoir" ? "memoir" : "diary" } : undefined }));
+      const slim = history.slice(-MAX_KEEP).map(m => ({ role: m.role, content: m.content, photo: m.photo ? true : undefined, song: typeof m.song === "string" ? m.song : undefined, remind: m.remind && typeof m.remind === "object" ? m.remind : undefined, walk: m.walk === "go" || m.walk === "back" ? m.walk : undefined, gift: Number.isInteger(m.gift) ? m.gift : undefined, react: REACTS.includes(m.react) ? m.react : undefined, ds: m.ds ? 1 : undefined, df: m.df ? 1 : undefined, dd: m.dd && typeof m.dd === "object" ? { title: String(m.dd.title || "").slice(0, 20), body: String(m.dd.body || "").slice(0, 10000), kind: m.dd.kind === "memoir" ? "memoir" : "diary" } : undefined }));
       localStorage.setItem(STORE_KEY, JSON.stringify(slim));
     } catch {
       if (canSave) {
@@ -1435,7 +1435,7 @@
     if (diaryFixDraft && profile && profile.diaryMode && !photo && text !== SKIPPED) {
       const d = diaryFixDraft; diaryFixDraft = null;
       input.value = ""; autoGrow(); hideGuide();
-      history.push({ role: "user", content: text.slice(0, 1000) }); save();
+      history.push({ role: "user", content: text.slice(0, 1000), df: 1 }); save(); // df：直しの頼み（日記の中身には入れない）
       bubble("me", text);
       makeDiary(text.slice(0, 200), d);
       return;
@@ -1545,7 +1545,7 @@
   resetBtn.addEventListener("click", () => {
     if (!resetBtn.classList.contains("armed")) {
       resetBtn.classList.add("armed");
-      resetBtn.textContent = "もう一度押すと、思い出が全部消えます（連絡先の登録は残ります）";
+      resetBtn.textContent = "もう一度押すと、思い出と日記帳が全部消えます（連絡先の登録は残ります）";
       clearTimeout(armTimer);
       armTimer = setTimeout(() => { resetBtn.classList.remove("armed"); resetBtn.textContent = "最初からやり直す"; }, 4000);
       return;
@@ -3158,18 +3158,20 @@
     const dm = profile && profile.diaryMode;
     if (!dm || sending) return;
     let from = 0; for (let i = history.length - 1; i >= 0; i--) if (history[i].ds) { from = i; break; }
-    const msgs = history.slice(from).filter(m => (m.role === "user" || m.role === "assistant") && !m.dd).map(m => ({ role: m.role, content: m.content }));
+    const msgs = history.slice(from).filter(m => (m.role === "user" || m.role === "assistant") && !m.dd && !m.df).map(m => ({ role: m.role, content: m.content }));
     if (!msgs.some(m => m.role === "user")) { sayScripted(stageOf(points()) === 0 ? "まだ、お話を聞いていません。少しだけ、話してもらえますか？" : "まだ、お話を聞いてないよ。少しだけ話して？"); return; }
     sending = true; setBusy(true);
     const typing = bubble("her typing", "");
     typing.querySelector(".bubble").innerHTML = '<span class="dots"><span>・</span><span>・</span><span>・</span></span>';
     let data = {};
+    const ctrl = new AbortController(), timer = setTimeout(() => ctrl.abort(), 70000);
     try {
       const d = device();
-      const r = await fetch("/api/diary", { method: "POST", headers: { "Content-Type": "application/json" },
+      const r = await fetch("/api/diary", { method: "POST", signal: ctrl.signal, headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: d.id, secret: d.secret, kind: dm.kind, messages: msgs.slice(-160), base: dm.cont ? contBase(dm.cont) : undefined, call: callName(), charName: profile.name, date: today(), draft: prev ? prev.title + "\n" + prev.body : undefined, fix: fix || undefined }) });
       data = await r.json().catch(() => ({}));
     } catch {}
+    clearTimeout(timer);
     typing.remove(); sending = false; setBusy(false);
     if (!profile || !profile.diaryMode) return;
     if (!data.ok) { addNote(data.message || "うまくまとめられませんでした。少ししてから「まとめる」を押してください。"); return; }
