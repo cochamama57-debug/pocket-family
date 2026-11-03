@@ -1055,6 +1055,9 @@
   // キャラが自分から話す（最初の質問など。AIは呼ばない）
   // ちゃむは自分のことを「ぼく」、コロンは「わたし」と言う
   const myWord = (text) => (profile && profile.char === "chamu" ? String(text).replace(/わたし/g, "ぼく") : text);
+  // 遊んでいる・曲を聞いている間（キャラは自分から話しかけない）
+  function inActivity() { return !$("game").hidden || !$("player").hidden; }
+  let gameVoice = false; // ゲームの中のキャラの声だけは出す
   function sayScripted(text) {
     text = myWord(text);
     history.push({ role: "assistant", content: text });
@@ -1916,6 +1919,7 @@
     audio.pause();
     setPlaying(false);
     $("player").hidden = true;
+    setTimeout(checkReminders, 2500); // 曲を聞いている間に来た、お薬・予定のお知らせ
   }
   $("playerClose").addEventListener("click", closePlayer);
   $("sangBtn").addEventListener("click", () => {
@@ -2034,6 +2038,7 @@
   async function speak(text, force, pre) {
     if (!profile || !text || (!force && !voiceOn())) return;
     if (!$("player").hidden) return; // 曲を流しているときは話さない
+    if (!$("game").hidden && !gameVoice) return; // ゲーム中は、ゲームの外の話を声に出さない
     stopVoice();
     const my = voiceSeq;
     const clean = voiceText(text);
@@ -2146,7 +2151,7 @@
     remindBubble(history[history.length - 1]);
   }
   function checkReminders() {
-    if (!profile || profile.step < QUESTIONS.length || sending || helpBusy || !$("titleScreen").hidden) return;
+    if (!profile || profile.step < QUESTIONS.length || sending || helpBusy || !$("titleScreen").hidden || inActivity()) return; // 遊び・曲が終わったら知らせる
     const st = remindState(), now = minutes(nowHM()), t = today();
     // お薬：時間を過ぎていて、まだ言っていないもの（日付が変わるまで）
     for (const md of meds()) {
@@ -2874,7 +2879,7 @@
   let hiddenAt = 0;
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) { hiddenAt = Date.now(); return; }
-    if (profile && hiddenAt && Date.now() - hiddenAt > 2 * 3600 * 1000 && $("titleScreen").hidden && profile.step >= QUESTIONS.length && !helpBusy) greet();
+    if (profile && hiddenAt && Date.now() - hiddenAt > 2 * 3600 * 1000 && $("titleScreen").hidden && profile.step >= QUESTIONS.length && !helpBusy && !inActivity()) greet();
   });
   // ---- 孫からの絵のプレゼント（キャラが描いたクレヨンの絵。ノートの「もらった絵」にたまる） ----
   // クレヨン風の絵（形の一覧 → SVG）
@@ -2968,6 +2973,7 @@
   // たまに（3日に1回くらい）、絵を持ってくる
   function maybeGift() {
     if (!profile || profile.step < QUESTIONS.length || !profile.birthday) return;
+    if (inActivity() || !$("memo").hidden || sending) { setTimeout(maybeGift, 90000); return; } // 遊び・曲・ノートの最中は、あとで
     const last = Number(profile.lastGift) || 0;
     if (Date.now() - last < 3 * 86400000) return;
     if (growth().days.length < 2) return; // 出会った日は、まだ描かない
@@ -3142,7 +3148,7 @@
       : gm.you < gm.me ? (polite ? "わたしの勝ちです…！ 楽しかったです。もう一回、どうですか？" : "えへへ、わたしの勝ち！ もう一回やろうよ〜！")
       : (polite ? "引き分けです！ 楽しかったです！" : "引き分け！ 楽しかったね！");
     gameSay(text, gm.you >= gm.me ? "banzai" : "happy");
-    speak(myWord(text));
+    gameVoice = true; speak(myWord(text)); gameVoice = false;
     afterActivity("game");
     $("gameEnd").hidden = false;
   }
@@ -3150,6 +3156,7 @@
     const played = gm && gm.done.size > 0;
     gm = null; $("game").hidden = true;
     if (played) sayScripted(stageOf(points()) === 0 ? "遊んでくれて、ありがとうございました！ また遊びましょうね。" : "遊んでくれて、ありがとう！ また遊ぼうね！");
+    setTimeout(checkReminders, 2500); // 遊んでいる間に来た、お薬・予定のお知らせ
   }
   $("gameBtn").addEventListener("click", () => { stopMic(); openGame(); });
   $("gameAgain").addEventListener("click", openGame);
@@ -3278,7 +3285,8 @@
     return (want && list.find(x => x.tag === want)) || list[Math.floor(Math.random() * list.length)];
   }
   function invite() {
-    if (!profile || profile.step < QUESTIONS.length || sending || helpBusy || !$("player").hidden || !canInvite()) return;
+    if (!profile || profile.step < QUESTIONS.length || sending || helpBusy || !canInvite()) return;
+    if (inActivity() || !$("memo").hidden) { setTimeout(invite, 90000); return; } // 遊び・曲・ノートの最中は、あとで
     const kinds = inviteKinds(), kind = kinds[Math.floor(Math.random() * kinds.length)];
     const sg = kind === "song" ? pickSong() : null;
     if (kind === "song" && !sg) return;
@@ -3327,7 +3335,8 @@
     if (profile.step >= QUESTIONS.length) {
       if (!celebrate()) greet(); // 誕生日・クリスマス・お正月は、お祝いがあいさつ
       else { profile.lastGreet = Date.now(); profile.lastOpen = Date.now(); saveProfile(); }
-      if (!profile.birthday) setTimeout(() => askBirthday(), 4000);
+      const tryBday = () => { if (profile.birthday) return; if (inActivity()) return setTimeout(tryBday, 30000); askBirthday(); };
+      if (!profile.birthday) setTimeout(tryBday, 4000);
     }
     setTimeout(() => showFace("wave", 1800), 300);
     setTimeout(checkReminders, 3000);
