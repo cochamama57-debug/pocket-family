@@ -8,6 +8,12 @@
 <meta name="apple-mobile-web-app-title" content="ポケットファミリー">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="description" content="スマホの中の、あなたの家族。いっしょにお話しして、歌って、日記を書いてくれるAIのキャラクターです。">
+<meta property="og:title" content="AIポケットファミリー">
+<meta property="og:description" content="スマホの中の、あなたの家族。いっしょにお話しして、歌って、日記を書いてくれます。">
+<meta property="og:image" content="https://pocket-family-eight.vercel.app/events/og.jpg">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="favicon.png">
@@ -203,6 +209,8 @@
   .gift-cap { font-size: 15px; color: var(--sub); margin-top: 4px; }
   .gift-list { display: grid; gap: 12px; }
   .gift-flower { display: block; width: 60%; max-width: 260px; margin: 8px auto; }
+  .good-count { margin: 4px 0 12px; padding: 10px 14px; border-radius: 14px; background: #fff6d8; color: #6b5310; font-size: 19px; font-weight: 700; text-align: center; }
+  .good-note { margin: 6px 0 8px; padding: 8px 12px; border-radius: 12px; background: #fff6d8; color: #5d4a12; font-size: 17px; line-height: 1.6; }
   .swap-box { display: flex; gap: 12px; align-items: center; }
   .swap-box img { flex: none; object-fit: contain; }
   .swap-box > div { flex: 1; min-width: 0; }
@@ -3121,12 +3129,16 @@
     $("titleScreen").hidden = false;
   }
   // 開いたときのあいさつ（おはよう・おかえり・こんばんは・おやすみ）。時間と、前に会ってからの長さで変える
+  let greetGentle = false; // つらかった日の翌朝の、そっとしたあいさつ
   function greetText() {
+    greetGentle = false;
     const h = new Date().getHours(), last = Number(profile.lastOpen) || 0, gap = Date.now() - last;
     const polite = stageOf(points()) === 0, colon = profile.char === "colon";
     const pi = colon ? "ピピッ。" : "";
     const pick = (a, b) => (polite ? a : b);
     if (last && gap > 2 * 86400000) return pi + pick("おひさしぶりです！ 会えて、うれしいです。", "ひさしぶり！ 会いたかったよ〜。");
+    const lm = profile.lastMood, yest = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); })();
+    if (h >= 5 && h < 11 && lm && lm.mood === "hard" && lm.date === yest && !lm.asked) { lm.asked = true; greetGentle = true; return pi + pick("おはようございます。きのうは、ゆっくり休めましたか？ 今日は、のんびりいきましょうね。", "おはよう。きのうは、ゆっくり休めた？ 今日は、のんびりいこうね。"); }
     if (h >= 5 && h < 10) return pi + pick("おはようございます！ よく眠れましたか？", "おはよう！ よく眠れた？");
     if (h >= 21 || h < 5) return pi + pick("今日はどうでしたか？ そろそろ、おやすみの時間でしょうか。", "今日はどうだった？ そろそろ、おやすみの時間かな？");
     if (h >= 17) return pi + pick("おかえりなさい！ 今日はどうでしたか？", "おかえり！ 今日はどうだった？");
@@ -3141,10 +3153,10 @@
     saveProfile();
     setTimeout(() => { sayScripted(text); showFace("wave", 2000); }, 600);
     const h = new Date().getHours();
-    if (h >= 5 && h < 11 && profile.morningSong !== today()) setTimeout(morningSong, 3800);
+    if (h >= 5 && h < 11 && profile.morningSong !== today() && !greetGentle) setTimeout(morningSong, 3800); // つらかった日の翌朝は、歌に誘わない
   }
   function morningSong() {
-    if (!profile || inActivity() || profile.diaryMode || helpBusy || profile.morningSong === today()) return;
+    if (!profile || inActivity() || profile.diaryMode || helpBusy || profile.morningSong === today() || !profile.birthday || bdayAsking) return;
     const sg = allSongs().find(x => x.file && x.tag === "おはよう");
     if (!sg) return;
     profile.morningSong = today();
@@ -3371,8 +3383,10 @@
     if (!profile) return;
     const list = diaries(), dm = profile.diaryMode;
     const cont = dm && dm.cont && list.find(x => x.id === dm.cont);
-    if (cont) { cont.body = draft.body; cont.updated = today(); }  // 題名はそのまま  // 書き足した文章で、置きかえる
-    else list.push({ id: Date.now().toString(36), date: (dm && dm.day) || today(), kind: draft.kind, title: draft.title, body: draft.body });
+    const good = draft.mood !== "hard" && typeof draft.note === "string" ? draft.note.slice(0, 80) : "";
+    if (cont) { cont.body = draft.body; cont.updated = today(); if (good) cont.good = good; }  // 題名はそのまま  // 書き足した文章で、置きかえる
+    else list.push({ id: Date.now().toString(36), date: (dm && dm.day) || today(), kind: draft.kind, title: draft.title, body: draft.body, good: good || undefined, by: good ? profile.name : undefined });
+    profile.lastMood = { date: (dm && dm.day) || today(), mood: draft.mood || "normal" }; // あしたの朝、つらかった日のあとは、そっと声をかける
     if (list.length > 300) list.splice(0, list.length - 300);
     saveDiaries();
     addScore("diary"); saveProfile(); updateHearts();
@@ -3421,7 +3435,7 @@
   function diaryFileText(list) {
     const who = callName();
     const lines = ["AIポケットファミリー　日記帳" + (who ? "（" + who + "さん）" : ""), ""];
-    for (const d of list) lines.push("━━━━━━━━━━", jpFullDate(d.date) + "　" + (d.kind === "memoir" ? "思い出話" : "日記"), "【" + (d.title || "") + "】", "", d.body || "", "");
+    for (const d of list) lines.push("━━━━━━━━━━", jpFullDate(d.date) + "　" + (d.kind === "memoir" ? "思い出話" : "日記"), "【" + (d.title || "") + "】", "", d.body || "", ...(d.good ? ["", "🌼 " + (d.by || "") + "が見つけた、いいこと：" + d.good] : []), "");
     return lines.join("\n");
   }
   async function shareDiary(list, name) {
@@ -3444,8 +3458,11 @@
     $("diaryAll").hidden = !list.length;
     setPhrases($("diarySaveHow"), !list.length ? "" : isIOS ? "保存するときは、|出てきた画面で|「“ファイル”に保存」を|選んでください。|メールやLINEで|送ることもできます。" : isAndroid ? "保存するときは、|出てきた画面で|「ドライブ」や|「ファイル」を選ぶか、|LINEなどで|送ることもできます。" : "文字のファイル（.txt）として|保存されます。");
     if (!list.length) { const p = document.createElement("p"); p.className = "hint-s"; p.textContent = "まだありません。上のボタンから、書いてみましょう。"; box.appendChild(p); return; }
+    const goods = list.filter(d => d.good).length;
+    if (goods) { const g = document.createElement("p"); g.className = "good-count"; setPhrases(g, "🌼 見つけた|「いいこと」は、|全部で" + goods + "個"); box.appendChild(g); }
     for (const d of list) {
       const c = diaryCard(d, d.date);
+      if (d.good) { const g = document.createElement("p"); g.className = "good-note"; g.textContent = "🌼 " + (d.by || profile.name) + "が見つけた、いいこと：" + d.good; c.querySelector(".db").before(g); }
       const db = c.querySelector(".db");
       if ((d.body || "").length > 300) {
         db.classList.add("fold");
@@ -3825,6 +3842,7 @@
     if (!profile || scene) return false;
     stopVoice(); stopMic();
     const el = $("scene");
+    for (const id of ["scBody", "scChar", "scTitle", "scBouquet", "scFlash"]) { try { $(id).getAnimations().forEach(a => a.cancel()); } catch {} }
     el.className = "scene " + kind; el.hidden = false;
     const s = scene = { kind, seq: 0, timers: [], parts: [], raf: 0, cx: scCanvas(), done };
     for (const p of [...POSE_EXTRA, "banzai", "happy", "wave"]) { const im = new Image(); im.src = scenePose(profile.char, p); }
@@ -3833,7 +3851,7 @@
     const voiceA = pv(lines.a), voiceB = pv(lines.b), voiceC = pv(lines.c);
     setPhrases($("scTitle"), lines.title); $("scTitle").style.transform = "scale(0)";
     $("scLine").classList.remove("show"); $("scLine").textContent = ""; $("scBtns").textContent = "";
-    $("scBouquet").style.opacity = "0"; $("scBouquet").getAnimations?.().forEach(a => a.cancel());
+    $("scBouquet").style.opacity = "0";
     $("scImgA").style.opacity = "1"; $("scImgB").style.opacity = "0"; $("scImgA").src = faceSrc(profile.char, "happy");
     requestAnimationFrame(() => el.classList.add("on"));
     s.raf = requestAnimationFrame(scLoop);
@@ -3926,6 +3944,8 @@
     profile.eventDone = done; saveProfile();
     const kind = { bday: "bday", "xmas-eve": "xmas", xmas: "xmas", nye: "nye", ny: "ny" }[ev.key];
     const withScene = !!kind && !reduceMotion;
+    if (profile.invite && profile.invite.d === today()) profile.invite.at = Date.now(); else profile.invite = { d: today(), n: 0, at: Date.now() }; // お祝いの日は、ほかの誘いを2時間あける
+    saveProfile();
     setTimeout(() => {
       if (withScene && playScene(kind, () => setTimeout(() => afterCelebrate(ev, true), 300))) return;
       afterCelebrate(ev, false);
@@ -3953,7 +3973,7 @@
       // 誕生日の歌があれば、誘う
       const bsong = ev.key === "bday" && allSongs().find(x => x.tag === "誕生日");
       if (bsong) setTimeout(() => songInvite(bsong.id), 1200);
-      if (ev.key === "bday") setTimeout(() => giveDrawing("bday"), 5000);
+      if (ev.key === "bday") setTimeout(() => giveDrawing("bday"), 12000); // 歌の誘いと重ならないように
     }
   }
   // 誕生日を聞く（必ず登録。答えるまで、開くたびに聞く）
@@ -4081,7 +4101,9 @@
       const polite = stageOf(points()) === 0, pi = profile.char === "chamu" ? "" : "ピピッ。";
       sayScripted(pi + (polite ? "そういえば、" + Number(dm.day.slice(5, 7)) + "月" + Number(dm.day.slice(8)) + "日の日記が、書きかけです。下の「まとめる」を押すと、日記にできます。書かないときは「やめる」を押してくださいね。" : "そういえば、" + Number(dm.day.slice(5, 7)) + "月" + Number(dm.day.slice(8)) + "日の日記、書きかけだよ。下の「まとめる」で日記にできるよ。書かないなら「やめる」を押してね。"));
     }, 6000);
-    { const sc = new URLSearchParams(location.search).get("scene"); if (["bday", "ny", "nye", "xmas"].includes(sc)) setTimeout(() => playScene(sc, null), 1500); }
+    { const q = new URLSearchParams(location.search), sc = q.get("scene");
+      if (sc) { q.delete("scene"); try { window.history.replaceState(null, "", location.pathname + (q.toString() ? "?" + q : "") + location.hash); } catch {} }
+      if (["bday", "ny", "nye", "xmas"].includes(sc)) setTimeout(() => playScene(sc, null), 1500); }
     setTimeout(checkReminders, 3000);
     setTimeout(() => { if (profile.birthday) invite(); }, 9000); // あいさつのあと、少しして、たまに誘う
     setTimeout(maybeGift, 20000); // たまに、絵を持ってくる
