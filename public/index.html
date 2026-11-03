@@ -173,6 +173,7 @@
   .game-end { margin-top: 14px; }
   @media (max-height: 760px) { .game-board { grid-template-columns: repeat(4, 1fr); gap: 8px; } .game-card .fr { font-size: 40px; } .game-card .bk { font-size: 28px; } .game-top img { width: 56px; height: 56px; } .game-say { font-size: 17px; } }
   @media (prefers-reduced-motion: reduce) { .game-card .in { transition: none; } }
+  .event-img { display: block; width: 100%; height: auto; margin-top: 10px; border-radius: 14px; }
   .gift-card { margin-top: 10px; background: #fff; border-radius: 12px; padding: 6px; box-shadow: 0 2px 6px rgba(0,0,0,.12); }
   .gift-card svg { display: block; width: 100%; height: auto; border-radius: 8px; }
   .gift-cap { font-size: 15px; color: var(--sub); margin-top: 4px; }
@@ -3172,6 +3173,16 @@
     profile.eventDone = done; saveProfile();
     setTimeout(() => {
       sayScripted(ev.text);
+      // お祝いの日の絵（ちゃむとコロンが、いっしょにお祝い）
+      const img = { bday: "bday", "xmas-eve": "xmas", xmas: "xmas", nye: "nye", ny: "ny" }[ev.key];
+      const bx = log.lastElementChild && log.lastElementChild.querySelector(".bubble");
+      if (img && bx) {
+        const im = document.createElement("img");
+        im.className = "event-img"; im.alt = "ちゃむとコロンの、お祝いの絵"; im.src = "events/" + img + ".jpg";
+        im.addEventListener("error", () => im.remove());
+        bx.appendChild(im);
+        log.scrollTop = log.scrollHeight;
+      }
       confetti(ev.fx);
       showFace("banzai", 3000);
       avatar.classList.add("happy"); setTimeout(() => avatar.classList.remove("happy"), 2400);
