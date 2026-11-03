@@ -157,6 +157,16 @@ export default async function handler(req, res) {
     return reply(res, 503, { error: "no_key", message: "いまは、おやすみ中です。（準備中）" });
   }
 
+  // 質問ぜめにしない：キャラの返事が2回続けて質問だったら、今回は質問しない（オーナー：「質問ぜめだとチャットAIと同じ」）
+  const textOf = (m) => (typeof m.content === "string" ? m.content : (m.content || []).filter((c) => c.type === "text").map((c) => c.text).join(""));
+  const mine = messages.filter((m) => m.role === "assistant").slice(-2).map(textOf);
+  const asked = mine.filter((t) => /[？?]/.test(t)).length;
+  const QUESTION_RULE = mine.length >= 2 && asked >= 2
+    ? "【今回の返事】質問はしない（「？」を使わない）。相手の話を受け止めてから、自分の気持ちや、ポケットの中の小さなできごとを、自分から話して終える。"
+    : asked >= 1
+      ? "【今回の返事】質問は、しなくてよい。するなら1つだけ。自分の気持ちや小さな話で終えるほうが、うれしい。"
+      : "【今回の返事】質問は、するなら1つだけ。";
+
   try {
     const response = await getClient().beta.messages.create({
       model: MODEL,
@@ -173,6 +183,7 @@ export default async function handler(req, res) {
         { type: "text", text: songBlock(songs) },
         { type: "text", text: nowBlock() },
         { type: "text", text: profileBlock(profile) },
+        { type: "text", text: QUESTION_RULE },
       ],
       messages,
     });
