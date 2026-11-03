@@ -459,15 +459,15 @@
   <div class="sheet-in">
     <div class="sheet-head">
       <img id="songsImg" alt="">
-      <h2><span class="nb">いっしょに</span><span class="nb">歌おう</span></h2>
+      <h2><span class="nb">一緒に</span><span class="nb">歌いましょう</span></h2>
       <button type="button" class="close-btn" id="songsClose">とじる</button>
     </div>
     <ul class="song-list" id="songList"></ul>
-    <h3>わたしの好きな曲</h3>
+    <h3>私の好きな曲</h3>
     <ul class="song-list" id="favList"></ul>
     <form class="pet-form" id="favForm" autocomplete="off">
       <label>曲の名前や、歌っている人<input id="favQ" maxlength="60" placeholder="例：川の流れのように" enterkeyhint="search"></label>
-      <button type="submit" class="add">🔍 YouTubeでさがす</button>
+      <button type="submit" class="add">🔍 YouTubeで探す</button>
       <p class="hint-s" id="favMsg" style="margin:0"></p>
       <ul class="song-list" id="favResults"></ul>
     </form>
@@ -491,7 +491,7 @@
     <div class="lyrics" id="lyrics"></div>
     <div class="player-ctrl" id="playerCtrl">
       <button type="button" class="play" id="playBtn">▶ 再生</button>
-      <button type="button" id="restartBtn">はじめから</button>
+      <button type="button" id="restartBtn">最初から</button>
     </div>
     <button type="button" class="sang" id="sangBtn">歌えた！</button>
     <audio id="audio" preload="none"></audio>
@@ -513,8 +513,8 @@
     </div>
     <section id="tabMem">
     <div class="stat">
-      <div>いっしょに過ごした日　<span class="big" id="memoDays"></span></div>
-      <div>なかよし度　<span class="hearts" id="memoHearts"></span>　<b id="memoStage"></b></div>
+      <div>一緒に過ごした日　<span class="big" id="memoDays"></span></div>
+      <div>仲よし度　<span class="hearts" id="memoHearts"></span>　<b id="memoStage"></b></div>
       <div class="next" id="memoNext"></div>
     </div>
     <h3 id="memoNotesTitle"></h3>
@@ -526,9 +526,9 @@
       <h3>予定</h3>
       <ul id="planList"></ul>
       <form class="pet-form" id="planForm" autocomplete="off">
-        <label>日にち<input type="date" id="planDate" required></label>
-        <label>時間（なくてもいいよ）<input type="time" id="planTime"></label>
-        <label>なにをする？<input id="planText" maxlength="30" placeholder="例：歯医者" required enterkeyhint="done"></label>
+        <label>日付<input type="date" id="planDate" required></label>
+        <label>時間（なくても構いません）<input type="time" id="planTime"></label>
+        <label>内容<input id="planText" maxlength="30" placeholder="例：歯医者" required enterkeyhint="done"></label>
         <button type="submit" class="add">＋ 予定を登録する</button>
       </form>
       <h3>お薬の時間のお知らせ</h3>
@@ -544,16 +544,16 @@
       <h3>連絡先（LINE）</h3>
       <p class="hint-s" style="margin:0 0 6px"><span class="nb">友人や家族など、</span><span class="nb">連絡を受け取って</span><span class="nb">くれる人です。</span></p>
       <p class="hint-s"><span class="nb">「助けて」の合図や、</span><span class="nb">しばらくアプリを</span><span class="nb">開いていないときに、</span><span class="nb">連絡先の人のLINEに</span><span class="nb">知らせます。</span><span class="nb">相手の電話番号などを、</span><span class="nb">ここに入れる</span><span class="nb">必要はありません。</span></p>
-      <div class="stat" id="famStatus">読みこみ中…</div>
+      <div class="stat" id="famStatus">読み込み中…</div>
       <label style="display:grid;gap:4px;font-size:17px;margin:0 0 12px"><span><span class="nb">お知らせに出す、</span><span class="nb">あなたの名前</span></span>
         <input id="famName" maxlength="12" placeholder="例：はなこ" enterkeyhint="done" autocomplete="off" style="font:inherit;font-size:20px;padding:8px;border:2px solid var(--line);border-radius:12px;min-height:48px">
       </label>
       <button type="button" class="big-btn" id="famCode" style="background:var(--mic)"><span class="nb">連絡先の人に</span><span class="nb">登録してもらう</span></button>
       <div class="stat" id="famCodeBox" hidden>
-        <div><span class="nb">連絡先に</span><span class="nb">なってくれる人に、</span><span class="nb">この番号を伝えてね</span></div>
+        <div><span class="nb">連絡先に</span><span class="nb">なってくれる人に、</span><span class="nb">この番号を伝えてください</span></div>
         <div class="help-count" id="famCodeNum" style="font-size:52px;margin:6px 0"></div>
         <ol style="padding-left:1.2em;margin:0;font-size:17px">
-          <li><span class="nb">その人に、LINEで</span><span class="nb">「AIポケットファミリー」を</span><span class="nb"><b>友だち追加</b>してもらう</span><br><span class="hint-s"><span class="nb">そばにいるなら、</span><span class="nb">このQRコードを</span><span class="nb">その人のLINEで</span><span class="nb">読んでもらってね</span></span></li>
+          <li><span class="nb">その人に、LINEで</span><span class="nb">「AIポケットファミリー」を</span><span class="nb"><b>友だち追加</b>してもらう</span><br><span class="hint-s"><span class="nb">そばにいるなら、</span><span class="nb">このQRコードを</span><span class="nb">その人のLINEで</span><span class="nb">読み取ってもらってください</span></span></li>
           <li><span class="nb">そのトークに、</span><span class="nb">この<b>6けたの番号</b>を</span><span class="nb">送ってもらう</span></li>
         </ol>
         <img src="line-qr.png" alt="AIポケットファミリーのLINE 友だち追加のQRコード" style="display:block;width:160px;height:160px;margin:10px auto;border:1px solid var(--line);border-radius:8px">
@@ -571,34 +571,34 @@
       <h3>うちの家族（ペット）</h3>
     <ul id="petList"></ul>
     <form class="pet-form" id="petForm" autocomplete="off">
-      <label>どんな子？
+      <label>種類
         <select id="petKind">
           <option>猫</option><option>犬</option><option>鳥</option><option>うさぎ</option><option>魚</option><option>そのほか</option>
         </select>
       </label>
-      <label>名前（なくてもいいよ）<input id="petName" maxlength="12" enterkeyhint="done"></label>
+      <label>名前（なくても構いません）<input id="petName" maxlength="12" enterkeyhint="done"></label>
       <button type="submit" class="add">＋ ペットを登録する</button>
     </form>
     </section>
     <div class="stat swap-box" style="margin-top:20px">
       <img id="swapImg" alt="" width="72" height="72">
       <div>
-        <p class="hint-s" style="margin:0 0 6px"><span class="nb">もう一人の家族にも</span><span class="nb">会えるよ。</span><span class="nb">思い出は、</span><span class="nb">それぞれの子が</span><span class="nb">ちゃんと覚えているよ。</span></p>
+        <p class="hint-s" style="margin:0 0 6px"><span class="nb">もう一人の家族にも</span><span class="nb">会えます。</span><span class="nb">思い出は、</span><span class="nb">それぞれが</span><span class="nb">覚えています。</span></p>
         <button type="button" class="big-btn" id="swapBtn" style="margin:0"></button>
       </div>
     </div>
     <div class="stat" style="margin-top:20px">
       <label style="display:flex;align-items:center;gap:10px;font-size:19px"><input type="checkbox" id="voiceToggle" style="width:28px;height:28px;flex:none"> <span><span class="nb">声で話す</span><span class="nb">（返事を</span><span class="nb">読み上げる）</span></span></label>
-      <p class="hint-s" style="margin:6px 0 0"><span class="nb">吹き出しの 🔊 を押すと、</span><span class="nb">いつでも聞けるよ。</span></p>
+      <p class="hint-s" style="margin:6px 0 0"><span class="nb">吹き出しの 🔊 を押すと、</span><span class="nb">いつでも聞けます。</span></p>
     </div>
     <button type="button" class="title-link" id="memoTour" style="margin-top:20px">📘 使い方を見る</button>
     <div id="homeGuide" class="stat" style="margin-top:20px">
       <b>ホーム画面に置こう</b>
-      <p class="hint-s" style="margin:6px 0"><span class="nb">アプリのように開けて、</span><span class="nb">思い出も</span><span class="nb">消えにくくなるよ。</span></p>
+      <p class="hint-s" style="margin:6px 0"><span class="nb">アプリのように開けて、</span><span class="nb">思い出も</span><span class="nb">消えにくくなります。</span></p>
       <div id="homeHowIos">iPhone：Safariの下にある <b>共有ボタン</b>（四角から上に矢印）→「<b>ホーム画面に追加</b>」→「追加」</div>
       <div id="homeHowAndroid">Android：Chromeの右上の <b>︙</b> →「<b>ホーム画面に追加</b>」→「追加」</div>
     </div>
-    <div class="danger"><button class="reset" id="reset" type="button">はじめからやり直す</button></div>
+    <div class="danger"><button class="reset" id="reset" type="button">最初からやり直す</button></div>
   </div>
 </div>
 
@@ -607,7 +607,7 @@
     <div class="title-chars" aria-hidden="true"><img src="chars/chamu/wave.png" alt=""><img src="chars/colon/wave.png" alt=""></div>
     <h1 class="title-name"><span class="nb">AIポケット</span><span class="nb">ファミリー</span></h1>
     <p class="title-sub"><span class="nb">スマホの中の、</span><span class="nb">あなたの家族</span></p>
-    <button type="button" class="big-btn title-start" id="titleStart">はじめる</button>
+    <button type="button" class="big-btn title-start" id="titleStart">始める</button>
     <button type="button" class="title-link" id="titleTour">使い方を見る</button>
     <div class="title-copy">AIポケットファミリー<br>© 2026 nekomori*I’ll</div>
   </div>
@@ -615,29 +615,29 @@
 
 <div class="tour" id="tour" hidden role="dialog" aria-label="使い方">
   <div class="tour-in">
-    <div class="tour-top"><div class="tour-dots" id="tourDots"></div><button type="button" class="tour-skip" id="tourSkip">とばす</button></div>
+    <div class="tour-top"><div class="tour-dots" id="tourDots"></div><button type="button" class="tour-skip" id="tourSkip">飛ばす</button></div>
     <div class="tour-page" id="tourPage"></div>
-    <div class="tour-nav"><button type="button" class="tour-back" id="tourBack">もどる</button><button type="button" class="tour-next" id="tourNext">つぎへ</button></div>
+    <div class="tour-nav"><button type="button" class="tour-back" id="tourBack">戻る</button><button type="button" class="tour-next" id="tourNext">次へ</button></div>
   </div>
 </div>
 
 <div class="setup" id="setup" hidden>
   <div class="setup-in">
     <div id="step1">
-      <h1>いっしょに暮らす<br>家族をえらんでね</h1>
+      <h1>いっしょに暮らす<br>家族を選んでください</h1>
       <p id="homeFirst" hidden style="font-size:16px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 12px;text-align:left"><span class="nb">💡 iPhoneの方へ：</span><span class="nb"><b>先にホーム画面に</b></span><span class="nb"><b>置いてから</b>、</span><span class="nb">ホーム画面のアイコンで</span><span class="nb">始めるのが</span><span class="nb">おすすめです。</span><span class="nb">Safariで始めた</span><span class="nb">思い出は、</span><span class="nb">ホーム画面のほうには</span><span class="nb">引っ越せません。</span><br><span class="nb">置き方：</span><span class="nb">Safariの下の</span><span class="nb"><b>共有ボタン</b> →</span><span class="nb">「<b>ホーム画面に追加</b>」</span></p>
       <div class="cards">
-        <button type="button" class="card" data-char="chamu"><img src="chars/chamu/normal.png" alt=""><b>ちゃむ</b><span>のんびり屋の<br>ふしぎな生き物</span></button>
+        <button type="button" class="card" data-char="chamu"><img src="chars/chamu/normal.png" alt=""><b>ちゃむ</b><span>のんびり屋の<br>不思議な生き物</span></button>
         <button type="button" class="card" data-char="colon"><img src="chars/colon/normal.png" alt=""><b>コロン</b><span>まじめで<br><span class="nb">やさしい</span><span class="nb">ロボット</span></span></button>
       </div>
     </div>
     <div id="step2" hidden>
       <img class="pick-img" id="pickImg" alt="">
-      <h1>名前をつけてね</h1>
-      <p><span class="nb">このままでも、</span><span class="nb">好きな名前でもいいよ</span></p>
+      <h1>名前を付けてください</h1>
+      <p><span class="nb">このままでも、</span><span class="nb">好きな名前でも大丈夫です</span></p>
       <input class="name-input" id="nameInput" maxlength="12" autocomplete="off" enterkeyhint="done" aria-label="名前">
       <button type="button" class="big-btn" id="nameOk">この名前にする</button>
-      <button type="button" class="sub-btn" id="backBtn">えらびなおす</button>
+      <button type="button" class="sub-btn" id="backBtn">選び直す</button>
     </div>
   </div>
 </div>
@@ -985,7 +985,7 @@
     send.disabled = on;
     photoBtn.disabled = on;
     avatar.classList.toggle("talking", on);
-    statusEl.textContent = on ? "かんがえ中…" : "おしゃべりしよう";
+    statusEl.textContent = on ? "考え中…" : "お話ししましょう";
   }
 
   function autoGrow() {
@@ -1096,8 +1096,8 @@
     listening = on;
     micBtn.classList.toggle("listening", on);
     avatar.classList.toggle("listening-face", on);
-    micLabel.textContent = on ? "聞いてるよ（押すと止まる）" : "話す";
-    if (!sending) statusEl.textContent = on ? "聞いてるよ" : "おしゃべりしよう";
+    micLabel.textContent = on ? "聞いています（押すと止まります）" : "話す";
+    if (!sending) statusEl.textContent = on ? "聞いています" : "お話ししましょう";
   }
   // 古いマイクを捨てる（あとから来る知らせは無視する）
   function dropRec() {
@@ -1137,8 +1137,8 @@
       // キーボードを開いて、マイクの場所を案内する（押したその場でfocusしないとiPhoneでキーボードが開かない）
       input.focus();
       if (guideOff()) {
-        statusEl.textContent = "キーボードのマイクで話してね";
-        setTimeout(() => { if (!sending) statusEl.textContent = "おしゃべりしよう"; }, 4000);
+        statusEl.textContent = "キーボードのマイクで話してください";
+        setTimeout(() => { if (!sending) statusEl.textContent = "お話ししましょう"; }, 4000);
       } else {
         showGuide();
       }
@@ -1339,12 +1339,12 @@
       resetBtn.classList.add("armed");
       resetBtn.textContent = "もう一度押すと、思い出も全部消えます";
       clearTimeout(armTimer);
-      armTimer = setTimeout(() => { resetBtn.classList.remove("armed"); resetBtn.textContent = "はじめからやり直す"; }, 4000);
+      armTimer = setTimeout(() => { resetBtn.classList.remove("armed"); resetBtn.textContent = "最初からやり直す"; }, 4000);
       return;
     }
     clearTimeout(armTimer);
     resetBtn.classList.remove("armed");
-    resetBtn.textContent = "はじめからやり直す";
+    resetBtn.textContent = "最初からやり直す";
     history = [];
     clearPhoto();
     save();
@@ -1425,7 +1425,7 @@
     const list = favs();
     if (!list.length) {
       const li = document.createElement("li"); li.className = "empty hint-s";
-      setPhrases(li, "まだないよ。|下で探して、|入れてね");
+      setPhrases(li, "まだありません。|下で探して、|登録してください。");
       ul.appendChild(li);
       return;
     }
@@ -1434,9 +1434,9 @@
       const t = document.createElement("span"); t.className = "t"; t.textContent = f.title;
       const play = document.createElement("button"); play.type = "button"; play.className = "addit"; play.textContent = "▶ 聞く";
       play.addEventListener("click", () => { $("songs").hidden = true; openPlayer("fav-" + f.youtube); });
-      const del = document.createElement("button"); del.type = "button"; del.textContent = "けす";
+      const del = document.createElement("button"); del.type = "button"; del.textContent = "消す";
       del.addEventListener("click", () => {
-        if (del.dataset.armed !== "1") { del.dataset.armed = "1"; del.textContent = "もう一度"; setTimeout(() => { del.dataset.armed = ""; del.textContent = "けす"; }, 3000); return; }
+        if (del.dataset.armed !== "1") { del.dataset.armed = "1"; del.textContent = "もう一度"; setTimeout(() => { del.dataset.armed = ""; del.textContent = "消す"; }, 3000); return; }
         profile.favs = favs().filter(x => x.youtube !== f.youtube); saveProfile(); renderFavs();
       });
       li.append(t, play, del);
@@ -1450,35 +1450,35 @@
     const q = $("favQ").value.replace(/\s+/g, " ").trim();
     if (!q) { $("favQ").focus(); return; }
     favSearching = true;
-    $("favMsg").textContent = "さがしています…";
+    $("favMsg").textContent = "探しています…";
     $("favResults").textContent = "";
     document.activeElement && document.activeElement.blur();
     try {
       const r = await fetch("/api/yt-search", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ q }) });
       const data = await r.json().catch(() => ({}));
-      if (data.configured === false) { $("favMsg").textContent = "曲をさがすしくみは、いま準備中です。"; return; }
-      if (!r.ok) { $("favMsg").textContent = data.message || "うまく探せなかったみたい。"; return; }
+      if (data.configured === false) { $("favMsg").textContent = "曲を探す機能は、ただいま準備中です。"; return; }
+      if (!r.ok) { $("favMsg").textContent = data.message || "うまく探せませんでした。"; return; }
       const items = Array.isArray(data.items) ? data.items : [];
-      $("favMsg").textContent = items.length ? "この中にあるかな？" : "見つからなかったよ。ことばを変えて、もう一度さがしてね。";
+      $("favMsg").textContent = items.length ? "この中にありますか？" : "見つかりませんでした。言葉を変えて、もう一度探してください。";
       for (const it of items) {
         const li = document.createElement("li"); li.className = "fav-row";
         if (it.thumb) { const im = document.createElement("img"); im.src = it.thumb; im.alt = ""; li.appendChild(im); }
         const t = document.createElement("span"); t.className = "t"; t.textContent = it.title;
         const ch = document.createElement("small"); ch.textContent = it.channel || ""; t.appendChild(ch);
-        const add = document.createElement("button"); add.type = "button"; add.className = "addit"; add.textContent = "入れる";
+        const add = document.createElement("button"); add.type = "button"; add.className = "addit"; add.textContent = "登録する";
         add.addEventListener("click", () => {
-          if (favs().some(x => x.youtube === it.id)) { add.textContent = "入ってるよ"; return; }
-          if (favs().length >= 30) { $("favMsg").textContent = "好きな曲は30曲までだよ。"; return; }
+          if (favs().some(x => x.youtube === it.id)) { add.textContent = "登録済み"; return; }
+          if (favs().length >= 30) { $("favMsg").textContent = "好きな曲は30曲まで登録できます。"; return; }
           favs().push({ youtube: it.id, title: String(it.title).slice(0, 80), channel: String(it.channel || "").slice(0, 40) });
           saveProfile();
-          add.textContent = "✓ 入れたよ"; add.disabled = true;
+          add.textContent = "✓ 登録しました"; add.disabled = true;
           renderFavs();
         });
         li.append(t, add);
         $("favResults").appendChild(li);
       }
     } catch {
-      setPhrases($("favMsg"), "電波が|とどかなかったみたい。|もう一度|さがしてね。");
+      setPhrases($("favMsg"), "電波が|届きませんでした。|もう一度|探してください。");
     } finally { favSearching = false; }
   });
   const audio = $("audio"), playBtn = $("playBtn"), playerChar = $("playerChar");
@@ -1735,7 +1735,7 @@
     playerChar.style.transform = "";
   }
   function setPlaying(on) {
-    playBtn.textContent = on ? "⏸ とめる" : "▶ 再生";
+    playBtn.textContent = on ? "⏸ 止める" : "▶ 再生";
     if (!profile) return;
     if (on) startMotion();
     else {
@@ -1758,17 +1758,17 @@
     $("playerNote").textContent = sg.credit || "";
     lyricLines = sg.lyrics ? setLyrics($("lyrics"), sg.lyrics) : [];
     prepareFollow(sg);
-    if (!sg.lyrics) setPhrases($("lyrics"), "（歌詞はありません。|曲に合わせて、|自由に歌ってね）");
+    if (!sg.lyrics) setPhrases($("lyrics"), "（歌詞はありません。|曲に合わせて、|自由に歌ってください）");
     $("lyrics").scrollTop = 0;
     const isYt = !!sg.youtube;
     $("ytWrap").hidden = !isYt;
     $("ytNote").hidden = !isYt;
     $("playerCtrl").hidden = isYt;
     $("lyrics").hidden = isYt && !sg.lyrics;
-    $("sangBtn").textContent = isYt ? "聞いたよ・歌ったよ" : "歌えた！";
+    $("sangBtn").textContent = isYt ? "聞いた・歌った" : "歌えた！";
     if (isYt) {
       audio.removeAttribute("src");
-      $("ytNote").textContent = "動画の ▶ を押すと、曲が流れるよ";
+      $("ytNote").textContent = "動画の ▶ を押すと、曲が流れます";
       openYouTube(sg.youtube);
     } else {
       audio.src = sg.file;
@@ -1806,7 +1806,7 @@
     const forSong = currentSong;
     await loadYtApi();
     if (currentSong !== forSong || $("player").hidden) return;
-    if (!window.YT || !YT.Player) { setPhrases($("ytNote"), "動画を|読みこめなかったみたい。|電波のよいところで、|もう一度ひらいてね。"); return; }
+    if (!window.YT || !YT.Player) { setPhrases($("ytNote"), "動画を|読み込めませんでした。|電波のよいところで、|もう一度開いてください。"); return; }
     if (ytPlayer) { try { ytPlayer.destroy(); } catch {} ytPlayer = null; }
     $("ytWrap").innerHTML = '<div id="ytBox"></div>';
     ytPlayer = new YT.Player("ytBox", {
@@ -1821,7 +1821,7 @@
           const a = document.createElement("a");
           a.href = "https://www.youtube.com/watch?v=" + videoId;
           a.target = "_blank"; a.rel = "noopener";
-          a.textContent = "YouTubeでひらく";
+          a.textContent = "YouTubeで開く";
           $("ytNote").append(a);
         },
       },
@@ -2023,13 +2023,13 @@
       const b = document.createElement("button");
       b.type = "button";
       b.className = "remind-btn" + (done || m.remind.date !== today() ? " done" : "");
-      b.textContent = done ? "✓ のんだよ" : "のんだよ";
+      b.textContent = done ? "✓ 飲みました" : "飲みました";
       b.disabled = done || m.remind.date !== today();
       b.addEventListener("click", () => {
         const st = remindState();
         if (!st.medsDone.includes(m.remind.id)) st.medsDone.push(m.remind.id);
         saveProfile();
-        b.textContent = "✓ のんだよ"; b.disabled = true; b.classList.add("done");
+        b.textContent = "✓ 飲みました"; b.disabled = true; b.classList.add("done");
         sayScripted("うん、教えてくれて、ありがとう。");
         setTimeout(() => showFace("happy", 1800), 1200);
       });
@@ -2041,11 +2041,11 @@
       const b = document.createElement("button");
       b.type = "button";
       b.className = "remind-btn" + (exists ? " done" : "");
-      b.textContent = exists ? "✓ 予定に入れたよ" : "📅 予定に入れる";
+      b.textContent = exists ? "✓ 予定に入れました" : "📅 予定に入れる";
       b.disabled = exists;
       b.addEventListener("click", () => {
         if (addPlan(p0.date, p0.time, p0.text)) {
-          b.textContent = "✓ 予定に入れたよ"; b.disabled = true; b.classList.add("done");
+          b.textContent = "✓ 予定に入れました"; b.disabled = true; b.classList.add("done");
           sayScripted(jpDate(p0.date) + (p0.time ? " " + p0.time : "") + "の「" + p0.text + "」、覚えておくね。");
         }
       });
@@ -2100,19 +2100,19 @@
     const pl = $("planList"); pl.textContent = "";
     const t = today();
     const list = plans().filter(x => x.date >= t);
-    if (!list.length) { const li = document.createElement("li"); li.className = "empty"; setPhrases(li, "まだないよ。|おしゃべりで|話しても、|入れられるよ"); pl.appendChild(li); }
+    if (!list.length) { const li = document.createElement("li"); li.className = "empty"; setPhrases(li, "まだありません。|おしゃべりで|話しても、|登録できます。"); pl.appendChild(li); }
     for (const x of list) pl.appendChild(itemRow(jpDate(x.date) + (x.time ? " " + x.time : "") + "　" + x.text, () => { profile.plans = plans().filter(y => y.id !== x.id); saveProfile(); renderPlanTab(); }));
     const ml = $("medList"); ml.textContent = "";
-    if (!meds().length) { const li = document.createElement("li"); li.className = "empty"; li.textContent = "まだないよ"; ml.appendChild(li); }
+    if (!meds().length) { const li = document.createElement("li"); li.className = "empty"; li.textContent = "まだありません"; ml.appendChild(li); }
     for (const x of meds()) ml.appendChild(itemRow("毎日 " + x.time + "　" + (x.label || "お薬"), () => { profile.meds = meds().filter(y => y.id !== x.id); saveProfile(); renderPlanTab(); }));
   }
   function itemRow(text, onDelete) {
     const li = document.createElement("li");
     li.className = "pet-row";
     const sp = document.createElement("span"); sp.textContent = text;
-    const del = document.createElement("button"); del.type = "button"; del.textContent = "けす";
+    const del = document.createElement("button"); del.type = "button"; del.textContent = "消す";
     del.addEventListener("click", () => {
-      if (del.dataset.armed !== "1") { del.dataset.armed = "1"; del.textContent = "もう一度でけす"; setTimeout(() => { del.dataset.armed = ""; del.textContent = "けす"; }, 3000); return; }
+      if (del.dataset.armed !== "1") { del.dataset.armed = "1"; del.textContent = "もう一度押すと消えます"; setTimeout(() => { del.dataset.armed = ""; del.textContent = "消す"; }, 3000); return; }
       onDelete();
     });
     li.append(sp, del);
@@ -2186,14 +2186,14 @@
     $("famCodeBox").hidden = true;
     $("famQuiet").value = String(Number.isInteger(profile.quietDays) ? profile.quietDays : 3);
     $("famName").value = callName();
-    $("famStatus").textContent = "読みこみ中…";
+    $("famStatus").textContent = "読み込み中…";
     try {
       await familyCall("hello", { name: callName(), pets: helpPayload().pets, quietDays: Number($("famQuiet").value) });
       const { data } = await familyCall("status");
       if (data.configured === false) { setPhrases($("famStatus"), "LINEへの連絡は、|いま準備中です。"); $("famCode").disabled = true; return; }
       $("famCode").disabled = false;
       setPhrases($("famStatus"), data.family ? "登録している連絡先：|" + data.family + "人" : "まだ連絡先が|登録されていません。");
-    } catch { $("famStatus").textContent = "電波がとどかなかったみたい。"; }
+    } catch { $("famStatus").textContent = "電波が届きませんでした。"; }
   }
   let famAddUrl = "";
   $("famCode").addEventListener("click", async () => {
@@ -2204,8 +2204,8 @@
         $("famCodeNum").textContent = data.code.slice(0, 3) + " " + data.code.slice(3);
         famAddUrl = data.addUrl || "";
         $("famCodeBox").hidden = false;
-      } else { setPhrases($("famStatus"), "番号を|作れなかったみたい。|もう一度押してね。"); }
-    } catch { $("famStatus").textContent = "電波がとどかなかったみたい。"; }
+      } else { setPhrases($("famStatus"), "番号を|作れませんでした。|もう一度押してください。"); }
+    } catch { $("famStatus").textContent = "電波が届きませんでした。"; }
     $("famCode").disabled = false;
   });
   $("famShare").addEventListener("click", async () => {
@@ -2213,7 +2213,7 @@
     const text = "AIポケットファミリーの連絡先登録のお願いです。\n①このリンクから友だち追加してください：" + (famAddUrl || "（あとで送ります）") + "\n②そのトークに、この番号を送ってください：" + code;
     try {
       if (navigator.share) await navigator.share({ text });
-      else { await navigator.clipboard.writeText(text); setPhrases($("famStatus"), "文章をコピーしたよ。|LINEに貼って、|その人に送ってね。"); }
+      else { await navigator.clipboard.writeText(text); setPhrases($("famStatus"), "文章をコピーしました。|LINEに貼って、|その人に送ってください。"); }
     } catch {}
   });
   $("famName").addEventListener("change", () => {
@@ -2253,14 +2253,14 @@
   helpBtn.addEventListener("pointerdown", (e) => {
     e.preventDefault(); if (helpBusy) return;
     holdStart = Date.now(); holdX = e.clientX; holdY = e.clientY;
-    helpBtn.classList.add("holding"); $("helpHint").textContent = "そのまま押していてね";
+    helpBtn.classList.add("holding"); $("helpHint").textContent = "そのまま押し続けてください";
     holdRaf = requestAnimationFrame(holdTick);
   });
   // 指がずれたら（画面をなぞっただけなら）止める
   helpBtn.addEventListener("pointermove", (e) => { if (holdStart && Math.hypot(e.clientX - holdX, e.clientY - holdY) > 24) resetRing(); });
   ["pointerup", "pointerleave", "pointercancel"].forEach(ev => helpBtn.addEventListener(ev, resetRing));
   helpBtn.addEventListener("contextmenu", (e) => e.preventDefault());
-  helpBtn.addEventListener("click", () => { if (!helpBusy) { statusEl.textContent = "助けてボタンは、長押ししてね"; setTimeout(() => { if (!sending) statusEl.textContent = "おしゃべりしよう"; }, 3000); } });
+  helpBtn.addEventListener("click", () => { if (!helpBusy) { statusEl.textContent = "助けてボタンは、長押ししてください"; setTimeout(() => { if (!sending) statusEl.textContent = "お話ししましょう"; }, 3000); } });
 
   // 家族に送る文章の材料（名前とペットだけ。文章はサーバーで組み立てる。薬や住所は送らない）
   function callName() {
@@ -2333,7 +2333,7 @@
     } catch {}
     $("helpCount").textContent = "…";
     $("helpStop").hidden = true; $("helpNow").hidden = true;
-    $("helpMsg").textContent = "知らせたよ";
+    $("helpMsg").textContent = "知らせました";
   }
   document.addEventListener("visibilitychange", () => { if (document.hidden) sendHelpNowBackground(); else hello(); });
   window.addEventListener("pagehide", sendHelpNowBackground);
@@ -2368,10 +2368,10 @@
     clearInterval(helpTimer); helpTimer = null;
     $("helpStop").hidden = true; $("helpNow").hidden = true;
     $("helpCount").textContent = ok ? "✓" : "!";
-    setPhrases($("helpMsg"), ok ? "連絡先に|知らせたよ。"
-      : !configured ? "まだ連絡先への|お知らせが|準備できていないよ|（準備中）。"
-      : error === "no_family" ? "まだ連絡先が|登録されていないよ。|電話できるなら、|119か、|知っている人に|電話してね。"
-      : "うまく|送れなかったみたい。|電話できるなら、|119か、|知っている人に|電話してね。");
+    setPhrases($("helpMsg"), ok ? "連絡先に|知らせました。"
+      : !configured ? "連絡先への|お知らせは、|ただいま準備中です。"
+      : error === "no_family" ? "連絡先が|まだ登録されていません。|電話できるなら、|119か、|知っている人に|電話してください。"
+      : "うまく|送れませんでした。|電話できるなら、|119か、|知っている人に|電話してください。");
     setTimeout(() => {
       endHelp();
       sayScripted(ok ? "連絡先に知らせたよ。わたしは、ここにいるからね。" : "知らせることができなかったよ。電話できそうなら、119か、知っている人に電話してね。わたしは、ここにいるよ。");
@@ -2503,7 +2503,7 @@
     if (profile.answers.call) firsts.push("呼び名：" + profile.answers.call);
     if (profile.answers.song) firsts.push("好きな歌：" + profile.answers.song);
     fillList($("memoNotes"), firsts.concat(g.notes), "これから、|たくさん|覚えていくね");
-    setPhrases($("memoHabitsTitle"), profile.name + "の口ぐせ|（いっしょに|育ったもの）");
+    setPhrases($("memoHabitsTitle"), profile.name + "の口ぐせ|（一緒に|育ったもの）");
     fillList($("memoHabits"), g.habits, "まだないよ。|いっぱい話すと、|育っていくよ");
     renderPets();
     $("homeGuide").hidden = isStandalone();
@@ -2521,7 +2521,7 @@
     if (!list.length) {
       const li = document.createElement("li");
       li.className = "empty";
-      setPhrases(li, "登録すると、|「助けて」のときに|連絡先へ伝わるよ");
+      setPhrases(li, "登録すると、|「助けて」のときに|連絡先へ伝わります。");
       ul.appendChild(li);
       return;
     }
@@ -2532,9 +2532,9 @@
       sp.textContent = pt.kind + (pt.name ? "の" + pt.name : "");
       const del = document.createElement("button");
       del.type = "button";
-      del.textContent = "けす";
+      del.textContent = "消す";
       del.addEventListener("click", () => {
-        if (del.dataset.armed !== "1") { del.dataset.armed = "1"; del.textContent = "もう一度でけす"; setTimeout(() => { del.dataset.armed = ""; del.textContent = "けす"; }, 3000); return; }
+        if (del.dataset.armed !== "1") { del.dataset.armed = "1"; del.textContent = "もう一度押すと消えます"; setTimeout(() => { del.dataset.armed = ""; del.textContent = "消す"; }, 3000); return; }
         pets().splice(i, 1);
         saveProfile();
         renderPets();
@@ -2683,15 +2683,15 @@
   const helpDemo = '<div class="help-btn-s tour-demo" aria-hidden="true"><span class="hico">🚑</span><span class="htx"><b>助けて</b><small>長押しで連絡先に知らせます</small></span></div>';
   const TOUR = [
     { pic: '<div class="tour-pic chars"><img src="chars/chamu/wave.png" alt=""><img src="chars/colon/wave.png" alt=""></div>', h: "ようこそ",
-      p: ["毎日おしゃべりして、", "AI家族を", "育ててください。", "仲よくなると、", "話し方も変わり、", "あなたのことを", "たくさん", "覚えていきます。", "いっしょに歌ったり、", "お散歩に", "出かけたりと、", "あなたの毎日に、", "ちょっとした楽しみが", "増えますように♪"] },
+      p: ["毎日おしゃべりして、", "AIファミリーを", "育ててください。", "仲よくなると、", "話し方も変わり、", "あなたのことを", "たくさん", "覚えていきます。", "いっしょに歌ったり、", "お散歩に", "出かけたりと、", "あなたの毎日に、", "ちょっとした楽しみが", "増えますように♪"] },
     { pic: '<div class="tour-pic">💬</div>', h: "話す",
-      p: ["下の「ここに書いてね」に", "書いて、「送る」を押してね。", "声で話したいときは、", "「話す」を押して、", "キーボードのマイクで", "話してね。", "写真も見せられるよ。"] },
+      p: ["下の「ここに書いてね」に", "書いて、「送る」を", "押してください。", "声で話したいときは、", "「話す」を押して、", "キーボードのマイクで", "話してくださいね。", "写真も見せられます。"] },
     { pic: '<div class="tour-pic">🎵</div>', h: "歌う",
-      p: ["上の「🎵 歌う」から、", "いっしょに歌えるよ。", "歌詞が大きく出て、", "曲に合わせて踊るよ。", "歌えたら「歌えた！」を", "押してね。よろこぶよ。"] },
+      p: ["上の「🎵 歌う」から、", "いっしょに歌えます。", "歌詞が大きく出て、", "曲に合わせて", "AIファミリーが踊ります。", "歌えたら「歌えた！」を", "ぜひ押してくださいね。", "AIファミリーが", "よろこびます。"] },
     { pic: '<div class="tour-pic">📖</div>', h: "ノート",
-      p: ["「📖 ノート」には、", "思い出・予定とお薬・", "ペット・連絡先が", "あります。", "予定やお薬の時間を入れると、", "やさしい音で知らせるよ。"] },
+      p: ["「📖 ノート」には、", "思い出・予定とお薬・", "ペット・連絡先が", "あります。", "予定やお薬の時間を登録すると、", "やさしい音でお知らせします。"] },
     { pic: helpDemo, h: "助けて",
-      p: ["困ったときは、", "上の赤い「助けて」を", "長押ししてね。", "8秒たつと、", "登録した連絡先に", "LINEで知らせます。", "まちがえたときは、", "「いらない」で止められるよ。", "連絡先（友人や家族など）は、", "ノートから登録できます。"] },
+      p: ["困ったときは、", "上の赤い「助けて」を", "長押ししてくださいね。", "8秒たつと、", "登録した連絡先に", "LINEで知らせます。", "間違えたときは、", "「いらない」で止められます。", "連絡先（友人や家族など）は、", "ノートから登録できます。"] },
   ];
   let tourAt = 0, tourFrom = "title";
   function drawTour() {
@@ -2702,7 +2702,7 @@
     setPhrases(para, t.p.join("|"));
     $("tourDots").innerHTML = TOUR.map((_, i) => '<i class="' + (i === tourAt ? "on" : "") + '"></i>').join("");
     $("tourBack").style.visibility = tourAt ? "visible" : "hidden";
-    $("tourNext").textContent = tourAt < TOUR.length - 1 ? "つぎへ" : (profile ? "とじる" : "はじめる");
+    $("tourNext").textContent = tourAt < TOUR.length - 1 ? "次へ" : (profile ? "閉じる" : "始める");
     $("tour").scrollTop = 0;
   }
   function openTour(from) { tourFrom = from; tourAt = 0; drawTour(); $("tour").hidden = false; }
@@ -2718,7 +2718,7 @@
   function showTitle() {
     $("titleStart").innerHTML = "";
     if (profile) setPhrases($("titleStart"), profile.name + "に|会う");
-    else $("titleStart").textContent = "はじめる";
+    else $("titleStart").textContent = "始める";
     $("titleScreen").hidden = false;
   }
   function beginSession() {
