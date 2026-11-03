@@ -92,7 +92,7 @@
     padding: 8px 10px;
     min-height: 44px;
   }
-  .reset.armed { color: #b3261e; border-color: #e7a19b; }
+  .reset.armed { border-radius: 16px; color: #b3261e; border-color: #e7a19b; font-size: 16px; line-height: 1.5; padding: 10px 14px; background: linear-gradient(90deg, #fbd9d5 calc(var(--fill, 0) * 100%), #fff calc(var(--fill, 0) * 100%)); -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none; }
   .who .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   @media (max-width: 360px) {
     .avatar { width: 64px; height: 64px; }
@@ -1542,17 +1542,36 @@
 
   // ---- はじめから（2回押し） ----
   let armTimer = null;
+  // 押すと注意が出る。やり直すのは、長押し（約2秒）したときだけ
+  const resetLabel = () => { resetBtn.classList.remove("armed"); resetBtn.style.setProperty("--fill", "0"); setPhrases(resetBtn, "最初からやり直す"); };
   resetBtn.addEventListener("click", () => {
-    if (!resetBtn.classList.contains("armed")) {
-      resetBtn.classList.add("armed");
-      resetBtn.textContent = "もう一度押すと、思い出と日記帳が全部消えます（連絡先の登録は残ります）";
-      clearTimeout(armTimer);
-      armTimer = setTimeout(() => { resetBtn.classList.remove("armed"); resetBtn.textContent = "最初からやり直す"; }, 4000);
-      return;
-    }
+    if (resetBtn.classList.contains("armed")) return;
+    resetBtn.classList.add("armed");
+    resetBtn.textContent = "";
+    const w = document.createElement("span"); setPhrases(w, "思い出・予定・お薬・ペットが、|全部消えますが、|よろしいですか？|（日記帳と、|連絡先の登録は|残ります）");
+    const h = document.createElement("b"); h.style.display = "block"; h.style.marginTop = "6px"; setPhrases(h, "やり直すときは、|ここを長押し|してください");
+    resetBtn.append(w, h);
     clearTimeout(armTimer);
-    resetBtn.classList.remove("armed");
-    resetBtn.textContent = "最初からやり直す";
+    armTimer = setTimeout(resetLabel, 8000);
+  });
+  let resetHold = 0, resetStart = 0;
+  const resetCancel = () => { if (resetHold) { cancelAnimationFrame(resetHold); resetHold = 0; resetBtn.style.setProperty("--fill", "0"); } };
+  resetBtn.addEventListener("pointerdown", (e) => {
+    if (!resetBtn.classList.contains("armed")) return;
+    resetStart = performance.now(); clearTimeout(armTimer);
+    const step = (now) => {
+      const k = Math.min(1, (now - resetStart) / 2000);
+      resetBtn.style.setProperty("--fill", String(k));
+      if (k >= 1) { resetHold = 0; doReset(); return; }
+      resetHold = requestAnimationFrame(step);
+    };
+    resetHold = requestAnimationFrame(step);
+  });
+  ["pointerup", "pointercancel", "pointerleave"].forEach(ev => resetBtn.addEventListener(ev, () => { if (resetHold) { resetCancel(); armTimer = setTimeout(resetLabel, 8000); } }));
+  resetBtn.addEventListener("contextmenu", (e) => e.preventDefault());
+  function doReset() {
+    clearTimeout(armTimer);
+    resetLabel();
     history = [];
     clearPhoto();
     save();
@@ -1561,7 +1580,7 @@
     $("memo").hidden = true;
     render();
     openSetup();
-  });
+  }
 
   // ---- 歌 ----
   // 曲の一覧は songs/songs.json（オーナーの自作曲）。{ id, title, tag, file, lyrics, credit }
@@ -3117,7 +3136,24 @@
 
   // ---- 日記・思い出話（キャラが聞き役になって、本人の言葉で日記にまとめる。日記帳はこのスマホの中だけ） ----
   let diaryFixDraft = null; // 「直してほしい」を待っている下書き
-  function diaries() { if (!Array.isArray(profile.diary)) profile.diary = []; return profile.diary; }
+  // 日記帳は、思い出とは別の場所にしまう（「最初からやり直す」でも消えない。何をしていたかの記録になるため）
+  const DIARY_KEY = "pf.diary.v1";
+  let diaryStore = null;
+  function diaries() {
+    if (!diaryStore) {
+      try { const v = JSON.parse(localStorage.getItem(DIARY_KEY) || "[]"); diaryStore = Array.isArray(v) ? v.filter(d => d && typeof d.body === "string") : []; } catch { diaryStore = []; }
+      // 前の版で、思い出の中にしまっていた日記を引っ越す
+      if (profile && Array.isArray(profile.diary) && profile.diary.length) {
+        const have = new Set(diaryStore.map(d => d.id));
+        for (const d of profile.diary) if (d && !have.has(d.id)) diaryStore.push(d);
+        diaryStore.sort((a, b) => String(a.date).localeCompare(String(b.date)));
+        saveDiaries();
+      }
+      if (profile && "diary" in profile) { delete profile.diary; saveProfile(); }
+    }
+    return diaryStore;
+  }
+  function saveDiaries() { try { localStorage.setItem(DIARY_KEY, JSON.stringify(diaryStore || [])); } catch {} }
   function jpFullDate(d) { const t = new Date(d + "T00:00:00"); return t.getFullYear() + "年" + (t.getMonth() + 1) + "月" + t.getDate() + "日（" + "日月火水木金土"[t.getDay()] + "）"; }
   function updateDiaryBar() {
     const dm = profile && profile.diaryMode;
@@ -3198,6 +3234,7 @@
     if (cont) { cont.body = draft.body; cont.updated = today(); }  // 題名はそのまま  // 書き足した文章で、置きかえる
     else list.push({ id: Date.now().toString(36), date: today(), kind: draft.kind, title: draft.title, body: draft.body });
     if (list.length > 300) list.splice(0, list.length - 300);
+    saveDiaries();
     addScore("diary"); saveProfile(); updateHearts();
     endDiary();
     const polite = stageOf(points()) === 0, pi = profile.char === "chamu" ? "" : "ピピッ。";
@@ -3246,7 +3283,7 @@
       const del = document.createElement("button"); del.type = "button"; del.textContent = "消す";
       del.addEventListener("click", () => {
         if (del.dataset.armed !== "1") { del.dataset.armed = "1"; del.textContent = "もう一度押すと消えます"; setTimeout(() => { del.dataset.armed = ""; del.textContent = "消す"; }, 3000); return; }
-        profile.diary = diaries().filter(x => x !== d); saveProfile(); renderDiaryTab();
+        const list = diaries(), i = list.indexOf(d); if (i >= 0) list.splice(i, 1); saveDiaries(); renderDiaryTab();
       });
       const more = document.createElement("button"); more.type = "button"; more.textContent = "続きを書く";
       more.addEventListener("click", () => startDiary(d.kind, false, d.id));
