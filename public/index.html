@@ -3180,6 +3180,7 @@
         const im = document.createElement("img");
         im.className = "event-img"; im.alt = "ちゃむとコロンの、お祝いの絵"; im.src = "events/" + img + ".jpg";
         im.addEventListener("error", () => im.remove());
+        im.addEventListener("load", () => { log.scrollTop = log.scrollHeight; }); // 絵が読みこめたら、見えるところまで進める
         bx.appendChild(im);
         log.scrollTop = log.scrollHeight;
       }
