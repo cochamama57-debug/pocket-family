@@ -2,6 +2,9 @@
 // 合いかぎは環境変数 YOUTUBE_API_KEY（作者の Google の無料枠。1日 約100回まで）。画面には出さない。
 // 合いかぎがないときは「準備中」を返す。
 import { fromOurPage, rateLimited, clientIp, readBody, reply, cleanText } from "../lib/shared.js";
+import { dailyGate } from "../lib/store.js";
+const DEVICE_DAILY = 30; // 1台あたり1日の検索の上限
+const OVERALL_DAILY = 90; // 全体の1日の上限（無料枠 約100回の手前）
 
 const RATE_MAX = 6; // 1分に6回まで（同じ接続元）。無料枠を守るため
 const DAILY_MAX = 80; // 1日の検索の上限（無料枠 約100回の手前で止める。サーバーごとの目安）
@@ -19,10 +22,11 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return reply(res, 405, { error: "method" });
   if (!fromOurPage(req)) return reply(res, 403, { error: "forbidden" });
   if (rateLimited("yt:" + clientIp(req), RATE_MAX)) {
-    return reply(res, 429, { error: "busy", message: "ちょっと探しすぎちゃったみたい。少し休んでから、また探してね。" });
+    return reply(res, 429, { error: "busy", message: "続けて探しすぎたようです。少し休んでから、また探してください。" });
   }
-  const q = cleanText(readBody(req)?.q, 60);
-  if (!q) return reply(res, 400, { error: "bad_request", message: "曲の名前か、歌っている人を入れてね。" });
+  const body = readBody(req);
+  const q = cleanText(body?.q, 60);
+  if (!q) return reply(res, 400, { error: "bad_request", message: "曲の名前か、歌っている人を入れてください。" });
 
   const key = process.env.YOUTUBE_API_KEY;
   if (!key) return reply(res, 200, { configured: false, items: [] });
@@ -31,7 +35,9 @@ export default async function handler(req, res) {
   if (cache.has(ck)) return reply(res, 200, { configured: true, items: cache.get(ck) });
   const today = new Date().toISOString().slice(0, 10);
   if (today !== day) { day = today; count = 0; }
-  if (++count > DAILY_MAX) return reply(res, 429, { error: "daily", message: "きょうは、もう探せないみたい。また明日ためしてね。" });
+  if (++count > DAILY_MAX) return reply(res, 429, { error: "daily", message: "今日は、もう探せません。また明日お試しください。" });
+  const gate = await dailyGate("yt", body?.id, body?.secret, DEVICE_DAILY, OVERALL_DAILY);
+  if (!gate.ok) return reply(res, gate.reason === "daily" ? 429 : 403, { error: gate.reason, message: gate.reason === "daily" ? "今日は、もう探せません。また明日お試しください。" : "うまく探せませんでした。アプリを開き直して、もう一度お試しください。" });
 
   const url = new URL("https://www.googleapis.com/youtube/v3/search");
   url.search = new URLSearchParams({

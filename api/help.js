@@ -33,16 +33,27 @@ export function buildHelpText(body) {
     + "\n\n（AIポケットファミリーより）";
 }
 
+// attempt：1回の「助けて」ごとの合言葉。「いらない」は同じ合言葉のときだけ効く（前の回の「いらない」が残っていても、新しい回を止めない）
+const attemptOf = (body) => (typeof body?.attempt === "string" && /^[A-Za-z0-9]{6,40}$/.test(body.attempt) ? body.attempt : "");
+async function isCancelled(id, attempt) {
+  const c = await redis("GET", "help:cancel:" + id);
+  return !!c && (!attempt || c === attempt);
+}
+async function wasSent(id, attempt) {
+  const v = await redis("GET", "help:sent:" + id);
+  return !!v && (!attempt || v === attempt);
+}
 async function sendToFamily(id, dev, body) {
-  if (await redis("GET", "help:sent:" + id)) return { sent: true, dup: true };
+  const attempt = attemptOf(body);
+  if (await wasSent(id, attempt)) return { sent: true, dup: true };
   // 二重に送らない（start と now が重なっても1回だけ）
   const lock = await redis("SET", "help:lock:" + id, "1", "NX", "EX", "20");
   if (!lock) {
-    for (let i = 0; i < 10; i++) { await sleep(1000); if (await redis("GET", "help:sent:" + id)) return { sent: true, dup: true }; }
+    for (let i = 0; i < 10; i++) { await sleep(1000); if (await wasSent(id, attempt)) return { sent: true, dup: true }; }
     return { sent: false, error: "server" };
   }
   // 送る直前にもう一度「いらない」を確かめる
-  if (await redis("GET", "help:cancel:" + id)) { await redis("DEL", "help:lock:" + id); return { sent: false, cancelled: true }; }
+  if (await isCancelled(id, attempt)) { await redis("DEL", "help:lock:" + id); return { sent: false, cancelled: true }; }
   const day = new Date().toISOString().slice(0, 10);
   const n = await redis("INCR", "help:count:" + id + ":" + day);
   if (n === 1) await redis("EXPIRE", "help:count:" + id + ":" + day, "90000");
@@ -57,7 +68,7 @@ async function sendToFamily(id, dev, body) {
     return (await pushMessages(to, messages, key)) || pushMessages(to, [messages[1]], key);
   }));
   const sent = results.some(Boolean);
-  if (sent) await redis("SET", "help:sent:" + id, "1", "EX", "60");
+  if (sent) await redis("SET", "help:sent:" + id, attempt || "1", "EX", "60");
   await redis("DEL", "help:lock:" + id);
   return { sent };
 }
@@ -74,21 +85,23 @@ export default async function handler(req, res) {
     const dev = await loadDevice(body.id, body.secret);
     if (!dev) return reply(res, 200, { sent: false, configured: true, error: "no_family" });
     const id = body.id;
+    const attempt = attemptOf(body);
     if (body.action === "cancel") {
-      await redis("SET", "help:cancel:" + id, "1", "EX", "60");
-      return reply(res, 200, { cancelled: true, configured: true });
+      await redis("SET", "help:cancel:" + id, attempt || "1", "EX", "60");
+      // 「いらない」が間に合わず、もう送っていたら、そう伝える
+      const already = await wasSent(id, attempt);
+      return reply(res, 200, { cancelled: !already, sent: already, configured: true });
     }
     if (body.action === "now") {
       const r = await sendToFamily(id, dev, body);
       return reply(res, 200, { ...r, configured: true });
     }
-    // start：サーバーで8秒数える
-    await redis("DEL", "help:cancel:" + id, "help:sent:" + id, "help:lock:" + id);
+    // start：サーバーで8秒数える（前の回の印は消さない。合言葉で見分ける）
     const until = Date.now() + WAIT_MS;
     while (Date.now() < until) {
       await sleep(1000);
-      if (await redis("GET", "help:cancel:" + id)) return reply(res, 200, { sent: false, cancelled: true, configured: true });
-      if (await redis("GET", "help:sent:" + id)) return reply(res, 200, { sent: true, configured: true });
+      if (await isCancelled(id, attempt)) return reply(res, 200, { sent: false, cancelled: true, configured: true });
+      if (await wasSent(id, attempt)) return reply(res, 200, { sent: true, configured: true });
     }
     const r = await sendToFamily(id, dev, body);
     return reply(res, 200, { ...r, configured: true });

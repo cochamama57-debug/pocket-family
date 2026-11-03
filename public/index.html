@@ -120,6 +120,7 @@
   .title-sub { font-size: 20px; color: var(--ink); margin: 0 0 22px; }
   .title-start { font-size: 24px; min-height: 66px; }
   .title-link { width: 100%; font: inherit; font-size: 19px; font-weight: 700; min-height: 56px; border: 2px solid var(--line); border-radius: 16px; background: #fff; color: var(--ink); }
+  .title-help { margin: 0 0 14px; }
   .title-copy { margin-top: 22px; font-size: 13px; color: var(--sub); line-height: 1.5; }
   .tour { background: var(--bg); z-index: 26; display: flex; flex-direction: column; }
   .tour-in { flex: 1; display: flex; flex-direction: column; }
@@ -604,6 +605,7 @@
 
 <div class="title-screen" id="titleScreen" hidden>
   <div class="title-in">
+    <button type="button" class="help-btn-s title-help" id="titleHelp" aria-label="助けて（長押し）"><span class="hfill" aria-hidden="true"></span><span class="hico" aria-hidden="true">🚑</span><span class="htx"><b>助けて</b><small>長押しで連絡先に知らせます</small></span></button>
     <div class="title-chars" aria-hidden="true"><img src="chars/chamu/wave.png" alt=""><img src="chars/colon/wave.png" alt=""></div>
     <h1 class="title-name"><span class="nb">AIポケット</span><span class="nb">ファミリー</span></h1>
     <p class="title-sub"><span class="nb">スマホの中の、</span><span class="nb">あなたの家族</span></p>
@@ -1354,7 +1356,7 @@
   resetBtn.addEventListener("click", () => {
     if (!resetBtn.classList.contains("armed")) {
       resetBtn.classList.add("armed");
-      resetBtn.textContent = "もう一度押すと、思い出も全部消えます";
+      resetBtn.textContent = "もう一度押すと、思い出が全部消えます（連絡先の登録は残ります）";
       clearTimeout(armTimer);
       armTimer = setTimeout(() => { resetBtn.classList.remove("armed"); resetBtn.textContent = "最初からやり直す"; }, 4000);
       return;
@@ -1471,7 +1473,7 @@
     $("favResults").textContent = "";
     document.activeElement && document.activeElement.blur();
     try {
-      const r = await fetch("/api/yt-search", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ q }) });
+      const r = await fetch("/api/yt-search", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ q, id: device().id, secret: device().secret }) });
       const data = await r.json().catch(() => ({}));
       if (data.configured === false) { $("favMsg").textContent = "曲を探す機能は、ただいま準備中です。"; return; }
       if (!r.ok) { $("favMsg").textContent = data.message || "うまく探せませんでした。"; return; }
@@ -1958,7 +1960,7 @@
   // 声を先に作っておく（できたら音のURL、できなければ null）
   async function fetchVoice(text) {
     try {
-      const r = await fetch("/api/voice", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: voiceText(text), char: profile.char }) });
+      const r = await fetch("/api/voice", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: voiceText(text), char: profile.char, id: device().id, secret: device().secret }) });
       if (r.status !== 200) return null;
       return URL.createObjectURL(await r.blob());
     } catch { return null; }
@@ -2079,7 +2081,7 @@
     remindBubble(history[history.length - 1]);
   }
   function checkReminders() {
-    if (!profile || profile.step < QUESTIONS.length || sending || helpBusy) return;
+    if (!profile || profile.step < QUESTIONS.length || sending || helpBusy || !$("titleScreen").hidden) return;
     const st = remindState(), now = minutes(nowHM()), t = today();
     // お薬：時間を過ぎていて、まだ言っていないもの（日付が変わるまで）
     for (const md of meds()) {
@@ -2257,27 +2259,33 @@
   // 小さなボタンを長押し（約2.5秒）か、会話で緊急と分かったときに、8秒数えて家族へ知らせる。
   // 「いらない」で止められる。送る部分（LINE）は、準備ができてからつなぐ。
   const HELP_HOLD_MS = 2500, HELP_WAIT = 8;
-  const helpBtn = $("helpBtn"), helpRing = $("helpRing");
-  let holdStart = 0, holdRaf = 0, helpTimer = null, helpLeft = 0, helpBusy = false;
-  let holdX = 0, holdY = 0;
-  function resetRing() { cancelAnimationFrame(holdRaf); helpRing.style.transform = "scaleX(0)"; holdStart = 0; helpBtn.classList.remove("holding"); $("helpHint").textContent = "長押しで連絡先に知らせます"; }
-  function holdTick() {
-    if (!holdStart) return;
-    const r = Math.min(1, (Date.now() - holdStart) / HELP_HOLD_MS);
-    helpRing.style.transform = "scaleX(" + r.toFixed(3) + ")";
-    if (r >= 1) { resetRing(); try { navigator.vibrate && navigator.vibrate(200); } catch {} startHelp("button"); return; }
-    holdRaf = requestAnimationFrame(holdTick);
+  const helpBtn = $("helpBtn");
+  let helpTimer = null, helpLeft = 0, helpBusy = false;
+  // 長押しの助けてボタン（おしゃべりの画面の上と、タイトル画面の2か所。同じしくみ）
+  function bindHold(btn) {
+    const fill = btn.querySelector(".hfill"), hint = btn.querySelector("small");
+    let start = 0, raf = 0, x0 = 0, y0 = 0;
+    const reset = () => { cancelAnimationFrame(raf); fill.style.transform = "scaleX(0)"; start = 0; btn.classList.remove("holding"); if (hint) hint.textContent = "長押しで連絡先に知らせます"; };
+    const tick = () => {
+      if (!start) return;
+      const r = Math.min(1, (Date.now() - start) / HELP_HOLD_MS);
+      fill.style.transform = "scaleX(" + r.toFixed(3) + ")";
+      if (r >= 1) { reset(); try { navigator.vibrate && navigator.vibrate(200); } catch {} startHelp("button"); return; }
+      raf = requestAnimationFrame(tick);
+    };
+    btn.addEventListener("pointerdown", (e) => {
+      e.preventDefault(); if (helpBusy) return;
+      start = Date.now(); x0 = e.clientX; y0 = e.clientY;
+      btn.classList.add("holding"); if (hint) hint.textContent = "そのまま押し続けてください";
+      raf = requestAnimationFrame(tick);
+    });
+    // 指がずれたら（画面をなぞっただけなら）止める
+    btn.addEventListener("pointermove", (e) => { if (start && Math.hypot(e.clientX - x0, e.clientY - y0) > 24) reset(); });
+    ["pointerup", "pointerleave", "pointercancel"].forEach(ev => btn.addEventListener(ev, reset));
+    btn.addEventListener("contextmenu", (e) => e.preventDefault());
   }
-  helpBtn.addEventListener("pointerdown", (e) => {
-    e.preventDefault(); if (helpBusy) return;
-    holdStart = Date.now(); holdX = e.clientX; holdY = e.clientY;
-    helpBtn.classList.add("holding"); $("helpHint").textContent = "そのまま押し続けてください";
-    holdRaf = requestAnimationFrame(holdTick);
-  });
-  // 指がずれたら（画面をなぞっただけなら）止める
-  helpBtn.addEventListener("pointermove", (e) => { if (holdStart && Math.hypot(e.clientX - holdX, e.clientY - holdY) > 24) resetRing(); });
-  ["pointerup", "pointerleave", "pointercancel"].forEach(ev => helpBtn.addEventListener(ev, resetRing));
-  helpBtn.addEventListener("contextmenu", (e) => e.preventDefault());
+  bindHold(helpBtn);
+  bindHold($("titleHelp"));
   helpBtn.addEventListener("click", () => { if (!helpBusy) { statusEl.textContent = "助けてボタンは、長押ししてください"; setTimeout(() => { if (!sending) statusEl.textContent = "お話ししましょう"; }, 3000); } });
 
   // 家族に送る文章の材料（名前とペットだけ。文章はサーバーで組み立てる。薬や住所は送らない）
@@ -2290,16 +2298,18 @@
   function helpPayload(source, action) {
     const pl = profile ? pets() : [];
     const d = device();
-    return { action: action || "now", id: d.id, secret: d.secret, name: callName(), pets: pl.slice(0, 10).map(x => ({ kind: x.kind === "そのほか" ? "ペット" : x.kind, name: x.name || "" })), source };
+    return { action: action || "now", attempt: helpAttempt, id: d.id, secret: d.secret, name: callName(), pets: pl.slice(0, 10).map(x => ({ kind: x.kind === "そのほか" ? "ペット" : x.kind, name: x.name || "" })), source };
   }
   let helpServer = null; // サーバーで数えているときの結果（Promise）
   function helpPost(payload, keepalive) {
     return fetch("/api/help", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload), keepalive: !!keepalive })
       .then(r => r.json().catch(() => ({}))).catch(() => ({}));
   }
+  let helpAttempt = "";
   function startHelp(source) {
     if (helpBusy) return;
     helpBusy = true;
+    helpAttempt = Math.random().toString(36).slice(2, 12) + Date.now().toString(36); // この回の合言葉
     stopMic();
     unlockAudio();
     // 曲・ほかの画面を閉じて、助けてを一番前に
@@ -2316,12 +2326,15 @@
     chime();
     clearInterval(helpTimer);
     // サーバーに「数え始めた」と知らせる（スマホが止まっても、サーバーが8秒後に送る）
-    helpServer = familyConfigured === false ? null : helpPost(helpPayload(source, "start"), true);
+    // 20秒たっても返事がないときは、つながらなかったとみなして、画面から送り直す（サーバーが二重に送らないようにしている）
+    helpServer = familyConfigured === false ? null
+      : Promise.race([helpPost(helpPayload(source, "start"), true), new Promise((r) => setTimeout(() => r({ timeout: true }), 20000))]);
     const mine = helpServer;
     if (helpServer) helpServer.then((d) => {
       if (helpServer !== mine) return; // 止めた・終わったあとの返事は使わない
       if (d.configured === false) { helpServer = null; return; }
-      if (!helpBusy || d.cancelled) return;
+      if (!helpBusy) return;
+      if (d.cancelled) { helpServer = null; if (!helpTimer) sendHelp(source); return; } // こちらは止めていないのに「止めた」と返ってきたら、画面から送る
       if (d.sent !== true && d.error !== "no_family" && d.error !== "daily") {
         // サーバーとうまくつながらなかった：画面の数えで送る（数え終わっていたら、すぐ送る）
         helpServer = null;
@@ -2346,12 +2359,14 @@
     if (!helpBusy || helpSent || !helpTimer || helpServer) return; // サーバーで数えているときは、サーバーにまかせる
     clearInterval(helpTimer); helpTimer = null;
     helpSent = true;
-    try {
-      helpPost(helpPayload(helpSource, "now"), true);
-    } catch {}
     $("helpCount").textContent = "…";
     $("helpStop").hidden = true; $("helpNow").hidden = true;
-    $("helpMsg").textContent = "知らせました";
+    $("helpMsg").textContent = "知らせています";
+    // 結果を待って、画面を終わらせる（10秒たっても返事がなければ「送れなかった」として案内する）
+    let done = false;
+    const fin = (d) => { if (done) return; done = true; finishHelp(d.sent === true, d.configured !== false, d.error); };
+    try { helpPost(helpPayload(helpSource, "now"), true).then(fin); } catch {}
+    setTimeout(() => fin({}), 10000);
   }
   document.addEventListener("visibilitychange", () => { if (document.hidden) sendHelpNowBackground(); else hello(); });
   window.addEventListener("pagehide", sendHelpNowBackground);
@@ -2363,8 +2378,9 @@
     if (!wasServer) { sayScripted("うん、わかった。止めたよ。そばにいるからね。"); return; }
     // サーバーに「いらない」を確実に伝える（届かなかったら、もう一度）
     let d = await helpPost(helpPayload("stop", "cancel"), true);
-    if (!d.cancelled) d = await helpPost(helpPayload("stop", "cancel"), true);
-    sayScripted(d.cancelled ? "うん、わかった。止めたよ。そばにいるからね。"
+    if (!d.cancelled && !d.sent) d = await helpPost(helpPayload("stop", "cancel"), true);
+    sayScripted(d.sent ? "止めるのが、間に合わなかったみたい。連絡先にはもう届いているよ。まちがいなら、「まちがいでした」と伝えてね。"
+      : d.cancelled ? "うん、わかった。止めたよ。そばにいるからね。"
       : "止める合図が、うまく届かなかったかもしれない。連絡先の人にLINEが届いたら「まちがいでした」と伝えてね。");
   });
   $("helpNow").addEventListener("click", () => { clearInterval(helpTimer); helpTimer = null; sendHelp("now"); });
@@ -2608,7 +2624,7 @@
     for (const k of CHAR_FIELDS) delete profile[k];
   }
   $("swapBtn").addEventListener("click", () => {
-    if (!profile) return;
+    if (!profile || sending) return; // 返事を待っている間は交代しない（返事が別の子に入らないように）
     stopVoice(); stopMic();
     const target = otherChar();
     save();
@@ -2694,6 +2710,7 @@
     setupEl.hidden = true;
     applyChar();
     render();
+    hello(true); // 端末を登録（声や曲さがしは、登録した端末だけが使える）
     setTimeout(() => { sayScripted(QUESTIONS[0].ask(profile.name)); setTimeout(() => showFace("wave", 2200), 1600); }, 300);
   });
 
@@ -2746,6 +2763,10 @@
   function beginSession() {
     markDay();
     saveProfile();
+    if (profile.step < QUESTIONS.length && !history.length) { // 名前をつけたあと、まだ何も話していない
+      setTimeout(() => sayScripted(QUESTIONS[profile.step].ask(profile.name)), 500);
+      return;
+    }
     setTimeout(() => showFace("wave", 1800), 300);
     setTimeout(checkReminders, 700);
     setTimeout(() => hello(true), 1000);
