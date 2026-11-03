@@ -4,6 +4,8 @@
 import { MODEL, cleanText, fromOurPage, rateLimited, clientIp, readBody, reply, getClient, replyApiError } from "../lib/shared.js";
 import { dailyGate } from "../lib/store.js";
 
+// 日記は、このアプリのいちばん大事なところなので、いちばん上のモデルで書く（使えないときは、ふだんのモデル）
+const DIARY_MODEL = "claude-opus-5-5";
 const RATE_MAX = 6;       // 1分に6回まで（同じ接続元）
 const DEVICE_DAILY = 20;  // 1台あたり1日にまとめる回数（直しも1回と数える）
 
@@ -85,13 +87,16 @@ export default async function handler(req, res) {
   ].join("\n");
 
   try {
-    const response = await getClient().messages.create({
-      model: MODEL,
+    const ask = (model) => getClient().messages.create({
+      model,
       max_tokens: 9000,
       output_config: { effort: "low", format: { type: "json_schema", schema: SCHEMA } },
       system: INSTRUCTIONS,
       messages: [{ role: "user", content: input }],
     });
+    let response;
+    try { response = await ask(DIARY_MODEL); }
+    catch (e) { if (e && (e.status === 404 || e.status === 400 || e.status === 529 || e.status === 503)) response = await ask(MODEL); else throw e; }
     if (response.stop_reason !== "end_turn") return reply(res, 200, { ok: false, message: "うまくまとめられませんでした。もう一度お試しください。" });
     const text = response.content.filter((b) => b.type === "text").map((b) => b.text).join("");
     let out;
