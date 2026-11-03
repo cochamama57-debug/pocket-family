@@ -17,6 +17,9 @@
     },
     "api/drawing.js": {
       "maxDuration": 60
+    },
+    "api/diary.js": {
+      "maxDuration": 60
     }
   }
 }

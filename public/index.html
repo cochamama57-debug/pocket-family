@@ -174,6 +174,21 @@
   @media (max-height: 760px) { .game-board { grid-template-columns: repeat(4, 1fr); gap: 8px; } .game-card .fr { font-size: 40px; } .game-card .bk { font-size: 28px; } .game-top img { width: 56px; height: 56px; } .game-say { font-size: 17px; } }
   @media (prefers-reduced-motion: reduce) { .game-card .in { transition: none; } }
   .event-img { display: block; width: 100%; height: auto; margin-top: 10px; border-radius: 14px; }
+  /* 日記 */
+  .diary-bar { display: flex; align-items: center; gap: 6px; background: #fff6e0; border: 2px solid #f0c96a; border-radius: 14px; padding: 4px 6px 4px 10px; margin: 6px 0 8px; font-size: 16px; font-weight: 700; }
+  .diary-bar > span { flex: 1; min-width: 0; line-height: 1.3; }
+  .diary-bar button { flex: none; font: inherit; font-size: 16px; font-weight: 700; min-height: 44px; padding: 2px 10px; border-radius: 12px; border: 2px solid var(--line); background: #fff; color: var(--ink); }
+  .diary-bar button.go { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .diary-card { margin-top: 10px; background: #fffdf6; border: 1px solid #ecd9b0; border-left: 6px solid #f0c96a; border-radius: 12px; padding: 12px 14px; }
+  .diary-card .dt { font-size: 15px; color: var(--sub); }
+  .diary-card h4 { margin: 2px 0 6px; font-size: 20px; }
+  .diary-card .db { white-space: pre-wrap; font-size: 18px; line-height: 1.8; }
+  .diary-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .diary-acts button { font: inherit; font-size: 17px; font-weight: 700; min-height: 48px; padding: 4px 14px; border-radius: 14px; border: 2px solid var(--line); background: #fff; color: var(--ink); }
+  .diary-acts button.go { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .diary-list { display: grid; gap: 14px; margin-bottom: 14px; }
+  .diary-card .db.fold { max-height: 9em; overflow: hidden; -webkit-mask-image: linear-gradient(#000 60%, transparent); mask-image: linear-gradient(#000 60%, transparent); }
+  .fold-btn { font: inherit; font-size: 16px; font-weight: 700; min-height: 44px; padding: 2px 12px; margin-top: 4px; border: 0; background: transparent; color: var(--mic); text-decoration: underline; }
   .gift-card { margin-top: 10px; background: #fff; border-radius: 12px; padding: 6px; box-shadow: 0 2px 6px rgba(0,0,0,.12); }
   .gift-card svg { display: block; width: 100%; height: auto; border-radius: 8px; }
   .gift-cap { font-size: 15px; color: var(--sub); margin-top: 4px; }
@@ -273,6 +288,8 @@
   .sheet .danger { margin-top: 28px; text-align: center; }
   .tabs { display: flex; gap: 6px; margin-bottom: 12px; }
   .tab { flex: 1; font-size: 16px; font-weight: 700; min-height: 50px; border-radius: 12px; border: 2px solid var(--line); background: #fff; color: var(--sub); padding: 0 4px; }
+  .tabs .tab:last-child { flex: 1.3; }
+  @media (max-width: 360px) { .tabs { gap: 4px; } .tab { font-size: 15px; padding: 0 2px; } }
   .tab.on { background: var(--mic); border-color: var(--mic); color: #fff; }
   .hint-s { font-size: 15px; color: var(--sub); margin: 0 0 8px; }
   .remind-btn { display: inline-block; margin: 8px 8px 0 0; font-size: 19px; font-weight: 700; color: #fff; background: var(--mic); border: 0; border-radius: 999px; min-height: 48px; padding: 0 18px; }
@@ -483,6 +500,7 @@
       <div id="guideText"></div>
       <button class="close" type="button" id="guideClose" aria-label="案内を閉じる">✕<br>閉じる</button>
     </div>
+    <div class="diary-bar" id="diaryBar" hidden><span id="diaryBarText">📝 日記を書いています</span><button type="button" class="go" id="diaryMake">まとめる</button><button type="button" id="diaryQuit">やめる</button></div>
     <button type="submit" class="skip" id="skip" hidden formnovalidate>答えずに次へ</button>
     <div class="tools">
       <button class="tool mic" id="mic" type="button"><span class="ico" aria-hidden="true"><svg class="micsvg" viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="2.5" width="7" height="12" rx="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 11.5a7 7 0 0 0 14 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="18.5" x2="12" y2="21.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="8" y1="21.5" x2="16" y2="21.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><span id="micLabel">話す</span></button>
@@ -491,7 +509,7 @@
     </div>
     <input class="sr" id="photoInput" type="file" accept="image/*" tabindex="-1" aria-hidden="true">
     <div class="row">
-      <textarea id="input" rows="1" maxlength="400" placeholder="ここに書いてね" enterkeyhint="enter" aria-label="話しかける"></textarea>
+      <textarea id="input" rows="1" maxlength="1000" placeholder="ここに書いてね" enterkeyhint="enter" aria-label="話しかける"></textarea>
       <button class="send" id="send" type="submit">送る</button>
     </div>
   </form>
@@ -562,8 +580,9 @@
     </div>
     <div class="tabs" role="tablist">
       <button type="button" class="tab on" data-tab="tabMem">思い出</button>
-      <button type="button" class="tab" data-tab="tabPlan">予定・お薬</button>
-      <button type="button" class="tab" data-tab="tabFam">連絡先・ペット</button>
+      <button type="button" class="tab" data-tab="tabDiary">日記</button>
+      <button type="button" class="tab" data-tab="tabPlan"><span class="nb">予定・</span><span class="nb">お薬</span></button>
+      <button type="button" class="tab" data-tab="tabFam"><span class="nb">連絡先・</span><span class="nb">ペット</span></button>
     </div>
     <section id="tabMem">
     <div class="stat">
@@ -585,6 +604,16 @@
         <button type="button" class="big-btn" id="swapBtn" style="margin:0"></button>
       </div>
     </div>
+    </section>
+    <section id="tabDiary" hidden>
+      <p class="hint-s" id="diaryLead" style="margin:4px 0 12px"></p>
+      <button type="button" class="big-btn" id="diaryStart">📝 今日の日記を書く</button>
+      <button type="button" class="big-btn" id="memoirStart" style="background:var(--mic)">📜 思い出話を書く</button>
+      <h3 id="diaryListTitle">日記帳</h3>
+      <div class="diary-list" id="diaryList"></div>
+      <button type="button" class="big-btn" id="diaryAll" style="background:#7a6a55" hidden>日記帳を、全部まとめて保存する</button>
+      <p class="hint-s" id="diarySaveHow"></p>
+      <p class="hint-s"><span class="nb">日記は、</span><span class="nb">このスマホの中にだけ</span><span class="nb">しまってあります。</span><span class="nb">まとめるときだけ、</span><span class="nb">お話の文をAIに送ります。</span></p>
     </section>
     <section id="tabPlan" hidden>
       <h3>予定</h3>
@@ -802,7 +831,8 @@
     if (!g.td || g.td.d !== t) g.td = { d: t, talk: 0, sing: 0, walk: 0, game: 0, react: 0 };
     if (!Number.isInteger(g.td.game)) g.td.game = 0;
     if (!Number.isInteger(g.td.react)) g.td.react = 0;
-    const rule = { talk: [1, 10], sing: [5, 2], walk: [5, 1], game: [5, 2], react: [1, 5] }[kind];
+    if (!Number.isInteger(g.td.diary)) g.td.diary = 0;
+    const rule = { talk: [1, 10], sing: [5, 2], walk: [5, 1], game: [5, 2], react: [1, 5], diary: [5, 1] }[kind];
     if (!rule) return;
     if (demoBoost > 1) { g.score += rule[0] * 20; return; }
     if (g.td[kind] >= rule[1]) return;
@@ -927,7 +957,7 @@
   function save() {
     try {
       // 写真そのものは残さない（容量のため）。「写真を見せた」という印だけ残す
-      const slim = history.slice(-MAX_KEEP).map(m => ({ role: m.role, content: m.content, photo: m.photo ? true : undefined, song: typeof m.song === "string" ? m.song : undefined, remind: m.remind && typeof m.remind === "object" ? m.remind : undefined, walk: m.walk === "go" || m.walk === "back" ? m.walk : undefined, gift: Number.isInteger(m.gift) ? m.gift : undefined, react: REACTS.includes(m.react) ? m.react : undefined }));
+      const slim = history.slice(-MAX_KEEP).map(m => ({ role: m.role, content: m.content, photo: m.photo ? true : undefined, song: typeof m.song === "string" ? m.song : undefined, remind: m.remind && typeof m.remind === "object" ? m.remind : undefined, walk: m.walk === "go" || m.walk === "back" ? m.walk : undefined, gift: Number.isInteger(m.gift) ? m.gift : undefined, react: REACTS.includes(m.react) ? m.react : undefined, ds: m.ds ? 1 : undefined, dd: m.dd && typeof m.dd === "object" ? { title: String(m.dd.title || "").slice(0, 20), body: String(m.dd.body || "").slice(0, 10000), kind: m.dd.kind === "memoir" ? "memoir" : "diary" } : undefined }));
       localStorage.setItem(STORE_KEY, JSON.stringify(slim));
     } catch {
       if (canSave) {
@@ -1113,6 +1143,7 @@
     input.setAttribute("aria-label", profile.name + "に話しかける");
     $("skip").hidden = profile.step >= QUESTIONS.length;
     updateHearts();
+    updateDiaryBar();
   }
   function render() {
     log.textContent = "";
@@ -1120,6 +1151,7 @@
       bubble(m.role === "user" ? "me" : "her", shown(m), undefined, m.role === "assistant" ? m : undefined);
       if (m.song) songInvite(m.song);
       if (m.remind) remindBubble(m);
+      if (m.dd) { const bx = log.lastElementChild && log.lastElementChild.querySelector(".bubble"); if (bx) bx.appendChild(diaryCard(m.dd)); }
       if (Number.isInteger(m.gift) && profile && gifts()[m.gift]) { const bx = log.lastElementChild && log.lastElementChild.querySelector(".bubble"); if (bx) bx.appendChild(giftCard(gifts()[m.gift])); }
       if (m.walk === "go" && !profile?.walking) { /* 終わった誘いは、ボタンを出さない */ }
       else if (m.walk === "back" && profile?.walking && m === history.filter(x => x.walk === "back").pop()) walkButton("back");
@@ -1317,7 +1349,7 @@
     r.onresult = (e) => {
       if (rec !== r) return;
       heard = joinResults(e.results);
-      input.value = (baseText + heard).slice(0, 400);
+      input.value = (baseText + heard).slice(0, 1000);
       autoGrow();
       clearTimeout(silenceTimer);
       silenceTimer = setTimeout(() => { if (rec === r) stopMic(); }, SILENCE_MS);
@@ -1383,7 +1415,7 @@
       if (text !== SKIPPED) input.value = "";
       autoGrow();
       hideGuide();
-      history.push({ role: "user", content: text === SKIPPED ? "（とばした）" : text.slice(0, 400) });
+      history.push({ role: "user", content: text === SKIPPED ? "（とばした）" : text.slice(0, 1000) });
       save();
       bubble("me", text === SKIPPED ? "（とばした）" : text);
       $("skip").hidden = profile.step >= QUESTIONS.length;
@@ -1399,13 +1431,23 @@
       if (text === SKIPPED) text = "（とばした）";
     }
 
+    // 日記の「直してほしいところ」を書いてもらったとき（おしゃべりには送らず、日記を書き直す）
+    if (diaryFixDraft && profile && profile.diaryMode && !photo && text !== SKIPPED) {
+      const d = diaryFixDraft; diaryFixDraft = null;
+      input.value = ""; autoGrow(); hideGuide();
+      history.push({ role: "user", content: text.slice(0, 1000) }); save();
+      bubble("me", text);
+      makeDiary(text.slice(0, 200), d);
+      return;
+    }
+
     sending = true;
     hideGuide();
     setBusy(true);
     input.value = "";
     autoGrow();
     clearPhoto();
-    const entry = { role: "user", content: text.slice(0, 400), photo: photo ? true : undefined };
+    const entry = { role: "user", content: text.slice(0, 1000), photo: photo ? true : undefined };
     history.push(entry);
     save();
     const myRow = bubble("me", text === PHOTO_TEXT ? "" : text, photo && photo.url);
@@ -1434,6 +1476,7 @@
         songs: allSongs().slice(0, 20).map(x => ({ id: x.id, title: x.title, tag: x.tag || "", kind: x.youtube ? "listen" : "sing" })),
       };
       if (photo) payload.image = { type: "image/jpeg", data: photo.data };
+      if (profile && profile.diaryMode) payload.mode = profile.diaryMode.kind; // 日記の聞き役
       const r = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1473,7 +1516,12 @@
         afterActivity("talk");
         hello();
         setTimeout(checkReminders, 1500);
-        if (!profile.birthday) askBirthday();
+        if (profile.diaryMode && data.help !== "now") {
+          // 日記の時間：話が一区切りついたら（または、何回か話したら）まとめる
+          const dm = profile.diaryMode; dm.turns = (dm.turns || 0) + 1; saveProfile(); updateDiaryBar();
+          if (data.diaryReady || dm.turns >= (dm.kind === "memoir" ? 12 : 8)) setTimeout(() => makeDiary(), 1500);
+        }
+        else if (!profile.birthday) askBirthday();
         else if (!(growth().talks === 1 && homeTip())) voiceAsk();
       } else {
         fail(data.message || "うまく届きませんでした。もう一度送ってみてください。");
@@ -1508,7 +1556,7 @@
     history = [];
     clearPhoto();
     save();
-    profile = null;
+    profile = null; updateDiaryBar();
     try { localStorage.removeItem(PROFILE_KEY); localStorage.removeItem(chatKey("chamu")); localStorage.removeItem(chatKey("colon")); } catch {}
     $("memo").hidden = true;
     render();
@@ -2330,7 +2378,8 @@
   document.querySelectorAll(".tab").forEach((tb) => {
     tb.addEventListener("click", () => {
       document.querySelectorAll(".tab").forEach(x => x.classList.toggle("on", x === tb));
-      for (const id of ["tabMem", "tabPlan", "tabFam"]) $(id).hidden = id !== tb.dataset.tab;
+      for (const id of ["tabMem", "tabDiary", "tabPlan", "tabFam"]) $(id).hidden = id !== tb.dataset.tab;
+      if (tb.dataset.tab === "tabDiary") renderDiaryTab();
       if (tb.dataset.tab === "tabFam") renderFamily();
       if (tb.dataset.tab === "tabPlan") { if (!$("planDate").value) $("planDate").value = today(); renderPlanTab(); }
     });
@@ -2691,6 +2740,7 @@
     renderSwap();
     updateBirthdayNote();
     renderGifts();
+    renderDiaryTab();
     $("memoTitle").innerHTML = "";
     const t1 = document.createElement("span"); t1.className = "nb"; t1.textContent = profile.name + "との";
     const t2 = document.createElement("span"); t2.className = "nb"; t2.textContent = "思い出";
@@ -2792,6 +2842,7 @@
     if (!profile || sending) return; // 返事を待っている間は交代しない（返事が別の子に入らないように）
     stopVoice(); stopMic();
     const target = otherChar();
+    profile.diaryMode = null; diaryFixDraft = null; updateDiaryBar();
     save();
     stashCurrent();
     const stash = profile.others[target];
@@ -3045,7 +3096,7 @@
   // たまに（3日に1回くらい）、絵を持ってくる
   function maybeGift() {
     if (!profile || profile.step < QUESTIONS.length || !profile.birthday) return;
-    if (inActivity() || !$("memo").hidden || sending) { setTimeout(maybeGift, 90000); return; } // 遊び・曲・ノートの最中は、あとで
+    if (inActivity() || !$("memo").hidden || sending || profile.diaryMode) { setTimeout(maybeGift, 90000); return; } // 遊び・曲・ノート・日記の最中は、あとで
     const last = Number(profile.lastGift) || 0;
     if (Date.now() - last < 3 * 86400000) return;
     if (growth().days.length < 2) return; // 出会った日は、まだ描かない
@@ -3063,6 +3114,152 @@
       c.appendChild(cap); box.appendChild(c);
     }
   }
+
+  // ---- 日記・思い出話（キャラが聞き役になって、本人の言葉で日記にまとめる。日記帳はこのスマホの中だけ） ----
+  let diaryFixDraft = null; // 「直してほしい」を待っている下書き
+  function diaries() { if (!Array.isArray(profile.diary)) profile.diary = []; return profile.diary; }
+  function jpFullDate(d) { const t = new Date(d + "T00:00:00"); return t.getFullYear() + "年" + (t.getMonth() + 1) + "月" + t.getDate() + "日（" + "日月火水木金土"[t.getDay()] + "）"; }
+  function updateDiaryBar() {
+    const dm = profile && profile.diaryMode;
+    $("diaryBar").hidden = !dm;
+    if (dm) setPhrases($("diaryBarText"), dm.kind === "memoir" ? "📜 思い出話を|書いています" : "📝 日記を|書いています");
+  }
+  // 前に書いた日記・思い出話の続き（書き足し）
+  function contBase(id) { const d = diaries().find(x => x.id === id); return d ? d.title + "\n" + d.body : undefined; }
+  function startDiary(kind, fromInvite, contId) {
+    if (!profile || profile.step < QUESTIONS.length || sending) return;
+    $("memo").hidden = true;
+    diaryFixDraft = null;
+    const polite = stageOf(points()) === 0, chamu = profile.char === "chamu", pi = chamu ? "" : "ピピッ。";
+    const cont = contId && diaries().find(x => x.id === contId);
+    const text = pi + (cont
+      ? (polite ? "「" + cont.title + "」の続きですね。ここまで書いてあります。続きを聞かせてください。" : "「" + cont.title + "」の続きだね！ ここまで書いてあるよ。続きを聞かせて。")
+      : kind === "memoir"
+      ? (polite ? "昔のお話、ぜひ聞かせてください！ どのころのお話にしますか？ 子どものころ、若いころ、お仕事のこと……なんでも大丈夫です。" : "昔のお話、聞かせて！ どのころのお話にする？ 子どものころ、若いころ、お仕事のこと……なんでもいいよ。")
+      : (polite ? (fromInvite ? "" : "今日の日記を、いっしょに書きましょう。") + "今日は、どんな一日でしたか？ 思い出したことから、なんでも話してくださいね。" : (fromInvite ? "" : "今日の日記、いっしょに書こう！ ") + "今日は、どんな一日だった？ 思い出したことから、なんでも話してね。"));
+    sayScripted(text);
+    history[history.length - 1].ds = 1; // 日記の時間の始まりの印（読み直しても、ここから数える）
+    if (cont) { history[history.length - 1].dd = { title: cont.title, body: cont.body, kind: cont.kind }; const bx = log.lastElementChild && log.lastElementChild.querySelector(".bubble"); if (bx) bx.appendChild(diaryCard(cont, cont.date)); }
+    save();
+    profile.diaryMode = { kind: kind === "memoir" ? "memoir" : "diary", turns: 0, cont: cont ? cont.id : undefined };
+    saveProfile(); updateDiaryBar();
+    input.focus();
+  }
+  function endDiary() { if (!profile) return; profile.diaryMode = null; diaryFixDraft = null; saveProfile(); updateDiaryBar(); }
+  function diaryCard(d, date) {
+    const c = document.createElement("div"); c.className = "diary-card";
+    const dt = document.createElement("div"); dt.className = "dt"; dt.textContent = (date ? jpFullDate(date) + "　" : "") + (d.kind === "memoir" ? "思い出話" : "日記") + (d.updated && d.updated !== date ? "（" + Number(d.updated.slice(5, 7)) + "月" + Number(d.updated.slice(8)) + "日に書き足し）" : "");
+    const h = document.createElement("h4"); h.textContent = d.title || "";
+    const b = document.createElement("div"); b.className = "db"; b.textContent = d.body || "";
+    c.append(dt, h, b);
+    return c;
+  }
+  async function makeDiary(fix, prev) {
+    const dm = profile && profile.diaryMode;
+    if (!dm || sending) return;
+    let from = 0; for (let i = history.length - 1; i >= 0; i--) if (history[i].ds) { from = i; break; }
+    const msgs = history.slice(from).filter(m => (m.role === "user" || m.role === "assistant") && !m.dd).map(m => ({ role: m.role, content: m.content }));
+    if (!msgs.some(m => m.role === "user")) { sayScripted(stageOf(points()) === 0 ? "まだ、お話を聞いていません。少しだけ、話してもらえますか？" : "まだ、お話を聞いてないよ。少しだけ話して？"); return; }
+    sending = true; setBusy(true);
+    const typing = bubble("her typing", "");
+    typing.querySelector(".bubble").innerHTML = '<span class="dots"><span>・</span><span>・</span><span>・</span></span>';
+    let data = {};
+    try {
+      const d = device();
+      const r = await fetch("/api/diary", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: d.id, secret: d.secret, kind: dm.kind, messages: msgs.slice(-160), base: dm.cont ? contBase(dm.cont) : undefined, call: callName(), charName: profile.name, date: today(), draft: prev ? prev.title + "\n" + prev.body : undefined, fix: fix || undefined }) });
+      data = await r.json().catch(() => ({}));
+    } catch {}
+    typing.remove(); sending = false; setBusy(false);
+    if (!profile || !profile.diaryMode) return;
+    if (!data.ok) { addNote(data.message || "うまくまとめられませんでした。少ししてから「まとめる」を押してください。"); return; }
+    const polite = stageOf(points()) === 0, pi = profile.char === "chamu" ? "" : "ピピッ。";
+    const draft = { title: data.title, body: data.body, kind: dm.kind };
+    const text = pi + (fix ? (polite ? "直してみました。どうですか？" : "直してみたよ。どうかな？") : (polite ? "こんなふうに書いてみました。どうですか？" : "こんなふうに書いてみたよ。どうかな？"));
+    history.push({ role: "assistant", content: text, dd: draft }); save();
+    bubble("her", text); talkFace(text); speak(text);
+    const box = log.lastElementChild && log.lastElementChild.querySelector(".bubble");
+    if (!box) return;
+    box.appendChild(diaryCard(draft, today()));
+    const acts = document.createElement("div"); acts.className = "diary-acts";
+    const btn = (label, cls, fn) => { const b = document.createElement("button"); b.type = "button"; b.textContent = label; if (cls) b.className = cls; b.addEventListener("click", () => { acts.remove(); fn(); }, { once: true }); acts.appendChild(b); };
+    btn("これで保存", "go", () => saveDiary(draft));
+    btn("直してほしい", "", () => { diaryFixDraft = draft; sayScripted(pi + (polite ? "どこを、どんなふうに直しましょうか？ 下に書いて教えてください。" : "どこを、どう直す？ 下に書いて教えてね。")); input.focus(); });
+    btn("もう少し話す", "", () => { profile.diaryMode.turns = 0; saveProfile(); sayScripted(pi + (polite ? "はい、続きを聞かせてください。" : "うん、続きを聞かせて！")); input.focus(); });
+    box.appendChild(acts);
+    log.scrollTop = log.scrollHeight;
+  }
+  function saveDiary(draft) {
+    if (!profile) return;
+    const list = diaries(), dm = profile.diaryMode;
+    const cont = dm && dm.cont && list.find(x => x.id === dm.cont);
+    if (cont) { cont.body = draft.body; cont.updated = today(); }  // 題名はそのまま  // 書き足した文章で、置きかえる
+    else list.push({ id: Date.now().toString(36), date: today(), kind: draft.kind, title: draft.title, body: draft.body });
+    if (list.length > 300) list.splice(0, list.length - 300);
+    addScore("diary"); saveProfile(); updateHearts();
+    endDiary();
+    const polite = stageOf(points()) === 0, pi = profile.char === "chamu" ? "" : "ピピッ。";
+    sayScripted(pi + (polite ? "日記帳に、しまっておきました！ ノートの「日記」で、いつでも読めます。" : "日記帳に、しまっておいたよ！ ノートの「日記」で、いつでも読めるからね。"));
+    showFace("happy", 2200);
+  }
+  // 日記帳を、文字のファイルにして渡す（iPhone・Androidは共有から「ファイルに保存」など。パソコンは保存）
+  function diaryFileText(list) {
+    const who = callName();
+    const lines = ["AIポケットファミリー　日記帳" + (who ? "（" + who + "さん）" : ""), ""];
+    for (const d of list) lines.push("━━━━━━━━━━", jpFullDate(d.date) + "　" + (d.kind === "memoir" ? "思い出話" : "日記"), "【" + (d.title || "") + "】", "", d.body || "", "");
+    return lines.join("\n");
+  }
+  async function shareDiary(list, name) {
+    const text = diaryFileText(list);
+    const file = new File([text], name + ".txt", { type: "text/plain" });
+    try {
+      if ((isIOS || isAndroid) && navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); return; }
+      if ((isIOS || isAndroid) && navigator.share) { await navigator.share({ title: name, text }); return; }
+    } catch (e) { if (e && e.name === "AbortError") return; }
+    try {
+      const a = document.createElement("a"); a.href = URL.createObjectURL(file); a.download = name + ".txt";
+      document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    } catch { addNote("保存できませんでした。日記の文を長押しして、コピーしてください。"); }
+  }
+  function renderDiaryTab() {
+    if (!profile) return;
+    setPhrases($("diaryLead"), "お話ししたことを、|" + profile.name + "が|日記にまとめます。|うまく書けなくても|大丈夫。|聞きながら、|いっしょに書きます。");
+    const box = $("diaryList"); box.textContent = "";
+    const list = diaries().slice().reverse();
+    $("diaryAll").hidden = !list.length;
+    setPhrases($("diarySaveHow"), !list.length ? "" : isIOS ? "保存するときは、|出てきた画面で|「“ファイル”に保存」を|選んでください。|メールやLINEで|送ることもできます。" : isAndroid ? "保存するときは、|出てきた画面で|「ドライブ」や|「ファイル」を選ぶか、|LINEなどで|送ることもできます。" : "文字のファイル（.txt）として|保存されます。");
+    if (!list.length) { const p = document.createElement("p"); p.className = "hint-s"; p.textContent = "まだありません。上のボタンから、書いてみましょう。"; box.appendChild(p); return; }
+    for (const d of list) {
+      const c = diaryCard(d, d.date);
+      const db = c.querySelector(".db");
+      if ((d.body || "").length > 300) {
+        db.classList.add("fold");
+        const open = document.createElement("button"); open.type = "button"; open.className = "fold-btn"; open.textContent = "全部読む";
+        open.addEventListener("click", () => { db.classList.toggle("fold"); open.textContent = db.classList.contains("fold") ? "全部読む" : "たたむ"; });
+        db.after(open);
+      }
+      const acts = document.createElement("div"); acts.className = "diary-acts";
+      const sh = document.createElement("button"); sh.type = "button"; sh.textContent = "保存・送る";
+      sh.addEventListener("click", () => shareDiary([d], (d.kind === "memoir" ? "思い出話_" : "日記_") + d.date));
+      const del = document.createElement("button"); del.type = "button"; del.textContent = "消す";
+      del.addEventListener("click", () => {
+        if (del.dataset.armed !== "1") { del.dataset.armed = "1"; del.textContent = "もう一度押すと消えます"; setTimeout(() => { del.dataset.armed = ""; del.textContent = "消す"; }, 3000); return; }
+        profile.diary = diaries().filter(x => x !== d); saveProfile(); renderDiaryTab();
+      });
+      const more = document.createElement("button"); more.type = "button"; more.textContent = "続きを書く";
+      more.addEventListener("click", () => startDiary(d.kind, false, d.id));
+      acts.append(more, sh, del); c.appendChild(acts); box.appendChild(c);
+    }
+  }
+  $("diaryStart").addEventListener("click", () => startDiary("diary"));
+  $("memoirStart").addEventListener("click", () => startDiary("memoir"));
+  $("diaryAll").addEventListener("click", () => shareDiary(diaries(), "日記帳_" + today()));
+  $("diaryMake").addEventListener("click", () => makeDiary());
+  $("diaryQuit").addEventListener("click", () => {
+    if (!profile || !profile.diaryMode || sending) return;
+    endDiary();
+    sayScripted((profile.char === "chamu" ? "" : "ピピッ。") + (stageOf(points()) === 0 ? "わかりました。また書きたくなったら、いつでも言ってくださいね。" : "うん、わかった。また書きたくなったら、いつでも言ってね。"));
+  });
 
   // ---- 遊び：神経衰弱（キャラと交代でめくる。時間制限なし。キャラもときどき忘れる） ----
   // 漢字2文字の熟語。カードは漢字1文字ずつ。2枚で熟語ができたら、そろい
@@ -3341,7 +3538,10 @@
 
   // ---- キャラからの誘い（たまに1つだけ。1日2回まで、前の誘いから2時間あける） ----
   // 「いいよ」→大喜び／「あとで」→「うん！待ってる！」／「今はいい」→しょんぼり
-  function inviteKinds() { return ["song", "game", "teach", "teach"]; }
+  function inviteKinds() {
+    const h = new Date().getHours(), wroteToday = diaries().some(d => d.date === today());
+    return ["song", "game", "teach", "teach"].concat(h >= 17 && !wroteToday ? ["diary", "diary", "diary"] : []);
+  }
   // 「教えて！」の話題（孫が、おばあちゃん・おじいちゃんに聞くように）
   const TEACH = ["子どものころ、どんな遊びをしていたの？", "おいしいおにぎりのコツ、教えて！", "いちばん好きな季節はいつ？ どうして？", "昔、どんなお祭りがあった？", "得意な料理って、なあに？", "子どものころ好きだった歌、教えて！", "お正月って、昔はどんなふうに過ごしてたの？", "雨の日は、どんなふうに過ごすのが好き？", "若いころ、どんな仕事をしていたの？", "いちばん思い出に残っている旅行は、どこ？"];
   function canInvite() {
@@ -3358,7 +3558,7 @@
   }
   function invite() {
     if (!profile || profile.step < QUESTIONS.length || sending || helpBusy || !canInvite()) return;
-    if (inActivity() || !$("memo").hidden) { setTimeout(invite, 90000); return; } // 遊び・曲・ノートの最中は、あとで
+    if (inActivity() || !$("memo").hidden || profile.diaryMode) { setTimeout(invite, 90000); return; } // 遊び・曲・ノート・日記の最中は、あとで
     const kinds = inviteKinds(), kind = kinds[Math.floor(Math.random() * kinds.length)];
     const sg = kind === "song" ? pickSong() : null;
     if (kind === "song" && !sg) return;
@@ -3376,6 +3576,7 @@
     }
     const ask = kind === "song"
       ? pi + (polite ? "あの、いっしょに『" + sg.title + "』を聞きませんか？" : (chamu ? "ねえねえ、いっしょに『" + sg.title + "』聞こうよ〜！" : "ねえ、いっしょに『" + sg.title + "』聞かない？"))
+      : kind === "diary" ? pi + (polite ? "あの、今日のこと、いっしょに日記に書きませんか？" : (chamu ? "ねえねえ、今日のこと、いっしょに日記に書こうよ！" : "ねえ、今日のこと、いっしょに日記に書かない？"))
       : pi + (polite ? "あの、いっしょにゲームで遊びませんか？" : (chamu ? "ねえねえ、ゲームで遊ぼうよ〜！" : "ねえ、いっしょにゲームしない？"));
     history.push({ role: "assistant", content: ask }); save();
     bubble("her", ask); talkFace(ask); speak(ask);
@@ -3384,7 +3585,7 @@
     const wrap = document.createElement("div");
     const say = (text, face) => { wrap.remove(); sayScripted(text); if (face) setTimeout(() => showFace(face, 2600), 300); };
     const opts = [
-      ["いいよ！", () => { say(pi + (polite ? "やったあ！ うれしいです！" : "やったあ！ うれしい！"), "banzai"); setTimeout(() => kind === "song" ? openPlayer(sg.id) : openGame(), 1400); }],
+      ["いいよ！", () => { say(pi + (polite ? "やったあ！ うれしいです！" : "やったあ！ うれしい！"), "banzai"); setTimeout(() => kind === "song" ? openPlayer(sg.id) : kind === "diary" ? startDiary("diary", true) : openGame(), 1400); }],
       ["あとで", () => { profile.inviteLater = Date.now(); saveProfile(); say(pi + (polite ? "はい！ 待っていますね！" : "うん！ 待ってる！"), "happy"); }],
       ["今はいい", () => { say(pi + (polite ? "そうですか…。また今度、ぜひ。" : (chamu ? "そっかぁ…。また今度ね。" : "そっか…。また今度ね。")), "sad"); }],
     ];

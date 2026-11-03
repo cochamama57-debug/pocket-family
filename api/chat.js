@@ -43,6 +43,24 @@ const WALK_RULE = `お散歩:
 - 相手が「ずっと家にいた」「気分を変えたい」「天気がいい」など合うときだけ、家族として「お散歩いこうか？」と誘ってよい。毎回は誘わない。断られたら、その話の中ではもう誘わない。
 - 誘うときは、返事のいちばん最後の行に [[おさんぽ]] と書く。記号のことは言葉で説明しない。
 - 「1日◯歩」「運動しなさい」のような指示や、健康の助言はしない。`;
+// 日記・思い出話を書くお手伝い（聞き役）
+const DIARY_RULE = {
+  diary: `いまは「今日の日記」を書くお手伝いの時間:
+- あなたは聞き役。相手の話に、まずやさしく相づちを打つ（「そうだったんだ」「それは、うれしかったね」など）。
+- 日記がふくらむように、「そのとき、どうしたの？」「どんな気持ちだった？」「だれといっしょだった？」のような質問を、1回の返事に1つだけする。
+- 励ましの決まり文句（「元気出して」など）や、助言はしない。歌・お散歩・遊びには誘わない。話をほかへそらさない。
+- 返事は短く（2〜3文）。日記の文は、まだ書かない（あとで画面がまとめる）。
+- 相手がもう十分に話した・「それくらい」「もういい」と言った・話が一区切りついたら、質問はせずに「じゃあ、日記にまとめてみるね」と言い、返事のいちばん最後の行に [[日記]] と書く。記号のことは言葉で説明しない。`,
+  memoir: `いまは「思い出話（昔のこと）」を書きとめるお手伝いの時間:
+- あなたは、昔の話を聞くのが大好きな孫のような聞き役。相手の話に、まずやさしく相づちを打つ。
+- 思い出がふくらむように、「それは、いくつのころ？」「どこでのこと？」「そのとき、どう思った？」のような質問を、1回の返事に1つだけする。
+- 励ましの決まり文句や、助言はしない。歌・お散歩・遊びには誘わない。話をほかへそらさない。
+- 返事は短く（2〜3文）。文章は、まだ書かない（あとで画面がまとめる）。
+- 相手がもう十分に話した・「それくらい」「もういい」と言った・話が一区切りついたら、質問はせずに「じゃあ、思い出話にまとめてみるね」と言い、返事のいちばん最後の行に [[日記]] と書く。記号のことは言葉で説明しない。`,
+};
+function takeDiary(text) {
+  return { clean: text.replace(/\[\[日記\]\]/g, "").trim(), ready: /\[\[日記\]\]/.test(text) };
+}
 function takeWalk(text) {
   return { clean: text.replace(/\[\[おさんぽ\]\]/g, "").trim(), walk: /\[\[おさんぽ\]\]/.test(text) };
 }
@@ -63,7 +81,7 @@ function takeSong(text, songs) {
   return { clean, id };
 }
 
-const MAX_USER_CHARS = 400; // 1回に送れる文字数
+const MAX_USER_CHARS = 1000; // 1回に送れる文字数（日記・思い出話は長くなるため）
 const MAX_TURNS = 30; // 覚えておく直近のやりとり数
 const MAX_HISTORY_CHARS = 12000; // 送る会話全体の上限
 const RATE_MAX = 12; // 1分に12回まで（同じ接続元）
@@ -161,7 +179,8 @@ export default async function handler(req, res) {
   const textOf = (m) => (typeof m.content === "string" ? m.content : (m.content || []).filter((c) => c.type === "text").map((c) => c.text).join(""));
   const mine = messages.filter((m) => m.role === "assistant").slice(-2).map(textOf);
   const asked = mine.filter((t) => /[？?]/.test(t)).length;
-  const QUESTION_RULE = mine.length >= 2 && asked >= 2
+  const mode = body?.mode === "diary" || body?.mode === "memoir" ? body.mode : null;
+  const QUESTION_RULE = mode ? DIARY_RULE[mode] : mine.length >= 2 && asked >= 2
     ? "【今回の返事】質問はしない（「？」を使わない）。相手の話を受け止めてから、自分の気持ちや、ポケットの中の小さなできごとを、自分から話して終える。"
     : asked >= 1
       ? "【今回の返事】質問は、しなくてよい。するなら1つだけ。自分の気持ちや小さな話で終えるほうが、うれしい。"
@@ -200,7 +219,10 @@ export default async function handler(req, res) {
     const { clean: tw, walk } = takeWalk(t0);
     const { clean: t1, plan } = takePlan(tw);
     const { clean: t2, id } = takeSong(t1, songs);
-    const clean = t2.replace(/\[\[[^\]]*\]\]/g, "").trim(); // 書きまちがえた印も見せない
+    const { clean: t3, ready } = takeDiary(t2);
+    const clean = t3.replace(/\[\[[^\]]*\]\]/g, "").trim(); // 書きまちがえた印も見せない
+    // 日記の時間は、歌・お散歩・予定の誘いは出さない（緊急だけは、いつでも）
+    if (mode) return reply(res, 200, { reply: clean || "……うん、聞いてるよ。", help: help || undefined, diaryReady: ready || undefined });
     return reply(res, 200, { reply: clean || "……うん、聞いてるよ。", song: id || undefined, plan: plan || undefined, help: help || undefined, walk: walk || undefined });
   } catch (err) {
     return replyApiError(res, err);
