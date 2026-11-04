@@ -296,7 +296,7 @@
   .player-stage[data-mood="calm"] { background: linear-gradient(#e6f6f3 0%, #d5efea 70%, #c6e7e1 100%); }
   .player-char { position: absolute; left: 50%; bottom: 6px; width: 150px; height: 150px; margin-left: -75px; object-fit: contain; transform-origin: 50% 90%; will-change: transform; }
   /* 顔の絵をぜんぶ重ねておき、新しい顔を上にふわっと重ねる（絵の入れかえでチラつかないように） */
-  .player-char .pf { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; pointer-events: none; }
+  .player-char .pf { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; pointer-events: none; transition: opacity var(--fade, .3s) ease-in; }
   .player-char .pf.on { opacity: 1; transition: opacity var(--fade, .3s) ease-out; }
   .player-char .pf.flip { transform: scaleX(-1); }
   .player-char.idle { animation: bob 3.2s ease-in-out infinite; }
@@ -1164,17 +1164,20 @@
     buildStageFaces(profile.char);
     const im = stageFaces[f] || stageFaces.normal;
     if (!im || stageFaceNow === f) return;
-    const box = $("playerChar"), first = !stageFaceNow;
+    const first = !stageFaceNow;
     const lip = f === "talk" || stageFaceNow === "talk"; // 歌っている口の開け閉めは、すばやく切りかえる
+    const prev = stageFaces[stageFaceNow];
     stageFaceNow = f;
-    im.style.transitionDuration = lip ? ".06s" : "";
+    // 新しい顔がふわっと出るのと同時に、前の顔もふわっと消す（入れかわり）。
+    // 前の顔を下に残したままにすると、ポーズの形がちがうところ（手や耳）が透けて、
+    // 前の絵が後ろに重なって見えてしまうため（11/4 作者：おはようの曲のちゃむ）
+    const dur = lip ? ".06s" : "";
+    im.style.transitionDuration = dur;
+    if (prev) prev.style.transitionDuration = dur;
     im.style.zIndex = ++stageZ;
     if (first) { im.style.transition = "none"; im.classList.add("on"); void im.offsetWidth; im.style.transition = ""; }  // 最初の1枚は、すぐ出す
     else im.classList.add("on");
-    // 新しい顔が重なり終わったら、下の顔を片づける
-    clearTimeout(stageFaceTimer);
-    const ms = lip ? 60 : parseFloat(getComputedStyle(box).getPropertyValue("--fade")) * 1000 || 0;
-    stageFaceTimer = setTimeout(() => { for (const k in stageFaces) if (stageFaces[k] !== im) stageFaces[k].classList.remove("on"); }, first ? 0 : ms + 60);
+    for (const k in stageFaces) if (stageFaces[k] !== im) stageFaces[k].classList.remove("on");
   }
   function setFace(f, el) {
     if (!profile) return;
