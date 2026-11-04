@@ -252,7 +252,7 @@
   .scene:not(.ny) .sc-sun { display: none; }
   .scene.ny.rise .sc-sun { transform: translateY(-34vh); }
   .sc-moon { position: absolute; right: 12%; top: 12%; width: 16vmin; height: 16vmin; border-radius: 50%; box-shadow: -4vmin 2vmin 0 0 #fff4c2; transform: rotate(-20deg); pointer-events: none; }
-  .scene:not(.nye) .sc-moon { display: none; }
+  .sc-moon { display: none; } /* 大みそかは、月ではなく花火（作者） */
   .sc-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
   .sc-title { position: relative; z-index: 2; margin: 46px 0 0; text-align: center; font-weight: 800; font-size: clamp(30px, 9vw, 56px); line-height: 1.25; letter-spacing: .02em;
     text-shadow: 0 3px 0 rgba(255,255,255,.7), 0 6px 18px rgba(0,0,0,.18); transform: scale(0); }
@@ -818,6 +818,7 @@
     <div class="title-foot">
       <button type="button" class="big-btn title-start" id="titleStart">始める</button>
       <button type="button" class="title-link" id="titleTour">使い方を見る</button>
+      <button type="button" class="title-link" id="titleSong" hidden>♪ オープニングを聞く</button>
       <div class="title-copy">AIポケットファミリー<br>© 2026 nekomori*I’ll</div>
     </div>
   </div>
@@ -3229,10 +3230,45 @@
   $("tourSkip").addEventListener("click", closeTour);
   $("memoTour").addEventListener("click", () => openTour("memo"));
   $("memoBdayEdit").addEventListener("click", () => { $("memo").hidden = true; bdayAsking = false; askBirthday(true); });
+  // ---- オープニングの曲（作者のSuno曲）。タイトル・使い方・家族えらびの間だけ流れる ----
+  const OPENING_URL = "songs/opening.mp3";
+  let opening = null, openingBuf = null;
+  function openingUI() { const b = $("titleSong"); b.hidden = !profile; b.textContent = opening ? "♪ 音楽を止める" : "♪ オープニングを聞く"; }
+  function startOpening() { // ボタンを押したときに呼ぶ（スマホは、さわらないと音が出せない）
+    if (opening) return;
+    const a = scAudio(); if (!a) return;
+    const me = opening = { src: null, g: null };
+    if (!openingBuf) openingBuf = fetch(OPENING_URL).then((r) => { if (!r.ok) throw 0; return r.arrayBuffer(); })
+      .then((ab) => new Promise((ok, ng) => a.decodeAudioData(ab, ok, ng))).catch(() => { openingBuf = null; return null; });
+    openingBuf.then((buf) => {
+      if (!buf || opening !== me) { if (opening === me) { opening = null; openingUI(); } return; }
+      try {
+        const src = a.createBufferSource(), g = a.createGain(), t = a.currentTime;
+        src.buffer = buf; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.65, t + 0.8);
+        src.connect(g).connect(a.destination); src.start(t);
+        me.src = src; me.g = g;
+        src.onended = () => { if (opening === me) { opening = null; openingUI(); } };
+      } catch { opening = null; }
+      openingUI();
+    });
+    openingUI(); openingWatch();
+  }
+  function stopOpening() { // ふわっと小さくして止める
+    const me = opening; opening = null; openingUI();
+    if (!me || !me.src || !actx) return;
+    try { const t = actx.currentTime; me.g.gain.cancelScheduledValues(t); me.g.gain.setValueAtTime(me.g.gain.value, t); me.g.gain.linearRampToValueAtTime(0, t + 1.2); me.src.stop(t + 1.3); } catch {}
+  }
+  function openingWatch() { // タイトル・使い方・家族えらびが全部閉じたら（おしゃべりが始まったら）止める
+    if (!opening) return;
+    if ($("titleScreen").hidden && $("tour").hidden && setupEl.hidden) { stopOpening(); return; }
+    setTimeout(openingWatch, 300);
+  }
+  $("titleSong").addEventListener("click", () => { if (opening) stopOpening(); else startOpening(); });
   function showTitle() {
     $("titleStart").innerHTML = "";
     if (profile) setPhrases($("titleStart"), profile.name + "に|会う");
     else $("titleStart").textContent = "始める";
+    openingUI();
     $("titleScreen").hidden = false;
   }
   // 開いたときのあいさつ（おはよう・おかえり・こんばんは・おやすみ）。時間と、前に会ってからの長さで変える
@@ -3875,10 +3911,11 @@
   function scBurst(x, y, ang, spread, n, speed, kind) {
     if (!scene) return;
     const cols = SC_COLORS[scene.kind] || SC_COLORS.bday;
+    const fc = FW_COLORS[Math.floor(Math.random() * FW_COLORS.length)]; // 花火は、1発ごとに1色（白をまぜる）
     for (let i = 0; i < n; i++) {
       const a = ang + (Math.random() - 0.5) * spread, v = speed * (0.45 + Math.random() * 0.75);
       scene.parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, r: Math.random() * 6.3, vr: (Math.random() - 0.5) * 0.4,
-        w: 6 + Math.random() * 7, h: 9 + Math.random() * 9, c: kind === "gold" ? ["#ffd36b", "#ffe9a8", "#f5b942", "#fff6d6"][i % 4] : cols[i % cols.length], k: kind || (Math.random() < 0.18 ? "dot" : "paper"), life: 0, ph: Math.random() * 6 });
+        w: 6 + Math.random() * 7, h: 9 + Math.random() * 9, c: kind === "gold" ? ["#ffd36b", "#ffe9a8", "#f5b942", "#fff6d6"][i % 4] : kind === "fw" ? (i % 6 ? fc : "#ffffff") : cols[i % cols.length], k: kind || (Math.random() < 0.18 ? "dot" : "paper"), life: 0, ph: Math.random() * 6 });
     }
   }
   function scRain(kind, n) { // 上から、ゆっくり降ってくる
@@ -3887,6 +3924,16 @@
     for (let i = 0; i < n; i++) scene.parts.push({ x: Math.random() * innerWidth, y: -20 - Math.random() * innerHeight * 0.6, vx: (Math.random() - 0.5) * 0.6, vy: 0.6 + Math.random() * 1.1,
       r: Math.random() * 6.3, vr: (Math.random() - 0.5) * 0.08, w: 7 + Math.random() * 6, h: 10 + Math.random() * 8, c: kind === "snow" ? "#ffffff" : kind === "gold" ? ["#ffd36b", "#ffe9a8", "#f5b942", "#fff6d6"][i % 4] : kind === "petal" ? ["#ffc2d4", "#ffd9e4", "#ff9fbc"][i % 3] : cols[i % cols.length],
       k: kind, life: 0, ph: Math.random() * 6, slow: true });
+  }
+  const FW_COLORS = ["#ff6b8b", "#ffd36b", "#7bdcff", "#b98cff", "#7bf0a8", "#ff9f5a"];
+  function scRocket() { // 下から花火の玉を打ち上げる（上で開く）
+    if (!scene) return;
+    scene.parts.push({ x: innerWidth * (0.15 + Math.random() * 0.7), y: innerHeight + 10, vx: (Math.random() - 0.5) * 1.2, vy: -Math.sqrt(2 * 0.12 * innerHeight * (0.55 + Math.random() * 0.25)), // 画面の上から2〜4割の高さで開く
+      r: 0, vr: 0, w: 3, h: 3, c: "#fff6d6", k: "rocket", life: 0, ph: 0 });
+  }
+  async function scFireworks(s) { // 場面のあいだ、ときどき打ち上げる
+    await scWait(400);
+    while (scAlive(s)) { scRocket(); if (Math.random() < 0.3) setTimeout(scRocket, 250); await scWait(900 + Math.random() * 900); }
   }
   function scTwinkle(n) { // 夜空の星（またたく）
     if (!scene) return;
@@ -3904,12 +3951,25 @@
         cx.fillStyle = p.c; cx.beginPath(); cx.arc(p.x, p.y, p.w, 0, 7); cx.fill();
         keep.push(p); continue;
       }
-      if (p.slow) { p.x += p.vx + Math.sin(p.ph + p.life * 0.03) * 0.6; p.y += p.vy; p.r += p.vr; }
+      if (p.k === "rocket") { p.x += p.vx; p.y += p.vy; p.vy += 0.12; } // 花火の玉は、空気でおそくならない
+      else if (p.slow) { p.x += p.vx + Math.sin(p.ph + p.life * 0.03) * 0.6; p.y += p.vy; p.r += p.vr; }
       else { p.vx *= 0.975; p.vy = p.vy * 0.975 + 0.16; p.x += p.vx; p.y += p.vy; p.r += p.vr; }
+      if (p.k === "rocket" && p.vy > -1.2) { scBurst(p.x, p.y, 0, 6.3, 90, 8, "fw"); continue; } // 上がりきったら、ぱっと開く
       if (p.y > H + 40 || p.x < -60 || p.x > W + 60) continue;
+      if (p.k === "fw") { // 花火の火花：飛ぶ向きに、光の尾を引く
+        if (p.life > 62) continue;
+        const al = Math.max(0, 1 - p.life / 62), k = 4;
+        cx.globalAlpha = al; cx.strokeStyle = p.c; cx.lineWidth = 2.6; cx.lineCap = "round";
+        cx.beginPath(); cx.moveTo(p.x, p.y); cx.lineTo(p.x - p.vx * k, p.y - p.vy * k); cx.stroke();
+        cx.globalAlpha = al * 0.35; cx.fillStyle = p.c; cx.beginPath(); cx.arc(p.x, p.y, 5, 0, 7); cx.fill();
+        keep.push(p); continue;
+      }
       cx.globalAlpha = 1;
       cx.save(); cx.translate(p.x, p.y); cx.rotate(p.r); cx.fillStyle = p.c;
-      if (p.k === "gold") { cx.globalAlpha = 0.35 + 0.65 * Math.abs(Math.sin(p.ph + p.life * 0.09)); cx.beginPath(); cx.arc(0, 0, p.w * 0.22, 0, 7); cx.fill(); cx.globalAlpha *= 0.3; cx.beginPath(); cx.arc(0, 0, p.w * 0.5, 0, 7); cx.fill(); } // 金粉：きらきら光りながら舞う
+      if (p.k === "rocket") { // 上がりきったら、ぱっと開く
+        cx.globalAlpha = 0.9; cx.fillStyle = p.c; cx.beginPath(); cx.arc(0, 0, 2.2, 0, 7); cx.fill(); cx.globalAlpha = 0.35; cx.fillRect(-1, 2, 2, 14);
+      }
+      else if (p.k === "gold") { cx.globalAlpha = 0.35 + 0.65 * Math.abs(Math.sin(p.ph + p.life * 0.09)); cx.beginPath(); cx.arc(0, 0, p.w * 0.22, 0, 7); cx.fill(); cx.globalAlpha *= 0.3; cx.beginPath(); cx.arc(0, 0, p.w * 0.5, 0, 7); cx.fill(); } // 金粉：きらきら光りながら舞う
       else if (p.k === "dot" || p.k === "snow") { cx.beginPath(); cx.arc(0, 0, p.k === "snow" ? p.w * 0.35 : p.w * 0.45, 0, 7); cx.fill(); }
       else if (p.k === "petal") { cx.beginPath(); cx.ellipse(0, 0, p.w * 0.45, p.h * 0.5, 0, 0, 7); cx.fill(); }
       else if (p.k === "spark") { cx.globalAlpha = Math.max(0, 1 - p.life / 70); cx.beginPath(); for (let i = 0; i < 4; i++) { cx.rotate(Math.PI / 2); cx.moveTo(0, 0); cx.quadraticCurveTo(1.5, 1.5, 0, p.w); } cx.lineWidth = 2.2; cx.strokeStyle = p.c; cx.stroke(); }
@@ -4087,6 +4147,7 @@
         t = scSay(lines.b, voiceB); await scWaitSay(t); finish();
       } else { // 大みそか：夜空と、鐘の音と、おじぎ
         scTwinkle(70); if (s.useSong) playSceneSong(s); else bell();
+        scFireworks(s);
         await scWait(1200); if (!scAlive(s)) return;
         setScenePose("bow"); title();
         scMove([{ transform: "rotate(0)" }, { transform: "translateY(3%)" }], { duration: 1100, easing: "ease-in-out" });
@@ -4352,6 +4413,7 @@
     setTimeout(() => hello(true), 1000);
   }
   $("titleStart").addEventListener("click", () => {
+    if (!profile) startOpening(); // はじめての人は、使い方と家族えらびの間、オープニングの曲を流す
     $("titleScreen").hidden = true;
     if (profile) beginSession();
     else if (!tourSeen()) openTour("first");
