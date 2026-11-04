@@ -189,6 +189,14 @@
   @media (max-height: 760px) { .game-board { grid-template-columns: repeat(4, 1fr); gap: 8px; } .game-card .fr { font-size: 40px; } .game-card .bk { font-size: 28px; } .game-top img { width: 56px; height: 56px; } .game-say { font-size: 17px; } }
   @media (prefers-reduced-motion: reduce) { .game-card .in { transition: none; } }
   .event-img { display: block; width: 100%; height: auto; margin-top: 10px; border-radius: 14px; }
+  /* 静止画を、ゆっくり寄せたり流したりして、動きを出す（ケン・バーンズ） */
+  .event-wrap { margin-top: 10px; border-radius: 14px; overflow: hidden; }
+  .event-wrap .event-img { margin-top: 0; border-radius: 0; }
+  .kb { animation: kenburns 16s ease-in-out infinite alternate; transform-origin: 50% 40%; will-change: transform; }
+  @keyframes kenburns { from { transform: scale(1) translate(0, 0); } to { transform: scale(1.12) translate(-2%, 1.5%); } }
+  .title-gap img { animation: kenburnsTitle 20s ease-in-out infinite alternate; transform-origin: 50% 55%; }
+  @keyframes kenburnsTitle { from { transform: scale(1); } to { transform: scale(1.07) translateY(-1.5%); } }
+  @media (prefers-reduced-motion: reduce) { .kb, .title-gap img { animation: none; } }
   /* 日記 */
   .diary-bar { display: flex; align-items: center; gap: 6px; background: #fff6e0; border: 2px solid #f0c96a; border-radius: 14px; padding: 4px 6px 4px 10px; margin: 6px 0 8px; font-size: 16px; font-weight: 700; }
   .diary-bar > span { flex: 1; min-width: 0; line-height: 1.3; }
@@ -247,7 +255,7 @@
   .sc-stage { position: relative; z-index: 1; flex: 1; width: 100%; display: flex; align-items: center; justify-content: center; min-height: 0; }
   .sc-char { position: relative; width: min(74vw, 44vh, 420px); aspect-ratio: 1; }
   .sc-char .sc-body { position: absolute; inset: 0; transform-origin: 50% 92%; }
-  .sc-char img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; transition: opacity .22s ease; -webkit-user-select: none; user-select: none; pointer-events: none; }
+  .sc-char img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; transform-origin: 50% 95%; -webkit-user-select: none; user-select: none; pointer-events: none; }
   .sc-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 3; }
   .sc-bouquet { position: absolute; z-index: 4; width: min(60vw, 38vh, 340px); aspect-ratio: 1; left: 50%; top: 50%; margin: calc(min(60vw, 38vh, 340px) / -2) 0 0 calc(min(60vw, 38vh, 340px) / -2);
     object-fit: contain; pointer-events: none; opacity: 0; }
@@ -1148,8 +1156,8 @@
   function buildStageFaces(ch) {
     const box = $("playerChar");
     if (box.dataset.ch === ch) return;
-    box.dataset.ch = ch; box.textContent = ""; stageFaces = {}; stageFaceNow = "";
-    for (const f of FACES) {
+    box.dataset.ch = ch; box.textContent = ""; stageFaces = {}; stageFaceNow = ""; stageBridge = null;
+    for (const f of [...FACES, ...STAGE_MIDS]) {
       const im = new Image();
       im.className = "pf"; im.alt = ""; im.decoding = "async"; im.src = faceSrc(ch, f);
       if (im.decode) im.decode().catch(() => {});
@@ -1161,36 +1169,63 @@
     box.appendChild(wr); stageFaces.waveR = wr;
   }
   // 手の形がちがう絵（ポーズ）は、ふわっと重ねると、前の手が透けて二重に見える。ポーズの切りかえは、ぱっと切りかえる
-  const POSE_FACES = new Set(["wave", "waveR", "banzai", "danceL", "danceR"]);
+  // そのかわり、ポーズとポーズの間に「途中の絵」（中割り）を一瞬はさんで、パラパラ漫画のようになめらかに見せる
+  const STAGE_MIDS = ["danceC", "waveMid"];
+  const POSE_FACES = new Set(["wave", "waveR", "banzai", "danceL", "danceR", ...STAGE_MIDS]);
+  const BODY_FACES = new Set(["normal", "talk", "happy", "sleepy", "serious", "sad", "cry"]);
+  const BRIDGE_MS = 80;
+  function bridgeOf(a, b) {
+    const pair = (x, y) => (a === x && b === y) || (a === y && b === x);
+    if (pair("danceL", "danceR")) return "danceC";
+    if ((a === "wave" && BODY_FACES.has(b)) || (b === "wave" && BODY_FACES.has(a))) return "waveMid";
+    if (((a === "danceL" || a === "danceR") && BODY_FACES.has(b)) || ((b === "danceL" || b === "danceR") && BODY_FACES.has(a))) return "danceC";
+    return null;
+  }
+  let stageBridge = null;
   function showStageFace(f) {
     buildStageFaces(profile.char);
+    // 途中の絵を見せているあいだは、行き先が同じなら待つ
+    if (stageBridge && stageBridge.to === f) return;
+    stageBridge = null;
     const im = stageFaces[f] || stageFaces.normal;
     if (!im || stageFaceNow === f) return;
     const box = $("playerChar"), first = !stageFaceNow;
     const prevKey = stageFaceNow, prev = stageFaces[prevKey];
     const cut = first || POSE_FACES.has(f) || POSE_FACES.has(prevKey);
     const lip = f === "talk" || prevKey === "talk"; // 歌っている口の開け閉めは、すばやく
-    stageFaceNow = f;
     clearTimeout(stageFaceTimer);
-    im.style.zIndex = ++stageZ;
     if (cut) {
+      const mid = !first && bridgeOf(prevKey, f);
+      const midIm = mid && stageFaces[mid];
+      const ok = midIm && midIm.complete && midIm.naturalWidth > 0;
+      const show = ok ? midIm : im;
+      stageFaceNow = ok ? mid : f;
+      show.style.zIndex = ++stageZ;
       // ぱっと切りかえ（前の絵は、すぐ消す）
       for (const k in stageFaces) stageFaces[k].style.transition = "none";
-      im.classList.add("on");
-      for (const k in stageFaces) if (stageFaces[k] !== im) stageFaces[k].classList.remove("on");
-      void im.offsetWidth;
+      show.classList.add("on");
+      for (const k in stageFaces) if (stageFaces[k] !== show) stageFaces[k].classList.remove("on");
+      void show.offsetWidth;
       for (const k in stageFaces) stageFaces[k].style.transition = "";
-      // 切りかえの瞬間に、体を「ぎゅっ→ぽん」と弾ませて、ポーズが変わる動きに見せる（貼りかえに見えないように）
-      if (!first && !reduceMotion && im.animate) {
-        const base = im.classList.contains("flip") ? "scaleX(-1) " : "";
-        im.animate([
-          { transform: base + "translateY(2%) scale(1.04, .92)" },
-          { transform: base + "translateY(-2%) scale(.97, 1.05)", offset: .45 },
-          { transform: base + "translateY(0) scale(1, 1)" },
-        ], { duration: 240, easing: "cubic-bezier(.3,.7,.4,1)" });
+      // 切りかえの瞬間に、体を「ぎゅっ→ぽん」と弾ませて、ポーズが変わる動きに見せる（どの絵にも同じ動きをつける）
+      if (!first && !reduceMotion && show.animate) {
+        for (const k in stageFaces) {
+          const el = stageFaces[k], base = el.classList.contains("flip") ? "scaleX(-1) " : "";
+          el.animate([
+            { transform: base + "translateY(1.5%) scale(1.03, .95)" },
+            { transform: base + "translateY(-1.5%) scale(.98, 1.03)", offset: .45 },
+            { transform: base + "translateY(0) scale(1, 1)" },
+          ], { duration: 260, easing: "cubic-bezier(.3,.7,.4,1)" });
+        }
+      }
+      if (ok) {
+        stageBridge = { to: f };
+        stageFaceTimer = setTimeout(() => { if (stageBridge && stageBridge.to === f) { stageBridge = null; showStageFace(f); } }, BRIDGE_MS);
       }
       return;
     }
+    stageFaceNow = f;
+    im.style.zIndex = ++stageZ;
     // 体の形が同じ絵（表情だけちがう）は、前の絵を下に残したまま、新しい顔を上にふわっと重ねる（透けない）
     // 重ねるのは「いま」と「すぐ前」の2枚だけ
     for (const k in stageFaces) if (stageFaces[k] !== im && stageFaces[k] !== prev) stageFaces[k].classList.remove("on");
@@ -1957,7 +1992,7 @@
       }
       else if (m === "sleep") mv.phraseFace = t < 8 ? "normal" : len && t > len * 0.8 ? "sleepy" : L > 0.7 ? (alt ? "happy" : "normal") : L < 0.4 ? (alt ? "serious" : "normal") : alt ? "sleepy" : "normal";
       else if (m === "calm") mv.phraseFace = Math.random() < 0.5 ? "happy" : "normal";
-      else if (m === "morning") mv.phraseFace = ["normal", "wave", "happy", "waveR"][Math.floor(bi / 8) % 4];
+      else if (m === "morning") mv.phraseFace = ["normal", "wave", "happy", "wave"][Math.floor(bi / 8) % 4];
       else mv.phraseFace = Math.random() < 0.5 ? "happy" : "normal";
     }
   }
@@ -1984,7 +2019,7 @@
         } else {                                        // くるっと回って、ハイポーズ
           if (q < 2) { const k = q / 2; sx = Math.cos(2 * P * k); y = -14 * S(P * k); face = "happy"; }
           else if (q < 4) { face = "banzai"; sx = sy = 1.06; }
-          else { x = 12 * S(P * b); r = 5 * S(P * b); face = bi % 2 ? "wave" : "waveR"; }
+          else { x = 12 * S(P * b); r = 5 * S(P * b); face = bi % 2 ? "wave" : "waveMid"; } // 手をふる（体ごと左右反転すると不自然なので、手を上げ下げする）
         }
       }
     } else if (m === "morning") {
@@ -1995,6 +2030,7 @@
         face = Math.floor(b / 2) % 2 ? "danceL" : "danceR";
       } else {                                          // ゆらゆら
         x = 9 * S(P * b / 2); r = 4 * S(P * b / 2); y = -3 * A(S(P * b));
+        if (face === "wave") face = Math.floor(b / 2) % 2 ? "wave" : "waveMid"; // 手をふる（2拍ごとに上げ下げ）
       }
     } else if (m === "comfort") {                       // ゆっくり、そばで揺れる。息をするように
       x = 6 * S(P * b / 2); r = 3 * S(P * b / 2);
@@ -3735,7 +3771,18 @@
     const a = $("scImgA"), b = $("scImgB"), showB = a.style.opacity !== "0";
     const next = showB ? b : a, prev = showB ? a : b;
     const src = scenePose(profile.char, pose);
-    const swap = () => { next.style.opacity = "1"; prev.style.opacity = "0"; };
+    // ポーズの絵は、ふわっと重ねると前の手が透けて二重に見えるので、ぱっと切りかえて、体を「ぎゅっ→ぽん」と弾ませる
+    const swap = () => {
+      next.style.transition = prev.style.transition = "none";
+      next.style.opacity = "1"; prev.style.opacity = "0";
+      void next.offsetWidth;
+      next.style.transition = prev.style.transition = "";
+      if (!reduceMotion && next.animate) next.animate([
+        { transform: "translateY(2%) scale(1.04, .94)" },
+        { transform: "translateY(-2%) scale(.97, 1.04)", offset: .45 },
+        { transform: "none" },
+      ], { duration: 300, easing: "cubic-bezier(.3,.7,.4,1)" });
+    };
     next.onerror = () => { next.onerror = null; next.src = faceSrc(profile.char, "banzai"); };
     if (next.getAttribute("src") === src && next.complete) swap();
     else { next.onload = swap; next.src = src; }
@@ -3988,11 +4035,13 @@
       const img = { bday: "bday", "xmas-eve": "xmas", xmas: "xmas", nye: "nye", ny: "ny" }[ev.key];
       const bx = log.lastElementChild && log.lastElementChild.querySelector(".bubble");
       if (img && bx) {
+        const wrap = document.createElement("div"); wrap.className = "event-wrap"; // 絵がゆっくり寄ったり流れたりする（ケン・バーンズ）
         const im = document.createElement("img");
-        im.className = "event-img"; im.alt = "ちゃむとコロンの、お祝いの絵"; im.src = "events/" + img + ".jpg";
-        im.addEventListener("error", () => im.remove());
+        im.className = "event-img kb"; im.alt = "ちゃむとコロンの、お祝いの絵"; im.src = "events/" + img + ".jpg";
+        im.addEventListener("error", () => wrap.remove());
         im.addEventListener("load", () => { log.scrollTop = log.scrollHeight; }); // 絵が読みこめたら、見えるところまで進める
-        bx.appendChild(im);
+        wrap.appendChild(im);
+        bx.appendChild(wrap);
         log.scrollTop = log.scrollHeight;
       }
       if (!sceneShown) confetti(ev.fx);
