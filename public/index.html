@@ -1566,14 +1566,18 @@
 
     // 最初の会話（質問への答えを、最初の思い出として残す）
     if (profile && profile.step < QUESTIONS.length && askPending) return;
+    if (profile && profile.step < QUESTIONS.length && text !== SKIPPED) {
+      // いちばん新しい返事が質問でないとき（遊びのあいさつなどで、質問が流れて見えないとき）は、
+      // 書いたことを答えとして受け取らず、もう一度聞く（書いた文と写真は、そのまま残す）
+      const q = QUESTIONS[profile.step], lastA = [...history].reverse().find((m) => m.role === "assistant");
+      if (!lastA || (lastA.content !== myWord(q.again) && lastA.content !== myWord(q.ask(profile.name)))) { sayScripted(q.again); return; }
+    }
     if (profile && profile.step < QUESTIONS.length && photo) {
       // 同じお知らせを何度も出さない。質問が見えなくなっていることがあるので、もう一度聞く
       const NOTE = "写真は、質問に答えてもらったあとで見せてくださいね。";
       [...log.children].filter((el) => el.textContent.trim() === NOTE).forEach((el) => el.remove());
       addNote(NOTE);
-      const q = QUESTIONS[profile.step], lastA = [...history].reverse().find((m) => m.role === "assistant");
-      if (!lastA || (lastA.content !== myWord(q.again) && lastA.content !== myWord(q.ask(profile.name)))) sayScripted(q.again); // いちばん新しい返事が質問なら、くり返さない
-      else log.scrollTop = log.scrollHeight;
+      log.scrollTop = log.scrollHeight;
       return;
     }
     if (profile && profile.step < QUESTIONS.length) {
