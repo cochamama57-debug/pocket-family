@@ -2352,7 +2352,7 @@
         voiceUrl = url;
         voiceEl.src = voiceUrl;
         // 声を少し高くして子どもらしく（音の高さも上がるように再生する）
-        const rate = 1.25;
+        const rate = profile.char === "chamu" ? 1.41 : 1.25; // ちゃむは「しおり・高く」（見本F・作者 11/4）、コロンは「あかり・少し高く」
         try { voiceEl.preservesPitch = false; voiceEl.webkitPreservesPitch = false; voiceEl.mozPreservesPitch = false; } catch {}
         voiceEl.defaultPlaybackRate = rate; voiceEl.playbackRate = rate;
         await voiceEl.play();

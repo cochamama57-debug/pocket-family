@@ -38,8 +38,8 @@ export default async function handler(req, res) {
     const r = await fetch("https://api.fish.audio/v1/tts", {
       method: "POST",
       headers: { Authorization: "Bearer " + key, "Content-Type": "application/json", model: MODEL },
-      // 声を高くして子どもらしくする（画面で速く再生して高くするので、ここではそのぶんゆっくり話させる）
-      body: JSON.stringify({ text, reference_id: voice, format: "mp3", mp3_bitrate: 64, latency: "balanced", language: "ja", prosody: { speed: 0.8 } }),
+      // 声を高くして子どもらしくする（画面で速く再生して高くするので、ここではそのぶんゆっくり話させる）。ちゃむ＝1.41倍（見本F・作者 11/4）、コロン＝1.25倍
+      body: JSON.stringify({ text, reference_id: voice, format: "mp3", mp3_bitrate: 64, latency: "balanced", language: "ja", prosody: { speed: char === "chamu" ? 0.71 : 0.8 } }),
       signal: AbortSignal.timeout(15000),
     });
     if (!r.ok) {
