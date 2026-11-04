@@ -643,10 +643,10 @@
       <button type="button" class="close-btn" id="memoClose">閉じる</button>
     </div>
     <div class="tabs" role="tablist">
-      <button type="button" class="tab on" data-tab="tabMem">思い出</button>
+      <button type="button" class="tab on" data-tab="tabMem"><span class="nb">ポケファミ</span><br><span class="nb">との</span><br><span class="nb">思い出</span></button>
       <button type="button" class="tab" data-tab="tabDiary">日記</button>
-      <button type="button" class="tab" data-tab="tabPlan"><span class="nb">予定・</span><span class="nb">お薬</span></button>
-      <button type="button" class="tab" data-tab="tabFam"><span class="nb">連絡先・</span><span class="nb">ペット</span></button>
+      <button type="button" class="tab" data-tab="tabPlan"><span class="nb">予定</span><br><span class="nb">お薬</span></button>
+      <button type="button" class="tab" data-tab="tabFam"><span class="nb">連絡先</span><br><span class="nb">ペット</span></button>
     </div>
     <section id="tabMem">
     <div class="stat">
@@ -1638,7 +1638,7 @@
     if (resetBtn.classList.contains("armed")) return;
     resetBtn.classList.add("armed");
     resetBtn.textContent = "";
-    const w = document.createElement("span"); setPhrases(w, "AIファミリーとの|思い出・予定・お薬・ペットが、|全部消えますが、|よろしいですか？|（日記帳と、|連絡先の登録は|残ります）");
+    const w = document.createElement("span"); setPhrases(w, "ポケファミとの|思い出・予定・お薬・ペットが、|全部消えますが、|よろしいですか？|（日記帳と、|連絡先の登録は|残ります）");
     const h = document.createElement("b"); h.style.display = "block"; h.style.marginTop = "6px"; setPhrases(h, "やり直すときは、|ここを長押し|してください");
     resetBtn.append(w, h);
     clearTimeout(armTimer);
@@ -2865,8 +2865,6 @@
     const t1 = document.createElement("span"); t1.className = "nb"; t1.textContent = profile.name + "との";
     const t2 = document.createElement("span"); t2.className = "nb"; t2.textContent = "思い出";
     $("memoTitle").append(t1, t2);
-    // タブも「コロンとの思い出」（自分の昔の話＝思い出話と、まちがえないように）
-    setPhrases(document.querySelector('.tab[data-tab="tabMem"]'), (profile.name.length <= 4 ? profile.name : "家族") + "との|思い出");
     $("memoDays").textContent = Math.max(1, g.days.length) + "日";
     $("memoHearts").textContent = heartsFor(st);
     $("memoStage").textContent = STAGE_NAMES[st];
@@ -3102,7 +3100,7 @@
     { pic: '<div class="tour-pic">🎵</div>', h: "歌う",
       p: ["上の「🎵 歌う」から、", "いっしょに歌えます。", "歌詞が大きく出て、", "曲に合わせて", "AIファミリーが踊ります。", "歌えたら「歌えた！」を", "ぜひ押してくださいね。", "AIファミリーが", "よろこびます。"] },
     { pic: '<div class="tour-pic">📖</div>', h: "ノート",
-      p: ["「📖 ノート」には、", "AIファミリーとの", "思い出・日記・", "予定とお薬・", "ペット・連絡先が", "あります。", "予定やお薬の時間を", "入力すると、", "やさしい音で", "お知らせします。"] },
+      p: ["「📖 ノート」には、", "ポケファミとの", "思い出・日記・", "予定とお薬・", "ペット・連絡先が", "あります。", "予定やお薬の時間を", "入力すると、", "やさしい音で", "お知らせします。"] },
   ];
   let tourAt = 0, tourFrom = "title";
   function drawTour() {
