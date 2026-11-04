@@ -1160,24 +1160,36 @@
     wr.className = "pf flip"; wr.alt = ""; wr.decoding = "async"; wr.src = faceSrc(ch, "wave");
     box.appendChild(wr); stageFaces.waveR = wr;
   }
+  // 手の形がちがう絵（ポーズ）は、ふわっと重ねると、前の手が透けて二重に見える。ポーズの切りかえは、ぱっと切りかえる
+  const POSE_FACES = new Set(["wave", "waveR", "banzai", "danceL", "danceR"]);
   function showStageFace(f) {
     buildStageFaces(profile.char);
     const im = stageFaces[f] || stageFaces.normal;
     if (!im || stageFaceNow === f) return;
-    const first = !stageFaceNow;
-    const lip = f === "talk" || stageFaceNow === "talk"; // 歌っている口の開け閉めは、すばやく切りかえる
-    const prev = stageFaces[stageFaceNow];
+    const box = $("playerChar"), first = !stageFaceNow;
+    const prevKey = stageFaceNow, prev = stageFaces[prevKey];
+    const cut = first || POSE_FACES.has(f) || POSE_FACES.has(prevKey);
+    const lip = f === "talk" || prevKey === "talk"; // 歌っている口の開け閉めは、すばやく
     stageFaceNow = f;
-    // 新しい顔がふわっと出るのと同時に、前の顔もふわっと消す（入れかわり）。
-    // 前の顔を下に残したままにすると、ポーズの形がちがうところ（手や耳）が透けて、
-    // 前の絵が後ろに重なって見えてしまうため（11/4 作者：おはようの曲のちゃむ）
-    const dur = lip ? ".06s" : "";
-    im.style.transitionDuration = dur;
-    if (prev) prev.style.transitionDuration = dur;
+    clearTimeout(stageFaceTimer);
     im.style.zIndex = ++stageZ;
-    if (first) { im.style.transition = "none"; im.classList.add("on"); void im.offsetWidth; im.style.transition = ""; }  // 最初の1枚は、すぐ出す
-    else im.classList.add("on");
-    for (const k in stageFaces) if (stageFaces[k] !== im) stageFaces[k].classList.remove("on");
+    if (cut) {
+      // ぱっと切りかえ（前の絵は、すぐ消す）
+      for (const k in stageFaces) stageFaces[k].style.transition = "none";
+      im.classList.add("on");
+      for (const k in stageFaces) if (stageFaces[k] !== im) stageFaces[k].classList.remove("on");
+      void im.offsetWidth;
+      for (const k in stageFaces) stageFaces[k].style.transition = "";
+      return;
+    }
+    // 体の形が同じ絵（表情だけちがう）は、前の絵を下に残したまま、新しい顔を上にふわっと重ねる（透けない）
+    // 重ねるのは「いま」と「すぐ前」の2枚だけ
+    for (const k in stageFaces) if (stageFaces[k] !== im && stageFaces[k] !== prev) stageFaces[k].classList.remove("on");
+    im.style.transitionDuration = lip ? ".06s" : "";
+    if (prev) prev.style.transitionDuration = "0s"; // 下の絵は、上が出きるまで消さない
+    im.classList.add("on");
+    const ms = lip ? 60 : parseFloat(getComputedStyle(box).getPropertyValue("--fade")) * 1000 || 0;
+    stageFaceTimer = setTimeout(() => { for (const k in stageFaces) if (stageFaces[k] !== im) stageFaces[k].classList.remove("on"); }, ms + 30);
   }
   function setFace(f, el) {
     if (!profile) return;
