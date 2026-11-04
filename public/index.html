@@ -1639,8 +1639,8 @@
         // 声で話すときは、声ができるのを少し待ってから、文字と声をいっしょに出す（緊急のときは待たない）
         let pre = null;
         if (voiceOn() && $("player").hidden && data.help !== "now") {
-          pre = fetchVoice(data.reply);
-          await Promise.race([pre, new Promise((res) => setTimeout(res, 4000))]);
+          pre = fetchVoice(voiceText(voiceChunks(data.reply)[0])); // 最初のひと区切りだけ先に作る（早く話し始められる）
+          await Promise.race([pre, new Promise((res) => setTimeout(res, 5000))]);
           if (!profile) { typing.remove(); return; }
         }
         typing.remove();
@@ -1648,7 +1648,7 @@
         save();
         bubble("her", data.reply);
         talkFace(data.reply);
-        speak(data.reply, false, pre);
+        speak(data.reply, false, pre, true);
         if (data.help === "now") setTimeout(() => startHelp("chat"), 600);
         else if (data.help === "ask") helpInvite();
         if (data.walk === true) { history[history.length - 1].walk = "go"; save(); walkButton("go"); }
@@ -2335,19 +2335,33 @@
       return URL.createObjectURL(await r.blob());
     } catch { return null; }
   }
-  // pre：先に作り始めた声（あれば、それを使う）
-  async function speak(text, force, pre) {
+  // 長い返事は、文の区切りで小分けにして声にする（最初のひと区切りができたら、すぐ話し始めて、話している間に続きを作る）
+  function voiceChunks(text) {
+    const parts = String(text).replace(/\s*\n+\s*/g, "\n").split(/(?<=[。！？!?\n])/).map(p => p.trim()).filter(Boolean);
+    const out = [];
+    for (const p of parts) {
+      const last = out[out.length - 1];
+      if (last && (last.length < 14 || (p.length < 8 && last.length + p.length < 60))) out[out.length - 1] = last + p;
+      else out.push(p);
+    }
+    return out.length ? out : [String(text)];
+  }
+  // pre：先に作り始めた声（あれば、それを使う）。firstOnly のときは、pre は最初のひと区切りの声
+  async function speak(text, force, pre, firstOnly) {
     if (!profile || !text || (!force && !voiceOn())) return;
     if (!$("player").hidden) return; // 曲を流しているときは話さない
     if (!$("game").hidden && !gameVoice) return; // ゲーム中は、ゲームの外の話を声に出さない
     stopVoice();
     const my = voiceSeq;
-    const clean = voiceText(text);
+    const chunks = pre && !firstOnly ? [String(text)] : voiceChunks(text);
     voicePending = my;
+    let next = pre || fetchVoice(voiceText(chunks[0]));
     try {
-      const url = await (pre || fetchVoice(clean));
-      if (my !== voiceSeq) { if (url) URL.revokeObjectURL(url); return; }
-      if (url) {
+      for (let i = 0; i < chunks.length; i++) {
+        const url = await next;
+        if (my !== voiceSeq) { if (url) URL.revokeObjectURL(url); return; }
+        next = i + 1 < chunks.length ? fetchVoice(voiceText(chunks[i + 1])) : null; // 話している間に、次を作る
+        if (!url) { if (voicePending === my) voicePending = 0; speakDevice(voiceText(chunks.slice(i).join(""))); return; }
         if (voiceUrl) URL.revokeObjectURL(voiceUrl);
         voiceUrl = url;
         voiceEl.src = voiceUrl;
@@ -2356,12 +2370,18 @@
         try { voiceEl.preservesPitch = false; voiceEl.webkitPreservesPitch = false; voiceEl.mozPreservesPitch = false; } catch {}
         voiceEl.defaultPlaybackRate = rate; voiceEl.playbackRate = rate;
         await voiceEl.play();
-        if (voicePending === my) voicePending = 0;
-        return;
+        // 話し終わるまで待つ（止められたら、そこでやめる）
+        await new Promise((ok) => {
+          const done = () => { voiceEl.removeEventListener("ended", done); voiceEl.removeEventListener("pause", done); voiceEl.removeEventListener("error", done); ok(); };
+          voiceEl.addEventListener("ended", done); voiceEl.addEventListener("pause", done); voiceEl.addEventListener("error", done);
+        });
+        if (my !== voiceSeq) { if (next) next.then((u) => u && URL.revokeObjectURL(u)); return; }
       }
+      if (voicePending === my) voicePending = 0;
+      return;
     } catch {}
     if (voicePending === my) voicePending = 0;
-    if (my === voiceSeq) speakDevice(clean);
+    if (my === voiceSeq) speakDevice(voiceText(String(text)));
   }
   // 声が、まだ話している途中か（準備中も含む）
   function voiceBusy() {
