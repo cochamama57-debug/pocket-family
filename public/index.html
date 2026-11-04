@@ -296,7 +296,7 @@
   .player-stage[data-mood="calm"] { background: linear-gradient(#e6f6f3 0%, #d5efea 70%, #c6e7e1 100%); }
   .player-char { position: absolute; left: 50%; bottom: 6px; width: 150px; height: 150px; margin-left: -75px; object-fit: contain; transform-origin: 50% 90%; will-change: transform; }
   /* 顔の絵をぜんぶ重ねておき、新しい顔を上にふわっと重ねる（絵の入れかえでチラつかないように） */
-  .player-char .pf { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; pointer-events: none; transition: opacity var(--fade, .3s) ease-in; }
+  .player-char .pf { transform-origin: 50% 95%; position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; pointer-events: none; transition: opacity var(--fade, .3s) ease-in; }
   .player-char .pf.on { opacity: 1; transition: opacity var(--fade, .3s) ease-out; }
   .player-char .pf.flip { transform: scaleX(-1); }
   .player-char.idle { animation: bob 3.2s ease-in-out infinite; }
@@ -1180,6 +1180,15 @@
       for (const k in stageFaces) if (stageFaces[k] !== im) stageFaces[k].classList.remove("on");
       void im.offsetWidth;
       for (const k in stageFaces) stageFaces[k].style.transition = "";
+      // 切りかえの瞬間に、体を「ぎゅっ→ぽん」と弾ませて、ポーズが変わる動きに見せる（貼りかえに見えないように）
+      if (!first && !reduceMotion && im.animate) {
+        const base = im.classList.contains("flip") ? "scaleX(-1) " : "";
+        im.animate([
+          { transform: base + "translateY(2%) scale(1.04, .92)" },
+          { transform: base + "translateY(-2%) scale(.97, 1.05)", offset: .45 },
+          { transform: base + "translateY(0) scale(1, 1)" },
+        ], { duration: 240, easing: "cubic-bezier(.3,.7,.4,1)" });
+      }
       return;
     }
     // 体の形が同じ絵（表情だけちがう）は、前の絵を下に残したまま、新しい顔を上にふわっと重ねる（透けない）
