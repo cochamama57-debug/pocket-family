@@ -266,6 +266,9 @@
   .sc-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 3; }
   .sc-bouquet { position: absolute; z-index: 4; width: min(60vw, 38vh, 340px); aspect-ratio: 1; left: 50%; top: 50%; margin: calc(min(60vw, 38vh, 340px) / -2) 0 0 calc(min(60vw, 38vh, 340px) / -2);
     object-fit: contain; pointer-events: none; opacity: 0; }
+  #scBox { --bw: min(46vw, 28vh, 260px); width: var(--bw); top: 61%; margin: calc(var(--bw) / -2) 0 0 calc(var(--bw) / -2); } /* 箱は、キャラの顔をかくさない高さに */
+  .sc-giftpic { position: absolute; z-index: 4; left: 50%; top: 40%; width: min(84vw, 46vh, 440px); transform: translate(-50%, -50%) scale(0); opacity: 0; pointer-events: none; }
+  .sc-giftpic .gift-card { margin: 0; padding: 8px; border-radius: 14px; box-shadow: 0 0 0 4px #ffd36b, 0 10px 40px rgba(255, 211, 107, .55); }
   .sc-bottom { position: relative; z-index: 5; width: 100%; max-width: 560px; display: grid; gap: 12px; justify-items: center; }
   .sc-line { min-height: 3.2em; margin: 0; padding: 12px 18px; border-radius: 18px; background: rgba(255,255,255,.92); color: var(--ink); font-size: 21px; line-height: 1.55; text-align: center;
     box-shadow: 0 6px 20px rgba(0,0,0,.15); opacity: 0; transform: translateY(10px); transition: opacity .35s ease, transform .35s ease; }
@@ -780,6 +783,8 @@
     <div class="sc-char" id="scChar"><div class="sc-body" id="scBody"><img id="scImgA" alt=""><img id="scImgB" alt="" style="opacity:0"></div></div>
   </div>
   <img class="sc-bouquet" id="scBouquet" alt="花束" src="events/bouquet.png">
+  <img class="sc-bouquet" id="scBox" alt="プレゼント" src="events/box_closed.png">
+  <div class="sc-giftpic" id="scGiftPic"></div>
   <div class="sc-bottom">
     <p class="sc-line" id="scLine" aria-live="polite"></p>
     <div class="sc-btns" id="scBtns"></div>
@@ -3342,19 +3347,25 @@
     return wrap;
   }
   let giftBusy = false;
+  async function requestDrawing(subject) { // 絵を1枚描いてもらう（だめなら null）
+    try {
+      const d = device();
+      const r = await fetch("/api/drawing", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: d.id, secret: d.secret, subject, call: callName(), profile: profileForServer() }) });
+      const data = await r.json().catch(() => ({}));
+      if (!data.ok || !Array.isArray(data.shapes)) return null;
+      return { date: today(), title: data.title || "", message: data.message || "", shapes: data.shapes };
+    } catch { return null; }
+  }
   async function giveDrawing(reason, diaryId) {
     if (!profile || giftBusy || profile.step < QUESTIONS.length) return false;
     giftBusy = true;
     const de = diaryId && diaries().find(x => x.id === diaryId);
     try {
-      const d = device();
       // 日記の絵：日記の題名と、はじめの文を描く
       const subject = de ? (de.title + "：" + String(de.body).replace(/\s+/g, " ")).slice(0, 60) : giftSubject();
-      const r = await fetch("/api/drawing", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: d.id, secret: d.secret, subject, call: callName(), profile: profileForServer() }) });
-      const data = await r.json().catch(() => ({}));
-      if (!data.ok || !Array.isArray(data.shapes)) return false;
-      const gift = { date: today(), title: data.title || "", message: data.message || "", shapes: data.shapes };
+      const gift = await requestDrawing(subject);
+      if (!gift) return false;
       const list = gifts(); list.push(gift); if (list.length > 20) list.splice(0, list.length - 20);
       profile.lastGift = Date.now(); saveProfile();
       const polite = stageOf(points()) === 0, pi = profile.char === "colon" ? "ピピッ。" : "";
@@ -3867,7 +3878,7 @@
     for (let i = 0; i < n; i++) {
       const a = ang + (Math.random() - 0.5) * spread, v = speed * (0.45 + Math.random() * 0.75);
       scene.parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, r: Math.random() * 6.3, vr: (Math.random() - 0.5) * 0.4,
-        w: 6 + Math.random() * 7, h: 9 + Math.random() * 9, c: cols[i % cols.length], k: kind || (Math.random() < 0.18 ? "dot" : "paper"), life: 0, ph: Math.random() * 6 });
+        w: 6 + Math.random() * 7, h: 9 + Math.random() * 9, c: kind === "gold" ? ["#ffd36b", "#ffe9a8", "#f5b942", "#fff6d6"][i % 4] : cols[i % cols.length], k: kind || (Math.random() < 0.18 ? "dot" : "paper"), life: 0, ph: Math.random() * 6 });
     }
   }
   function scRain(kind, n) { // 上から、ゆっくり降ってくる
@@ -3938,8 +3949,8 @@
     const m = [[67, 0, .3], [67, .3, .15], [69, .45, .45], [67, .9, .45], [72, 1.35, .45], [71, 1.8, .9], [67, 2.7, .3], [67, 3, .15], [69, 3.15, .45], [67, 3.6, .45], [74, 4.05, .45], [72, 4.5, .9]];
     notes(m.map(([n, t, l]) => [N(n + 12), t, l + 0.6]), "sine", 0.1); notes(m.map(([n, t, l]) => [N(n + 24), t, 0.25]), "triangle", 0.025);
   }
-  // ---- お祝いの曲（作者のSuno曲。大みそかは、届いたら足す） ----
-  const SCENE_SONG = { bday: "events/bday.mp3", ny: "events/ny.mp3", xmas: "events/xmas.mp3" };
+  // ---- お祝いの曲（作者のSuno曲） ----
+  const SCENE_SONG = { bday: "events/bday.mp3", ny: "events/ny.mp3", nye: "events/nye.mp3", xmas: "events/xmas.mp3" };
   const SONG_VOL = 0.7, SONG_DUCK = 0.2; // キャラが話している間は、曲を小さくする
   const sceneSongBuf = {};
   function loadSceneSong(kind) {
@@ -3991,7 +4002,10 @@
       b: L("来年も、|よろしくお願いします。", "来年も、|よろしくね！") };
     return { title: "メリー|クリスマス！",
       a: L(pi + "メリークリスマス！", pi + "メリークリスマス！"),
-      b: L("わたしたちに|素敵な奇跡が|訪れますように！", "わたしたちに|素敵な奇跡が|訪れますように！") };
+      b: L("わたしたちに|素敵な奇跡が|訪れますように！", "わたしたちに|素敵な奇跡が|訪れますように！"),
+      c: L("これ、わたしからの|プレゼントです。|開けてみてください！", "これ、わたしから|プレゼント！|開けてみて！"),
+      d: L("ふたりの|クリスマスを、|絵に描きました。|大事にしてくださいね。", "ふたりの|クリスマスを、|絵に描いたよ！|大事にしてね。"),
+      e: L("中身は、|わたしの|「ありがとう」の|気持ちです！", "中身は、|わたしの|「ありがとう」の|気持ち！") };
   }
   function scSay(text, pre) {
     // 文の終わり（。！？）では、かならず改行する
@@ -4016,7 +4030,7 @@
     if (!profile || scene) return false;
     stopVoice(); stopMic();
     const el = $("scene");
-    for (const id of ["scBody", "scChar", "scTitle", "scBouquet", "scFlash"]) { try { $(id).getAnimations().forEach(a => a.cancel()); } catch {} }
+    for (const id of ["scBody", "scChar", "scTitle", "scBouquet", "scBox", "scGiftPic", "scFlash"]) { try { $(id).getAnimations().forEach(a => a.cancel()); } catch {} }
     el.className = "scene " + kind; el.hidden = false;
     const s = scene = { kind, seq: 0, timers: [], parts: [], raf: 0, cx: scCanvas(), done, useSong: !!SCENE_SONG[kind], song: null };
     loadSceneSong(kind); // 先に読みこんでおく
@@ -4026,7 +4040,7 @@
     const voiceA = pv(lines.a), voiceB = pv(lines.b), voiceC = pv(lines.c);
     setPhrases($("scTitle"), lines.title); $("scTitle").style.transform = "scale(0)";
     $("scLine").classList.remove("show"); $("scLine").textContent = ""; $("scBtns").textContent = "";
-    $("scBouquet").style.opacity = "0";
+    $("scBouquet").style.opacity = "0"; $("scBox").style.opacity = "0"; $("scBox").src = "events/box_closed.png"; $("scGiftPic").textContent = ""; $("scGiftPic").style.opacity = "0";
     $("scImgA").style.opacity = "1"; $("scImgB").style.opacity = "0"; $("scImgA").src = faceSrc(profile.char, "happy");
     requestAnimationFrame(() => el.classList.add("on"));
     s.raf = requestAnimationFrame(scLoop);
@@ -4058,7 +4072,9 @@
           scButtons([["💐 受け取る", true, () => receiveFlowers(s, lines, voiceC)], ["閉じる", false, closeScene]]);
           return;
         }
-        t = scSay(lines.b, voiceB); if (!s.useSong) jingle(); await scWaitSay(t); finish();
+        t = scSay(lines.b, voiceB); if (!s.useSong) jingle(); await scWaitSay(t); if (!scAlive(s)) return;
+        if (kind === "xmas") { offerPresent(s, lines); return; }
+        finish();
       } else if (kind === "ny") {
         el.classList.add("rise"); if (s.useSong) playSceneSong(s); else kotoPluck();
         await scWait(900); if (!scAlive(s)) return;
@@ -4101,6 +4117,44 @@
       const t = scSay(lines.c, voiceC); await scWaitSay(t);
       if (scAlive(s)) scButtons([["閉じる", true, closeScene]]);
     }, 1100);
+  }
+  // クリスマス：プレゼントの箱を渡す →「開ける」で、キャラが描いた絵が出てくる
+  function offerPresent(s, lines) {
+    if (!scAlive(s)) return;
+    const call = callName() || "あなた";
+    s.drawing = requestDrawing(call + "と" + profile.name + "が、クリスマスツリーのそばで、いっしょにお祝いしているところ"); // 箱を開けるまでに描いておく
+    const bx = $("scBox"); bx.src = "events/box_closed.png"; bx.style.opacity = "1";
+    try { bx.animate([{ transform: "translateY(30vh) scale(.3) rotate(-12deg)", opacity: 0 }, { transform: "translateY(-2vh) scale(1.08) rotate(4deg)", opacity: 1, offset: .7 }, { transform: "translateY(0) scale(1) rotate(0)", opacity: 1 }], { duration: 800, easing: "cubic-bezier(.2,.8,.3,1)", fill: "forwards" }); } catch {}
+    setScenePose("banzai"); scMove([{ transform: "scale(1)" }, { transform: "scale(.88) translateY(-10%)" }], { duration: 700, easing: "ease-in-out" }); // キャラは少し上に下がって、箱を前に見せる
+    hop(20, 1);
+    const t = scSay(lines.c);
+    scWait(Math.min(t, 1800)).then(() => { if (scAlive(s)) scButtons([["🎁 開ける", true, () => openPresent(s, lines)], ["閉じる", false, closeScene]]); });
+  }
+  async function openPresent(s, lines) {
+    if (!scAlive(s)) return;
+    $("scBtns").textContent = "";
+    const bx = $("scBox");
+    try { bx.animate([{ transform: "rotate(0)" }, { transform: "rotate(-6deg) scale(1.05,.95)" }, { transform: "rotate(6deg) scale(1.05,.95)" }, { transform: "rotate(-4deg)" }, { transform: "rotate(0)" }], { duration: 600, easing: "ease-in-out" }); } catch {}
+    await scWait(600); if (!scAlive(s)) return;
+    bx.src = "events/box_open.png";
+    try { $("scFlash").animate([{ opacity: .6 }, { opacity: 0 }], { duration: 420, easing: "ease-out" }); } catch {}
+    const r = bx.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height * 0.35;
+    scBurst(x, y, -Math.PI / 2, 1.6, 110, 12, "gold"); scBurst(x, y, -Math.PI / 2, 1.2, 30, 10, "spark"); scRain("gold", 40); hop(30, 2);
+    // 絵ができるのを待つ（最大20秒。そのあいだも金粉は舞う）
+    const gift = await Promise.race([s.drawing, scWait(20000).then(() => null)]);
+    if (!scAlive(s)) return;
+    if (!gift) { const t = scSay(lines.e); await scWaitSay(t); if (scAlive(s)) scButtons([["閉じる", true, closeScene]]); return; }
+    gift.title = gift.title || "クリスマスの絵";
+    const list = gifts(); list.push(gift); if (list.length > 20) list.splice(0, list.length - 20);
+    profile.lastGift = Date.now(); saveProfile(); addScore("react");
+    const pic = $("scGiftPic"); pic.textContent = ""; pic.appendChild(giftCard(gift)); pic.style.opacity = "1";
+    try {
+      pic.animate([{ transform: "translate(-50%, 10%) scale(.2)", opacity: 0 }, { transform: "translate(-50%, -55%) scale(1.05)", opacity: 1, offset: .7 }, { transform: "translate(-50%, -50%) scale(1)", opacity: 1 }], { duration: 900, easing: "cubic-bezier(.2,.8,.3,1)", fill: "forwards" });
+      bx.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 700, delay: 400, fill: "forwards" });
+    } catch { pic.style.transform = "translate(-50%, -50%)"; bx.style.opacity = "0"; }
+    scBurst(innerWidth / 2, innerHeight * 0.4, 0, 6.3, 50, 8, "spark");
+    const t = scSay(lines.d); await scWaitSay(t);
+    if (scAlive(s)) scButtons([["閉じる", true, closeScene]]);
   }
   function closeScene() {
     const s = scene; if (!s) return;
