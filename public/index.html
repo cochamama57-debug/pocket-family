@@ -238,6 +238,13 @@
   .sc-rays { position: absolute; left: 50%; top: 46%; width: 180vmax; height: 180vmax; margin: -90vmax 0 0 -90vmax; pointer-events: none; opacity: .35;
     background: repeating-conic-gradient(rgba(255,255,255,.55) 0deg 9deg, rgba(255,255,255,0) 9deg 22.5deg); animation: scSpin 40s linear infinite; }
   .scene.nye .sc-rays, .scene.xmas .sc-rays { display: none; }
+  /* クリスマスの部屋（ツリーの電球は、2組が交互にチカチカ光る） */
+  .sc-xbg { display: none; position: absolute; inset: 0; background: url(events/xmas_bg.jpg) 22% 50% / cover no-repeat; }
+  .sc-xbg i { position: absolute; inset: 0; background: url(events/xmas_glow1.png) 22% 50% / cover no-repeat; mix-blend-mode: screen; animation: twinkle 1.4s ease-in-out infinite; }
+  .sc-xbg .g2 { background-image: url(events/xmas_glow2.png); animation-delay: -.7s; }
+  .scene.xmas .sc-xbg { display: block; }
+  @keyframes twinkle { 0%, 100% { opacity: .1; } 50% { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .sc-xbg i { animation: none; opacity: .6; } }
   .scene.ny .sc-rays { top: 78%; opacity: .25; }
   @keyframes scSpin { to { transform: rotate(360deg); } }
   .sc-sun { position: absolute; left: 50%; bottom: -30vmin; width: 60vmin; height: 60vmin; margin-left: -30vmin; border-radius: 50%; pointer-events: none;
@@ -762,6 +769,7 @@
 </div>
 
 <div class="scene" id="scene" hidden role="dialog" aria-label="お祝い">
+  <div class="sc-xbg" aria-hidden="true"><i class="g1"></i><i class="g2"></i></div>
   <div class="sc-rays" aria-hidden="true"></div>
   <div class="sc-sun" aria-hidden="true"></div>
   <div class="sc-moon" aria-hidden="true"></div>
@@ -3866,7 +3874,7 @@
     if (!scene) return;
     const cols = SC_COLORS[scene.kind] || SC_COLORS.bday;
     for (let i = 0; i < n; i++) scene.parts.push({ x: Math.random() * innerWidth, y: -20 - Math.random() * innerHeight * 0.6, vx: (Math.random() - 0.5) * 0.6, vy: 0.6 + Math.random() * 1.1,
-      r: Math.random() * 6.3, vr: (Math.random() - 0.5) * 0.08, w: 7 + Math.random() * 6, h: 10 + Math.random() * 8, c: kind === "snow" ? "#ffffff" : kind === "petal" ? ["#ffc2d4", "#ffd9e4", "#ff9fbc"][i % 3] : cols[i % cols.length],
+      r: Math.random() * 6.3, vr: (Math.random() - 0.5) * 0.08, w: 7 + Math.random() * 6, h: 10 + Math.random() * 8, c: kind === "snow" ? "#ffffff" : kind === "gold" ? ["#ffd36b", "#ffe9a8", "#f5b942", "#fff6d6"][i % 4] : kind === "petal" ? ["#ffc2d4", "#ffd9e4", "#ff9fbc"][i % 3] : cols[i % cols.length],
       k: kind, life: 0, ph: Math.random() * 6, slow: true });
   }
   function scTwinkle(n) { // 夜空の星（またたく）
@@ -3890,7 +3898,8 @@
       if (p.y > H + 40 || p.x < -60 || p.x > W + 60) continue;
       cx.globalAlpha = 1;
       cx.save(); cx.translate(p.x, p.y); cx.rotate(p.r); cx.fillStyle = p.c;
-      if (p.k === "dot" || p.k === "snow") { cx.beginPath(); cx.arc(0, 0, p.k === "snow" ? p.w * 0.35 : p.w * 0.45, 0, 7); cx.fill(); }
+      if (p.k === "gold") { cx.globalAlpha = 0.35 + 0.65 * Math.abs(Math.sin(p.ph + p.life * 0.09)); cx.beginPath(); cx.arc(0, 0, p.w * 0.22, 0, 7); cx.fill(); cx.globalAlpha *= 0.3; cx.beginPath(); cx.arc(0, 0, p.w * 0.5, 0, 7); cx.fill(); } // 金粉：きらきら光りながら舞う
+      else if (p.k === "dot" || p.k === "snow") { cx.beginPath(); cx.arc(0, 0, p.k === "snow" ? p.w * 0.35 : p.w * 0.45, 0, 7); cx.fill(); }
       else if (p.k === "petal") { cx.beginPath(); cx.ellipse(0, 0, p.w * 0.45, p.h * 0.5, 0, 0, 7); cx.fill(); }
       else if (p.k === "spark") { cx.globalAlpha = Math.max(0, 1 - p.life / 70); cx.beginPath(); for (let i = 0; i < 4; i++) { cx.rotate(Math.PI / 2); cx.moveTo(0, 0); cx.quadraticCurveTo(1.5, 1.5, 0, p.w); } cx.lineWidth = 2.2; cx.strokeStyle = p.c; cx.stroke(); }
       else { const sq = Math.cos(p.ph + p.life * 0.2); cx.fillRect(-p.w / 2, -p.h / 2 * sq, p.w, p.h * sq); } // 紙がひらひら裏返る
@@ -4038,7 +4047,7 @@
         const [px, py] = popPoint(); scBurst(px, py, -Math.PI / 2 + 0.35, 1.3, 140, 15); scBurst(px, py, -Math.PI / 2 + 0.35, 0.8, 30, 11, "spark");
         title(); hop(40, 1);
         if (s.useSong) playSceneSong(s); else setTimeout(fanfare, 250); // 「パン！」のあとに曲
-        scRain(kind === "xmas" ? "snow" : "paper", kind === "xmas" ? 70 : 40);
+        scRain(kind === "xmas" ? "gold" : "paper", kind === "xmas" ? 90 : 40); // クリスマスは部屋の中なので、雪ではなく金粉（作者。雪は窓の外）
         await scWait(1200); if (!scAlive(s)) return;
         setScenePose(kind === "xmas" ? "happy" : "banzai"); hop(24, 2);
         let t = scSay(lines.a, voiceA); await scWaitSay(t); if (!scAlive(s)) return;
