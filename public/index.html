@@ -4122,7 +4122,7 @@
   function offerPresent(s, lines) {
     if (!scAlive(s)) return;
     const call = callName() || "あなた";
-    s.drawing = requestDrawing(call + "と" + profile.name + "が、クリスマスツリーのそばで、いっしょにお祝いしているところ"); // 箱を開けるまでに描いておく
+    s.drawing = requestDrawing("メリークリスマス！ " + call + "と" + profile.name + "が、飾ったクリスマスツリーのそばで、いっしょに楽しむ夜"); // 「お祝い」だけだと誕生日の絵になることがあった // 箱を開けるまでに描いておく
     const bx = $("scBox"); bx.src = "events/box_closed.png"; bx.style.opacity = "1";
     try { bx.animate([{ transform: "translateY(30vh) scale(.3) rotate(-12deg)", opacity: 0 }, { transform: "translateY(-2vh) scale(1.08) rotate(4deg)", opacity: 1, offset: .7 }, { transform: "translateY(0) scale(1) rotate(0)", opacity: 1 }], { duration: 800, easing: "cubic-bezier(.2,.8,.3,1)", fill: "forwards" }); } catch {}
     setScenePose("banzai"); scMove([{ transform: "scale(1)" }, { transform: "scale(.88) translateY(-10%)" }], { duration: 700, easing: "ease-in-out" }); // キャラは少し上に下がって、箱を前に見せる
