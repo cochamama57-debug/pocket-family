@@ -2307,8 +2307,9 @@
     try { voiceEl.src = SILENT; const pr = voiceEl.play(); if (pr) pr.catch(() => {}); } catch {}
   }
   ["touchend", "click"].forEach(ev => document.addEventListener(ev, unlockVoice, { passive: true }));
+  let voicePending = 0;
   function stopVoice() {
-    voiceSeq++;
+    voiceSeq++; voicePending = 0;
     try { voiceEl.pause(); } catch {}
     try { window.speechSynthesis && speechSynthesis.cancel(); } catch {}
   }
@@ -2342,6 +2343,7 @@
     stopVoice();
     const my = voiceSeq;
     const clean = voiceText(text);
+    voicePending = my;
     try {
       const url = await (pre || fetchVoice(clean));
       if (my !== voiceSeq) { if (url) URL.revokeObjectURL(url); return; }
@@ -2354,10 +2356,16 @@
         try { voiceEl.preservesPitch = false; voiceEl.webkitPreservesPitch = false; voiceEl.mozPreservesPitch = false; } catch {}
         voiceEl.defaultPlaybackRate = rate; voiceEl.playbackRate = rate;
         await voiceEl.play();
+        if (voicePending === my) voicePending = 0;
         return;
       }
     } catch {}
+    if (voicePending === my) voicePending = 0;
     if (my === voiceSeq) speakDevice(clean);
+  }
+  // 声が、まだ話している途中か（準備中も含む）
+  function voiceBusy() {
+    try { return !!voicePending || (!voiceEl.paused && !voiceEl.ended) || !!(window.speechSynthesis && speechSynthesis.speaking); } catch { return false; }
   }
 
   // ---- 予定とお薬の時間 ----
@@ -3765,6 +3773,12 @@
   const POP_AT = { chamu: [0.89, 0.23], colon: [0.88, 0.28] }; // クラッカーの口の位置（キャラの絵の中の割合）
   let scene = null; // 再生中の場面 { seq, timers, raf, parts }
   const scWait = (ms) => new Promise((ok) => { const s = scene; const t = setTimeout(ok, ms); if (s) s.timers.push(t); });
+  // せりふは、声が最後まで話し終わるのを待つ（途中で次のせりふに切られないように。最長で、めやす＋10秒）
+  async function scWaitSay(ms) {
+    const s = scene; await scWait(ms);
+    const cap = Date.now() + 10000;
+    while (s && scene === s && voiceBusy() && Date.now() < cap) await scWait(150);
+  }
   const scAlive = (s) => scene === s && !$("scene").hidden;
   function scenePose(ch, pose) { return POSE_EXTRA.includes(pose) ? "chars/" + ch + "/" + pose + ".png" : faceSrc(ch, pose); }
   function setScenePose(pose) {
@@ -3950,7 +3964,7 @@
         scRain(kind === "xmas" ? "snow" : "paper", kind === "xmas" ? 70 : 40);
         await scWait(1200); if (!scAlive(s)) return;
         setScenePose(kind === "xmas" ? "happy" : "banzai"); hop(24, 2);
-        let t = scSay(lines.a, voiceA); await scWait(t); if (!scAlive(s)) return;
+        let t = scSay(lines.a, voiceA); await scWaitSay(t); if (!scAlive(s)) return;
         if (kind === "bday") {
           setScenePose("flowers");
           scMove([{ transform: "scale(1)" }, { transform: "scale(1.1) translateY(4%)" }], { duration: 600, easing: "ease-in-out" });
@@ -3958,26 +3972,26 @@
           scButtons([["💐 受け取る", true, () => receiveFlowers(s, lines, voiceC)], ["閉じる", false, closeScene]]);
           return;
         }
-        t = scSay(lines.b, voiceB); jingle(); await scWait(t); finish();
+        t = scSay(lines.b, voiceB); jingle(); await scWaitSay(t); finish();
       } else if (kind === "ny") {
         el.classList.add("rise"); kotoPluck();
         await scWait(900); if (!scAlive(s)) return;
         setScenePose("bow");
         scMove([{ transform: "rotate(0)" }, { transform: "rotate(0) translateY(3%)" }], { duration: 900, easing: "ease-in-out" });
         title(); scRain("petal", 26);
-        let t = scSay(lines.a, voiceA); await scWait(Math.max(t, 2400)); if (!scAlive(s)) return;
+        let t = scSay(lines.a, voiceA); await scWaitSay(Math.max(t, 2400)); if (!scAlive(s)) return;
         setScenePose("banzai"); scMove([{ transform: "translateY(3%)" }, { transform: "translateY(0)" }], { duration: 400 }); hop(34, 2);
         scBurst(innerWidth / 2, innerHeight * 0.5, -Math.PI / 2, 2.4, 90, 13);
-        t = scSay(lines.b, voiceB); await scWait(t); finish();
+        t = scSay(lines.b, voiceB); await scWaitSay(t); finish();
       } else { // 大みそか：夜空と、鐘の音と、おじぎ
         scTwinkle(70); bell();
         await scWait(1200); if (!scAlive(s)) return;
         setScenePose("bow"); title();
         scMove([{ transform: "rotate(0)" }, { transform: "translateY(3%)" }], { duration: 1100, easing: "ease-in-out" });
-        let t = scSay(lines.a, voiceA); await scWait(Math.max(t, 3000)); if (!scAlive(s)) return;
+        let t = scSay(lines.a, voiceA); await scWaitSay(Math.max(t, 3000)); if (!scAlive(s)) return;
         setScenePose("happy"); scMove([{ transform: "translateY(3%)" }, { transform: "translateY(0)" }], { duration: 500 }); hop(20, 1);
         scRain("snow", 40);
-        t = scSay(lines.b, voiceB); await scWait(t); finish();
+        t = scSay(lines.b, voiceB); await scWaitSay(t); finish();
       }
     })();
     return true;
@@ -3997,7 +4011,8 @@
     setTimeout(async () => {
       if (!scAlive(s)) return;
       hop(26, 2);
-      const t = scSay(lines.c, voiceC); await scWait(t);
+      { const cap = Date.now() + 5000; while (scAlive(s) && voiceBusy() && Date.now() < cap) await scWait(150); } // 前のせりふを、最後まで言わせてから
+      const t = scSay(lines.c, voiceC); await scWaitSay(t);
       if (scAlive(s)) scButtons([["閉じる", true, closeScene]]);
     }, 1100);
   }
