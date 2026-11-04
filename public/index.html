@@ -707,7 +707,7 @@
         <button type="submit" class="add">＋ 予定を登録する</button>
       </form>
       <h3>お薬の時間のお知らせ</h3>
-      <p class="hint-s"><span class="nb">アプリを開いているとき</span><span class="nb">（または、</span><span class="nb">時間を過ぎてから</span><span class="nb">開いたとき）に、</span><span class="nb">やさしい音で</span><span class="nb">お知らせします。</span><span class="nb">アプリを</span><span class="nb">閉じているときは</span><span class="nb">鳴りません。</span><span class="nb">お薬についての</span><span class="nb">助言はしません。</span></p>
+      <p class="hint-s"><span class="nb">アプリを開いているとき</span><span class="nb">（または、</span><span class="nb">時間を過ぎてから</span><span class="nb">開いたとき）に、</span><span class="nb">やさしい音で</span><span class="nb">お知らせします。</span><span class="nb">アプリを</span><span class="nb">閉じているときは</span><span class="nb">鳴りません。</span><span class="nb">お薬についての</span><span class="nb">助言はしません。</span><span class="nb">飲んだら</span><span class="nb">「飲んだよ」と</span><span class="nb">話しかけてください。</span><span class="nb">あとで</span><span class="nb">「お薬飲んだっけ？」と</span><span class="nb">聞くと、</span><span class="nb">時刻を答えます。</span></p>
       <ul id="medList"></ul>
       <form class="pet-form" id="medForm" autocomplete="off">
         <label>時間<input type="time" id="medTime" required></label>
@@ -982,7 +982,7 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           profile: profileForServer(),
-          messages: history.filter(m => m.content && m.content !== "（とばした）").slice(-24).map(m => ({ role: m.role, content: m.content })),
+          messages: history.filter(m => m.content && m.content !== "（とばした）" && !m.med).slice(-24).map(m => ({ role: m.role, content: m.content })),
         }),
       });
       if (r.ok) {
@@ -1067,7 +1067,7 @@
   function save() {
     try {
       // 写真そのものは残さない（容量のため）。「写真を見せた」という印だけ残す
-      const slim = history.slice(-MAX_KEEP).map(m => ({ role: m.role, content: m.content, photo: m.photo ? true : undefined, song: typeof m.song === "string" ? m.song : undefined, remind: m.remind && typeof m.remind === "object" ? m.remind : undefined, walk: m.walk === "go" || m.walk === "back" ? m.walk : undefined, gift: Number.isInteger(m.gift) ? m.gift : undefined, react: REACTS.includes(m.react) ? m.react : undefined, ds: m.ds ? 1 : undefined, df: m.df ? 1 : undefined, dd: m.dd && typeof m.dd === "object" ? { title: String(m.dd.title || "").slice(0, 20), body: String(m.dd.body || "").slice(0, 10000), kind: m.dd.kind === "memoir" ? "memoir" : "diary" } : undefined }));
+      const slim = history.slice(-MAX_KEEP).map(m => ({ role: m.role, content: m.content, photo: m.photo ? true : undefined, song: typeof m.song === "string" ? m.song : undefined, remind: m.remind && typeof m.remind === "object" ? m.remind : undefined, walk: m.walk === "go" || m.walk === "back" ? m.walk : undefined, gift: Number.isInteger(m.gift) ? m.gift : undefined, react: REACTS.includes(m.react) ? m.react : undefined, med: m.med ? 1 : undefined, ds: m.ds ? 1 : undefined, df: m.df ? 1 : undefined, dd: m.dd && typeof m.dd === "object" ? { title: String(m.dd.title || "").slice(0, 20), body: String(m.dd.body || "").slice(0, 10000), kind: m.dd.kind === "memoir" ? "memoir" : "diary" } : undefined }));
       localStorage.setItem(STORE_KEY, JSON.stringify(slim));
     } catch {
       if (canSave) {
@@ -1604,6 +1604,16 @@
       if (text === SKIPPED) text = "（とばした）";
     }
 
+    // お薬の「飲んだよ」「飲んだっけ？」は、スマホの中だけで答える（AIにも送らない）
+    if (profile && profile.step >= QUESTIONS.length && !photo && text !== SKIPPED) {
+      const mk = medIntent(text);
+      if (mk) {
+        input.value = ""; autoGrow(); hideGuide();
+        history.push({ role: "user", content: text.slice(0, 1000), med: 1 }); save(); bubble("me", text);
+        setTimeout(() => medReply(mk), 500);
+        return;
+      }
+    }
     // 日記の「直してほしいところ」を書いてもらったとき（おしゃべりには送らず、日記を書き直す）
     if (diaryFixDraft && profile && profile.diaryMode && !photo && text !== SKIPPED) {
       const d = diaryFixDraft; diaryFixDraft = null;
@@ -1644,7 +1654,7 @@
     const timer = setTimeout(() => ctrl.abort(), 60000);
     try {
       const payload = {
-        messages: history.slice(-60).map(m => ({ role: m.role, content: m.content })),
+        messages: history.filter(m => !m.med).slice(-60).map(m => ({ role: m.role, content: m.content })),
         profile: profile ? profileForServer() : null,
         songs: allSongs().slice(0, 20).map(x => ({ id: x.id, title: x.title, tag: x.tag || "", kind: x.youtube ? "listen" : "sing" })),
       };
@@ -2431,9 +2441,11 @@
     const r = profile.remind;
     const okList = (v) => Array.isArray(v) ? v.filter(x => typeof x === "string") : [];
     if (!r || typeof r !== "object" || r.date !== t) {
-      profile.remind = { date: t, medsSaid: [], medsDone: [], plansSaid: [], soonSaid: [] };
+      profile.remind = { date: t, medsSaid: [], medsDone: [], plansSaid: [], soonSaid: [], medsAt: {} };
     } else {
       for (const k of ["medsSaid", "medsDone", "plansSaid", "soonSaid"]) r[k] = okList(r[k]);
+      const at = {}; if (r.medsAt && typeof r.medsAt === "object") for (const [k, v] of Object.entries(r.medsAt)) if (isHM(v)) at[k] = v;
+      r.medsAt = at;
     }
     return profile.remind;
   }
@@ -2469,12 +2481,9 @@
       b.textContent = done ? "✓ 飲みました" : "飲みました";
       b.disabled = done || m.remind.date !== today();
       b.addEventListener("click", () => {
-        const st = remindState();
-        if (!st.medsDone.includes(m.remind.id)) st.medsDone.push(m.remind.id);
-        saveProfile();
+        const md = meds().find(x => x.id === m.remind.id);
         b.textContent = "✓ 飲みました"; b.disabled = true; b.classList.add("done");
-        sayScripted("うん、教えてくれて、ありがとう。");
-        setTimeout(() => showFace("happy", 1800), 1200);
+        if (md) medTaken(md); else { const st = remindState(); if (!st.medsDone.includes(m.remind.id)) st.medsDone.push(m.remind.id); saveProfile(); }
       });
       row.querySelector(".bubble").appendChild(b);
     }
@@ -2495,8 +2504,64 @@
       row.querySelector(".bubble").appendChild(b);
     }
   }
+  // ---- お薬：「飲んだよ」を覚えて、「飲んだっけ？」に答える（自己申告。AIにもサーバーにも送らない）----
+  const jpTime = (hm) => { const [h, m] = hm.split(":").map(Number); return h + "時" + (m ? m + "分" : ""); };
+  function sayMed(text) {
+    text = myWord(text);
+    history.push({ role: "assistant", content: text, med: 1 });
+    save(); bubble("her", text); talkFace(text); speak(text);
+  }
+  function medTaken(md) {
+    const st = remindState(), at = nowHM(), polite = stageOf(points()) === 0;
+    if (!st.medsDone.includes(md.id)) st.medsDone.push(md.id);
+    if (!st.medsSaid.includes(md.id)) st.medsSaid.push(md.id);
+    st.medsAt[md.id] = at; saveProfile();
+    const name = md.label || "お薬";
+    sayMed(polite ? "はい、" + name + "は" + jpTime(at) + "ですね。覚えておきますね。" : "うん、" + name + "は" + jpTime(at) + "だね。覚えておくね。");
+    setTimeout(() => showFace("happy", 1800), 1200);
+    if (!$("tabPlan").hidden) renderPlanTab();
+  }
+  function medIntent(text) {
+    if (!meds().length) return null;
+    const t = String(text).replace(/\s/g, "");
+    if (/(飲ん|のん)で(ない|いない|なかった)|(飲み|のみ)(忘れ|わすれ)|まだ(飲ん|のん)/.test(t)) return null; // 迷う言い方は、ここでは扱わない
+    const pill = /薬|くすり|クスリ/.test(t);
+    const ask = /(飲ん|のん)だ(っけ|かな|か(しら|な)?[？?]?$|[？?])|(飲み|のみ)ました(っけ|か)|(飲ん|のん)だか(どうか)?(教え|おしえ|わから|分から|覚え|おぼえ)/.test(t);
+    if (ask && pill) return "ask";
+    if (ask && !pill && /^(もう)?(飲ん|のん)だ(っけ|かな)[？?]?$/.test(t)) return "ask";
+    if (ask) return null;
+    const said = /(飲ん|のん)だ(よ|ぞ|わ|ー|〜|です)?[!！。♪ー〜]*$|(飲み|のみ)ました[よ。!！]*$/.test(t);
+    if (!said) return null;
+    if (pill) return "taken";
+    // 「飲んだよ」だけのとき：今日、お知らせしたお薬で、まだ聞いていないものがあるときだけ（「コーヒー飲んだよ」などは、おしゃべりへ）
+    if (!/^(はい|うん|もう|ちゃんと|いま|今|さっき)*((飲ん|のん)だ(よ|ぞ|わ|ー|〜|です)?|(飲み|のみ)ました(よ)?)[!！。♪ー〜]*$/.test(t)) return null;
+    const st = remindState(), now = minutes(nowHM());
+    return meds().some(x => st.medsSaid.includes(x.id) && !st.medsAt[x.id] && now - minutes(x.time) <= 180) ? "taken" : null;
+  }
+  function medReply(kind) {
+    const st = remindState(), now = minutes(nowHM()), polite = stageOf(points()) === 0, list = meds();
+    if (kind === "taken") {
+      const lastA = [...history].reverse().find(m => m.role === "assistant");
+      let md = lastA && lastA.remind && lastA.remind.type === "med" && lastA.remind.date === today() && !st.medsAt[lastA.remind.id] ? list.find(x => x.id === lastA.remind.id) : null;
+      const last = list.filter(x => st.medsAt[x.id]).sort((a, b) => st.medsAt[b.id].localeCompare(st.medsAt[a.id]))[0];
+      const recent = last && now - minutes(st.medsAt[last.id]) < 60; // さっき聞いたばかり（同じお薬の二度めの申告かもしれない）
+      if (!md) md = list.filter(x => !st.medsAt[x.id] && minutes(x.time) <= now + (recent ? 0 : 30)).sort((a, b) => Math.abs(minutes(a.time) - now) - Math.abs(minutes(b.time) - now))[0];
+      if (md) return medTaken(md);
+      if (last) return sayMed((last.label || "お薬") + "は、" + jpTime(st.medsAt[last.id]) + (polite ? "に「飲んだ」と聞いていますよ。" : "に「飲んだよ」って聞いているよ。"));
+      return sayMed(polite ? "今日のお薬の時間は、まだ先ですよ。" : "今日のお薬の時間は、まだ先だよ。");
+    }
+    const lines = [];
+    for (const x of list) {
+      const name = x.label || "お薬";
+      if (st.medsAt[x.id]) lines.push(name + "は、" + jpTime(st.medsAt[x.id]) + (polite ? "に飲みましたよ。" : "に飲んだよ〜。"));
+      else if (minutes(x.time) <= now) lines.push(name + (polite ? "は、まだ「飲んだ」を聞いていません。" : "は、まだ「飲んだよ」を聞いていないよ。"));
+    }
+    if (!lines.length) return sayMed(polite ? "今日のお薬の時間は、まだ先ですよ。" : "今日のお薬の時間は、まだ先だよ。");
+    const allDone = list.filter(x => minutes(x.time) <= now || st.medsAt[x.id]).every(x => st.medsAt[x.id]);
+    sayMed(lines.join("") + (allDone ? (polite ? "心配しないでくださいね♡" : "心配しないで♡") : ""));
+  }
   function sayRemind(text, remind) {
-    history.push({ role: "assistant", content: text, remind });
+    history.push({ role: "assistant", content: text, remind, med: remind && remind.type === "med" ? 1 : undefined });
     save();
     bubble("her", text);
     talkFace(text);
@@ -2511,7 +2576,8 @@
       if (minutes(md.time) <= now && !st.medsSaid.includes(md.id)) {
         st.medsSaid.push(md.id);
         saveProfile();
-        sayRemind(md.time + "、" + (md.label || "お薬") + "の時間だよ。", { type: "med", id: md.id, date: t });
+        const polite = stageOf(points()) === 0;
+        sayRemind(md.time + "、" + (md.label || "お薬") + (polite ? "の時間です。飲んだら、教えてくださいね。" : "の時間だよ。飲んだら、教えてね。"), { type: "med", id: md.id, date: t });
         chime();
       }
     }
@@ -2547,7 +2613,7 @@
     for (const x of list) pl.appendChild(itemRow(jpDate(x.date) + (x.time ? "|" + x.time : "") + "|" + x.text, () => { profile.plans = plans().filter(y => y.id !== x.id); saveProfile(); renderPlanTab(); }, () => toCalendar(x.text, x.date, x.time, false)));
     const ml = $("medList"); ml.textContent = "";
     if (!meds().length) { const li = document.createElement("li"); li.className = "empty"; li.textContent = "まだありません"; ml.appendChild(li); }
-    for (const x of meds()) ml.appendChild(itemRow("毎日|" + x.time + "|" + (x.label || "お薬"), () => { profile.meds = meds().filter(y => y.id !== x.id); saveProfile(); renderPlanTab(); }, () => toCalendar(x.label || "お薬の時間", today(), x.time, true)));
+    for (const x of meds()) ml.appendChild(itemRow("毎日|" + x.time + "|" + (x.label || "お薬") + (remindState().medsAt[x.id] ? "|✓ 今日は " + remindState().medsAt[x.id] + " に飲みました" : ""), () => { profile.meds = meds().filter(y => y.id !== x.id); saveProfile(); renderPlanTab(); }, () => toCalendar(x.label || "お薬の時間", today(), x.time, true)));
   }
   // スマホのカレンダーに入れる（iPhone＝カレンダーのファイル、Android＝Googleカレンダー）。アプリを閉じていても、カレンダーが知らせてくれる
   function toCalendar(title, date, time, daily) {
@@ -3510,7 +3576,7 @@
     const dm = profile && profile.diaryMode;
     if (!dm || sending) return;
     let from = 0; for (let i = history.length - 1; i >= 0; i--) if (history[i].ds) { from = i; break; }
-    const msgs = history.slice(from).filter(m => (m.role === "user" || m.role === "assistant") && !m.dd && !m.df).map(m => ({ role: m.role, content: m.content }));
+    const msgs = history.slice(from).filter(m => (m.role === "user" || m.role === "assistant") && !m.dd && !m.df && !m.med).map(m => ({ role: m.role, content: m.content }));
     if (!msgs.some(m => m.role === "user")) { sayScripted(stageOf(points()) === 0 ? "まだ、お話を聞いていません。少しだけ、話してもらえますか？" : "まだ、お話を聞いてないよ。少しだけ話して？"); return; }
     sending = true; setBusy(true);
     const typing = bubble("her typing", "");
