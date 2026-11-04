@@ -3332,20 +3332,24 @@
     return wrap;
   }
   let giftBusy = false;
-  async function giveDrawing(reason) {
+  async function giveDrawing(reason, diaryId) {
     if (!profile || giftBusy || profile.step < QUESTIONS.length) return false;
     giftBusy = true;
+    const de = diaryId && diaries().find(x => x.id === diaryId);
     try {
       const d = device();
+      // 日記の絵：日記の題名と、はじめの文を描く
+      const subject = de ? (de.title + "：" + String(de.body).replace(/\s+/g, " ")).slice(0, 60) : giftSubject();
       const r = await fetch("/api/drawing", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: d.id, secret: d.secret, subject: giftSubject(), call: callName(), profile: profileForServer() }) });
+        body: JSON.stringify({ id: d.id, secret: d.secret, subject, call: callName(), profile: profileForServer() }) });
       const data = await r.json().catch(() => ({}));
       if (!data.ok || !Array.isArray(data.shapes)) return false;
       const gift = { date: today(), title: data.title || "", message: data.message || "", shapes: data.shapes };
       const list = gifts(); list.push(gift); if (list.length > 20) list.splice(0, list.length - 20);
       profile.lastGift = Date.now(); saveProfile();
       const polite = stageOf(points()) === 0, pi = profile.char === "colon" ? "ピピッ。" : "";
-      const text = pi + (reason === "bday" ? (polite ? "お誕生日のプレゼントに、絵を描きました！ 受け取ってください。" : "お誕生日のプレゼント！ 絵を描いたよ。もらってね！")
+      if (de) { de.drawing = { title: gift.title, message: gift.message, shapes: gift.shapes }; saveDiaries(); profile.lastDiaryDraw = Date.now(); saveProfile(); }
+      const text = pi + (de ? (polite ? "日記の絵、描けました！ 日記帳にも、はっておきますね。" : "日記の絵、描けたよ！ 日記帳にも、はっておくね。") : reason === "bday" ? (polite ? "お誕生日のプレゼントに、絵を描きました！ 受け取ってください。" : "お誕生日のプレゼント！ 絵を描いたよ。もらってね！")
         : (polite ? "あの、見てください！ 絵を描いてみました。" : "見て見て！ 絵を描いたよ！"));
       history.push({ role: "assistant", content: text, gift: list.length - 1 }); save();
       bubble("her", text); talkFace(text); speak(text);
@@ -3494,7 +3498,10 @@
     setTimeout(() => {
       if (!profile || inActivity()) return;
       if (draft.note) { sayScripted(draft.note); showFace(hard ? "sad" : "happy", 2600); }
-      setTimeout(() => careSong(hard), draft.note ? 3500 : 0);
+      // ときどき（2日に1回くらい）、日記に絵を描いてもいいか聞く。描かないときは、必要なら曲にそっと誘う
+      const entry = cont || list[list.length - 1];
+      const drawOk = !hard && entry && !entry.drawing && Date.now() - (Number(profile.lastDiaryDraw) || 0) > 2 * 86400000;
+      setTimeout(() => drawOk ? askDiaryDrawing(entry.id) : careSong(hard), draft.note ? 3500 : 0);
     }, 2600);
   }
   // 日記のあとの曲：つらい日は寄り添いの曲、夜はおやすみの曲（あれば）。断ってもよい
@@ -3512,6 +3519,16 @@
     ]);
   }
   // キャラの言葉に、選ぶボタンをつける（押したら、ボタンは消える）
+  // 日記に、孫が絵を描く（日記帳が、いっしょに作る「絵日記」になっていく）
+  function askDiaryDrawing(id) {
+    if (!profile || inActivity()) return;
+    profile.lastDiaryDraw = Date.now(); saveProfile(); // 聞いたら、しばらく聞かない（断られても）
+    const polite = stageOf(points()) === 0, chamu = profile.char === "chamu", pi = chamu ? "" : "ピピッ。", me = chamu ? "ぼく" : "わたし";
+    askChoice(pi + (polite ? "あの、この日記に、" + me + "が絵を描いてもいいですか？" : "ねえ、この日記に、" + me + "が絵を描いてもいい？"), [
+      ["描いて！", () => { sayScripted(pi + (polite ? "うれしいです！ がんばって描きますね。" : "やったあ！ がんばって描くね！")); showFace("banzai", 1800); setTimeout(() => giveDrawing("diary", id).then(ok => { if (!ok) sayScripted(pi + (polite ? "ごめんなさい、うまく描けませんでした。また今度描かせてくださいね。" : "ごめんね、うまく描けなかった…。また今度描かせてね。")); }), 1200); }],
+      ["今はいい", () => { sayScripted(pi + (polite ? "わかりました。また今度、描かせてくださいね。" : (chamu ? "そっかぁ…。また今度描かせてね。" : "そっか…。また今度描かせてね。"))); showFace("sad", 2000); }],
+    ]);
+  }
   function askChoice(text, choices) {
     sayScripted(text);
     const box = log.lastElementChild && log.lastElementChild.querySelector(".bubble");
@@ -3557,6 +3574,7 @@
     if (goods) { const g = document.createElement("p"); g.className = "good-count"; setPhrases(g, "🌼 見つけた|「いいこと」は、|全部で" + goods + "個"); box.appendChild(g); }
     for (const d of list) {
       const c = diaryCard(d, d.date);
+      if (d.drawing && Array.isArray(d.drawing.shapes)) { const dw = giftCard(d.drawing); dw.classList.add("diary-drawing"); c.querySelector(".db").before(dw); }
       if (d.good) { const g = document.createElement("p"); g.className = "good-note"; g.textContent = "🌼 " + (d.by || profile.name) + "が見つけた、いいこと：" + d.good; c.querySelector(".db").before(g); }
       const db = c.querySelector(".db");
       if ((d.body || "").length > 300) {
