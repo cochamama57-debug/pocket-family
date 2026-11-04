@@ -190,7 +190,7 @@
   @media (prefers-reduced-motion: reduce) { .game-card .in { transition: none; } }
   .event-img { display: block; width: 100%; height: auto; margin-top: 10px; border-radius: 14px; }
   /* 静止画を、ゆっくり寄せたり流したりして、動きを出す（ケン・バーンズ） */
-  .event-wrap { margin-top: 10px; border-radius: 14px; overflow: hidden; }
+  .event-wrap { margin-top: 10px; border-radius: 14px; overflow: hidden; isolation: isolate; transform: translateZ(0); }
   .event-wrap .event-img { margin-top: 0; border-radius: 0; }
   .kb { animation: kenburns 16s ease-in-out infinite alternate; transform-origin: 50% 40%; will-change: transform; }
   @keyframes kenburns { from { transform: scale(1) translate(0, 0); } to { transform: scale(1.12) translate(-2%, 1.5%); } }
@@ -1181,7 +1181,7 @@
     if (((a === "danceL" || a === "danceR") && BODY_FACES.has(b)) || ((b === "danceL" || b === "danceR") && BODY_FACES.has(a))) return "danceC";
     return null;
   }
-  let stageBridge = null;
+  let stageBridge = null, stageBridgeAfter = false; // 中割りのあとの2回目は、弾ませない（1回目の弾みが続いているため）
   function showStageFace(f) {
     buildStageFaces(profile.char);
     // 途中の絵を見せているあいだは、行き先が同じなら待つ
@@ -1208,9 +1208,9 @@
       void show.offsetWidth;
       for (const k in stageFaces) stageFaces[k].style.transition = "";
       // 切りかえの瞬間に、体を「ぎゅっ→ぽん」と弾ませて、ポーズが変わる動きに見せる（どの絵にも同じ動きをつける）
-      if (!first && !reduceMotion && show.animate) {
-        for (const k in stageFaces) {
-          const el = stageFaces[k], base = el.classList.contains("flip") ? "scaleX(-1) " : "";
+      if (!first && !reduceMotion && show.animate && !stageBridgeAfter) {
+        for (const el of ok ? [show, im] : [show]) {
+          const base = el.classList.contains("flip") ? "scaleX(-1) " : "";
           el.animate([
             { transform: base + "translateY(1.5%) scale(1.03, .95)" },
             { transform: base + "translateY(-1.5%) scale(.98, 1.03)", offset: .45 },
@@ -1220,7 +1220,7 @@
       }
       if (ok) {
         stageBridge = { to: f };
-        stageFaceTimer = setTimeout(() => { if (stageBridge && stageBridge.to === f) { stageBridge = null; showStageFace(f); } }, BRIDGE_MS);
+        stageFaceTimer = setTimeout(() => { if (stageBridge && stageBridge.to === f) { stageBridge = null; stageBridgeAfter = true; showStageFace(f); stageBridgeAfter = false; } }, BRIDGE_MS);
       }
       return;
     }
@@ -1625,7 +1625,7 @@
         songs: allSongs().slice(0, 20).map(x => ({ id: x.id, title: x.title, tag: x.tag || "", kind: x.youtube ? "listen" : "sing" })),
       };
       if (photo) payload.image = { type: "image/jpeg", data: photo.data };
-      if (profile && profile.diaryMode) payload.mode = profile.diaryMode.kind; // 日記の聞き役
+      if (profile && profile.diaryMode) { payload.mode = profile.diaryMode.kind; let k = history.length - 1; while (k > 0 && !history[k].ds) k--; payload.since = Math.min(60, history.length - k); } // 日記の聞き役（日記の時間が始まってからの件数）
       const r = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -2337,7 +2337,8 @@
   }
   // 長い返事は、文の区切りで小分けにして声にする（最初のひと区切りができたら、すぐ話し始めて、話している間に続きを作る）
   function voiceChunks(text) {
-    const parts = String(text).replace(/\s*\n+\s*/g, "\n").split(/(?<=[。！？!?\n])/).map(p => p.trim()).filter(Boolean);
+    // 古いiPhone（iOS 16.3以前）でも動くように、後読みの正規表現は使わない。「」の中の「！」では切らない
+    const parts = (String(text).replace(/\s*\n+\s*/g, "\n").match(/[^。！？!?\n]*[。！？!?\n]+[」』）)]*|[^。！？!?\n]+$/g) || []).map(p => p.trim()).filter(Boolean);
     const out = [];
     for (const p of parts) {
       const last = out[out.length - 1];
@@ -2355,9 +2356,9 @@
     const my = voiceSeq;
     const chunks = pre && !firstOnly ? [String(text)] : voiceChunks(text);
     voicePending = my;
-    let next = pre || fetchVoice(voiceText(chunks[0]));
+    let next = pre || fetchVoice(voiceText(chunks[0])), i = 0;
     try {
-      for (let i = 0; i < chunks.length; i++) {
+      for (; i < chunks.length; i++) {
         const url = await next;
         if (my !== voiceSeq) { if (url) URL.revokeObjectURL(url); return; }
         next = i + 1 < chunks.length ? fetchVoice(voiceText(chunks[i + 1])) : null; // 話している間に、次を作る
@@ -2375,13 +2376,13 @@
           const done = () => { voiceEl.removeEventListener("ended", done); voiceEl.removeEventListener("pause", done); voiceEl.removeEventListener("error", done); ok(); };
           voiceEl.addEventListener("ended", done); voiceEl.addEventListener("pause", done); voiceEl.addEventListener("error", done);
         });
-        if (my !== voiceSeq) { if (next) next.then((u) => u && URL.revokeObjectURL(u)); return; }
+        if (my !== voiceSeq || (voiceEl.paused && !voiceEl.ended)) { if (next) next.then((u) => u && URL.revokeObjectURL(u)); if (voicePending === my) voicePending = 0; return; } // 止められた（着信・画面ロックなど）ときは、続きを読まない
       }
       if (voicePending === my) voicePending = 0;
       return;
     } catch {}
     if (voicePending === my) voicePending = 0;
-    if (my === voiceSeq) speakDevice(voiceText(String(text)));
+    if (my === voiceSeq) speakDevice(voiceText(chunks.slice(i).join(""))); // まだ読んでいないところだけ
   }
   // 声が、まだ話している途中か（準備中も含む）
   function voiceBusy() {
@@ -3197,7 +3198,8 @@
     const h = document.createElement("h2"); h.textContent = t.h; pg.appendChild(h);
     const para = document.createElement("p"); pg.appendChild(para);
     // 文の終わり（。）で改行して、文が行の途中から始まらないようにする
-    t.p.join("|").split(/(?<=[。！？♪])\|/).forEach((sen) => { const sp = document.createElement("span"); sp.style.display = "block"; setPhrases(sp, sen); para.appendChild(sp); });
+    { const sens = [[]]; t.p.forEach((ph) => { sens[sens.length - 1].push(ph); if (/[。！？♪]$/.test(ph)) sens.push([]); });
+      sens.filter(x => x.length).forEach((x) => { const sp = document.createElement("span"); sp.style.display = "block"; setPhrases(sp, x.join("|")); para.appendChild(sp); }); }
     $("tourDots").innerHTML = TOUR.map((_, i) => '<i class="' + (i === tourAt ? "on" : "") + '"></i>').join("");
     $("tourBack").style.visibility = tourAt ? "visible" : "hidden";
     $("tourNext").textContent = tourAt < TOUR.length - 1 ? "次へ" : (profile ? "閉じる" : "始める");
@@ -4179,7 +4181,7 @@
   }
   function invite() {
     if (!profile || profile.step < QUESTIONS.length || sending || helpBusy || !canInvite()) return;
-    if (inActivity() || !$("memo").hidden || profile.diaryMode) { setTimeout(invite, 90000); return; } // 遊び・曲・ノート・日記の最中は、あとで
+    if (inActivity() || !$("memo").hidden || profile.diaryMode || log.querySelector(".invite-choice")) { setTimeout(invite, 90000); return; } // 遊び・曲・ノート・日記の最中や、ほかの誘いに答えていないときは、あとで
     const kinds = inviteKinds(), kind = kinds[Math.floor(Math.random() * kinds.length)];
     const sg = kind === "song" ? pickSong() : null;
     if (kind === "song" && !sg) return;

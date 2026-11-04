@@ -193,7 +193,8 @@ export default async function handler(req, res) {
   const mode = body?.mode === "diary" || body?.mode === "memoir" ? body.mode : null;
   // 日記の時間：気持ちを聞く質問を、もうしていたら、もう聞かない。質問が2回続いたら、今回は質問しない
   const FEEL = /気持ち|どう思った|どう感じ|どんな感じ|うれしかった？|嬉しかった？|楽しかった？|どうだった？/;
-  const feltAsked = messages.filter((m) => m.role === "assistant").map(textOf).some((t) => FEEL.test(t) && /[？?]/.test(t));
+  const since = Number.isInteger(body?.since) && body.since > 0 ? body.since : 60; // 日記の時間が始まってからの件数（夕方のあいさつ「今日はどうだった？」は数えない）
+  const feltAsked = messages.slice(-since).filter((m) => m.role === "assistant").map(textOf).slice(1).some((t) => FEEL.test(t) && /[？?]/.test(t));
   const diaryNote = !mode ? "" : [
     feltAsked ? "【今回の返事】気持ちを聞く質問は、もうした。もう気持ちは聞かない。" : "",
     (() => { const last = mine[mine.length - 1] || ""; return /[？?]/.test(last.replace(/それで(それで)?[？?]|それから[？?]|うんうん/g, "")) ? "【今回の返事】前の返事で質問したので、今回は具体的な質問をしない。相づちと、ひとことと、「うん、それでそれで？」のような、うながす言葉だけにする。" : ""; })(),
@@ -210,7 +211,7 @@ export default async function handler(req, res) {
     const ja = (t.match(/[\u3040-\u30ff\u3400-\u9fff]/g) || []).length;
     return t.length > 20 && ja / t.length < 0.2 && /[A-Za-z]+\s+[A-Za-z]+\s+[A-Za-z]+/.test(para);
   };
-  const dropEnglish = (text) => text.split(/\n+/).filter((l) => !englishy(l)).join("\n\n").trim();
+  const dropEnglish = (text) => text.split("\n").filter((l) => !englishy(l)).join("\n").replace(/\n{3,}/g, "\n\n").trim();
 
   try {
     const ask = () => getClient().beta.messages.create({
