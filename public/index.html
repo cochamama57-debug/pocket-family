@@ -3406,14 +3406,15 @@
   }
   // 前に書いた日記・思い出話の続き（書き足し）
   function contBase(id) { const d = diaries().find(x => x.id === id); return d ? d.title + "\n" + d.body : undefined; }
-  function startDiary(kind, fromInvite, contId) {
+  function startDiary(kind, fromInvite, contId, askQ) {
     if (!profile || profile.step < QUESTIONS.length || sending) return;
     $("memo").hidden = true;
     diaryFixDraft = null;
     const polite = stageOf(points()) === 0, chamu = profile.char === "chamu", pi = chamu ? "" : "ピピッ。";
     const cont = contId && diaries().find(x => x.id === contId);
     const text = pi + (cont
-      ? (polite ? "「" + cont.title + "」の続きですね。ここまで書いてあります。続きを聞かせてください。" : "「" + cont.title + "」の続きだね！ ここまで書いてあるよ。続きを聞かせて。")
+      ? (askQ ? (polite ? "「" + cont.title + "」の続きですね。ここまで書いてあります。" + askQ : "「" + cont.title + "」の続きだね！ ここまで書いてあるよ。" + askQ)
+        : polite ? "「" + cont.title + "」の続きですね。ここまで書いてあります。続きを聞かせてください。" : "「" + cont.title + "」の続きだね！ ここまで書いてあるよ。続きを聞かせて。")
       : kind === "memoir"
       ? (polite ? "昔のお話、ぜひ聞かせてください！ どのころのお話にしますか？ 子どものころ、若いころ、お仕事のこと……なんでも大丈夫です。" : "昔のお話、聞かせて！ どのころのお話にする？ 子どものころ、若いころ、お仕事のこと……なんでもいいよ。")
       : (polite ? (fromInvite ? "" : "今日の日記を、いっしょに書きましょう。") + "今日は、どんな一日でしたか？ 思い出したことから、なんでも話してくださいね。" : (fromInvite ? "" : "今日の日記、いっしょに書こう！ ") + "今日は、どんな一日だった？ 思い出したことから、なんでも話してね。"));
@@ -3456,7 +3457,7 @@
     if (!profile || !profile.diaryMode) return;
     if (!data.ok) { addNote(data.message || "うまくまとめられませんでした。少ししてから「まとめる」を押してください。"); return; }
     const polite = stageOf(points()) === 0, pi = profile.char === "chamu" ? "" : "ピピッ。";
-    const draft = { title: data.title, body: data.body, kind: dm.kind, mood: data.mood, note: data.note };
+    const draft = { title: data.title, body: data.body, kind: dm.kind, mood: data.mood, note: data.note, moreQ: data.moreQ || "" };
     const text = pi + (fix ? (polite ? "直してみました。どうですか？" : "直してみたよ。どうかな？") : (polite ? "こんなふうに書いてみました。どうですか？" : "こんなふうに書いてみたよ。どうかな？"));
     history.push({ role: "assistant", content: text, dd: draft }); save();
     bubble("her", text); talkFace(text); speak(text);
@@ -3476,8 +3477,10 @@
     const list = diaries(), dm = profile.diaryMode;
     const cont = dm && dm.cont && list.find(x => x.id === dm.cont);
     const good = draft.mood !== "hard" && typeof draft.note === "string" ? draft.note.slice(0, 80) : "";
-    if (cont) { cont.body = draft.body; cont.updated = today(); if (good) cont.good = good; }  // 題名はそのまま  // 書き足した文章で、置きかえる
-    else list.push({ id: Date.now().toString(36), date: (dm && dm.day) || today(), kind: draft.kind, title: draft.title, body: draft.body, good: good || undefined, by: good ? profile.name : undefined });
+    // moreQ：孫が、この話の続きで聞きたいこと（1〜2日あとに、ポケファミから「続き、聞かせて？」と誘う）
+    const more = draft.moreQ ? { moreQ: draft.moreQ.slice(0, 50), moreBy: profile.char, moreAsked: undefined } : { moreQ: undefined, moreAsked: undefined };
+    if (cont) { cont.body = draft.body; cont.updated = today(); if (good) cont.good = good; Object.assign(cont, more); }  // 題名はそのまま  // 書き足した文章で、置きかえる
+    else list.push(Object.assign({ id: Date.now().toString(36), date: (dm && dm.day) || today(), kind: draft.kind, title: draft.title, body: draft.body, good: good || undefined, by: good ? profile.name : undefined }, more));
     profile.lastMood = { date: (dm && dm.day) || today(), mood: draft.mood || "normal" }; // あしたの朝、つらかった日のあとは、そっと声をかける
     if (list.length > 300) list.splice(0, list.length - 300);
     saveDiaries();
@@ -4133,9 +4136,14 @@
 
   // ---- キャラからの誘い（たまに1つだけ。1日2回まで、前の誘いから2時間あける） ----
   // 「いいよ」→大喜び／「あとで」→「うん！待ってる！」／「今はいい」→しょんぼり
+  // 続きを聞きたい日記（書いた次の日から2週間。そのキャラが書いた日記だけ。1つの日記につき1回だけ誘う）
+  function pendingMore() {
+    const t = today(), list = diaries().filter(d => d.moreQ && !d.moreAsked && d.moreBy === profile.char && d.date < t && (Date.now() - new Date(d.date).getTime()) < 15 * 86400000);
+    return list.length ? list[list.length - 1] : null;
+  }
   function inviteKinds() {
     const h = new Date().getHours(), wroteToday = diaries().some(d => d.date === today());
-    return ["song", "game", "teach", "teach"].concat(h >= 17 && !wroteToday ? ["diary", "diary", "diary"] : []);
+    return ["song", "game", "teach", "teach"].concat(h >= 17 && !wroteToday ? ["diary", "diary", "diary"] : []).concat(pendingMore() ? ["more", "more", "more", "more"] : []);
   }
   // 「教えて！」の話題（孫が、おばあちゃん・おじいちゃんに聞くように）
   const TEACH = ["子どものころ、どんな遊びをしていたの？", "おいしいおにぎりのコツ、教えて！", "いちばん好きな季節はいつ？ どうして？", "昔、どんなお祭りがあった？", "得意な料理って、なあに？", "子どものころ好きだった歌、教えて！", "お正月って、昔はどんなふうに過ごしてたの？", "雨の日は、どんなふうに過ごすのが好き？", "若いころ、どんな仕事をしていたの？", "いちばん思い出に残っている旅行は、どこ？"];
@@ -4169,7 +4177,12 @@
       sayScripted(text);
       return;
     }
-    const ask = kind === "song"
+    const md = kind === "more" ? pendingMore() : null;
+    if (kind === "more" && !md) return;
+    if (md) { md.moreAsked = today(); saveDiaries(); }
+    const ask = md
+      ? pi + (polite ? "あの、この前の「" + md.title + "」のお話、ずっと気になっていて…。" + md.moreQ + " 続き、聞かせてもらえませんか？" : (chamu ? "ねえねえ、この前の「" + md.title + "」の話、ずっと気になってたんだ！ " : "ねえ、この前の「" + md.title + "」の話、ずっと気になってて…。") + md.moreQ + " 続き、聞かせて？")
+      : kind === "song"
       ? pi + (polite ? "あの、いっしょに『" + sg.title + "』を聞きませんか？" : (chamu ? "ねえねえ、いっしょに『" + sg.title + "』聞こうよ〜！" : "ねえ、いっしょに『" + sg.title + "』聞かない？"))
       : kind === "diary" ? pi + (polite ? "あの、今日のこと、いっしょに日記に書きませんか？" : (chamu ? "ねえねえ、今日のこと、いっしょに日記に書こうよ！" : "ねえ、今日のこと、いっしょに日記に書かない？"))
       : pi + (polite ? "あの、いっしょにゲームで遊びませんか？" : (chamu ? "ねえねえ、ゲームで遊ぼうよ〜！" : "ねえ、いっしょにゲームしない？"));
@@ -4180,7 +4193,7 @@
     const wrap = document.createElement("div");
     const say = (text, face) => { wrap.remove(); sayScripted(text); if (face) setTimeout(() => showFace(face, 2600), 300); };
     const opts = [
-      ["いいよ！", () => { say(pi + (polite ? "やったあ！ うれしいです！" : "やったあ！ うれしい！"), "banzai"); setTimeout(() => kind === "song" ? openPlayer(sg.id) : kind === "diary" ? startDiary("diary", true) : openGame(), 1400); }],
+      ["いいよ！", () => { say(pi + (polite ? "やったあ！ うれしいです！" : "やったあ！ うれしい！"), "banzai"); setTimeout(() => md ? startDiary(md.kind, true, md.id, md.moreQ) : kind === "song" ? openPlayer(sg.id) : kind === "diary" ? startDiary("diary", true) : openGame(), 1400); }],
       ["あとで", () => { profile.inviteLater = Date.now(); saveProfile(); say(pi + (polite ? "はい！ 待っていますね！" : "うん！ 待ってる！"), "happy"); }],
       ["今はいい", () => { say(pi + (polite ? "そうですか…。また今度、ぜひ。" : (chamu ? "そっかぁ…。また今度ね。" : "そっか…。また今度ね。")), "sad"); }],
     ];

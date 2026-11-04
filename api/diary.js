@@ -27,19 +27,24 @@ const INSTRUCTIONS = `あなたは、シニアの方の日記を代わりに書�
   - mood が good か normal のとき：本人が何気なく話した中の、小さなうれしいこと・ありがたいことを1つ選び、キャラクター自身のことのように喜ぶ（例：「お隣さんが大根をくれたなんて、わたしまでうれしくなっちゃった！」「夕焼け、きれいだったんだね。聞いてるだけで、ほっこりしたよ。」）。気づきを教えるのではなく、喜びを分かち合う。本人が話していないことは、言わない。お説教・まとめ・「よかったね、感謝だね」「感謝しましょう」のような、教える言い方はしない。
   - mood が hard のとき：まず、本人のつらさを思いやる（例：「腰、早くよくなるように祈ってるね。」）。本人の一日の中から良かったことを探して伝えたりはしない。そのうえで、キャラクター自身の目線で、会話の中で本当にあった小さなうれしさ・ありがたさを、そっと一言そえてよい（例：「でも、今日はいつもより長くいっしょにいられて、わたしはうれしかったな。」「話してくれて、ありがとう。」）。つらさを軽く扱わない。励ましの決まり文句（「元気出して」など）は使わない。
 
+moreQ も答える：キャラクターが、この話の「続き」をもっと聞きたくて、1〜2日あとに聞く質問（40字まで、キャラの話し方で、自分の呼び方は入力のとおり）。
+- 本人が話した中の、具体的なところから1つ（例：「帰りに、何を食べたの？」「その海には、だれと行ったの？」「そのお店、今もあるのかな？」）。もう話してくれたことは聞かない。気持ちを聞く質問はしない。
+- 孫が、話の続きを聞きたくてわくわくしているような、かわいい質問にする。
+- mood が hard のときや、続きを聞くような話でないときは、空（""）にする。
+
 直しの頼み（fix）があるときは、前の下書き（draft）を、頼まれたとおりに直す。頼まれていないところは、なるべく変えない。
 
 書き足し（base）があるときは、それは前に書いた文章。base の文章はそのまま残し（つなぎの言葉の調整くらいはよい）、そのあとに、今回の会話で話したことを、続きとして新しい段落で書き足す。出力の body は、base と書き足した部分を合わせた全文にする。題名は、base の題名を基本にする。`;
 
 const SCHEMA = {
   type: "object",
-  properties: { title: { type: "string" }, body: { type: "string" }, mood: { type: "string", enum: ["good", "normal", "hard"] }, note: { type: "string" } },
-  required: ["title", "body", "mood", "note"],
+  properties: { title: { type: "string" }, body: { type: "string" }, mood: { type: "string", enum: ["good", "normal", "hard"] }, note: { type: "string" }, moreQ: { type: "string" } },
+  required: ["title", "body", "mood", "note", "moreQ"],
   additionalProperties: false,
 };
 
 // 手元の試し用（本番では使わない）
-const MOCK = { ok: true, title: "雨の日の買い物", body: "今日は朝から雨だった。午後、傘をさしてスーパーへ行き、お魚と大根を買った。\n\n夜はぶり大根にした。ひさしぶりに上手にできて、うれしかった。", mood: "good", note: "ぶり大根、上手にできたんだね。聞いてるだけで、うれしくなったよ。" };
+const MOCK = { ok: true, title: "雨の日の買い物", body: "今日は朝から雨だった。午後、傘をさしてスーパーへ行き、お魚と大根を買った。\n\n夜はぶり大根にした。ひさしぶりに上手にできて、うれしかった。", mood: "good", note: "ぶり大根、上手にできたんだね。聞いてるだけで、うれしくなったよ。", moreQ: "ぶり大根のコツって、だれに教わったの？" };
 
 function cleanLines(raw) {
   if (!Array.isArray(raw)) return [];
@@ -105,16 +110,17 @@ export default async function handler(req, res) {
     const title = cleanText(out?.title, 20);
     const mood = ["good", "normal", "hard"].includes(out?.mood) ? out.mood : "normal";
     const note = cleanText(out?.note, 80);
+    const moreQ = mood === "hard" ? "" : cleanText(out?.moreQ, 50);
     const bodyText = String(out?.body || "").replace(/\r/g, "").replace(/[^\S\n]+/g, " ").replace(/\n{3,}/g, "\n\n").trim().slice(0, 10000);
     if (!bodyText) return reply(res, 200, { ok: false, message: "うまくまとめられませんでした。もう一度お試しください。" });
     // 書き足しのとき、前の文章が消えてしまわないように（短すぎたら、前の文章のあとに続けてつなぐ）
     if (base) {
       const baseBody = base.split("\n").slice(1).join("\n").trim();
       if (baseBody && bodyText.length < baseBody.length * 0.8) {
-        return reply(res, 200, { ok: true, title: base.split("\n")[0].slice(0, 20), body: (baseBody + "\n\n" + bodyText).slice(0, 10000), mood, note });
+        return reply(res, 200, { ok: true, title: base.split("\n")[0].slice(0, 20), body: (baseBody + "\n\n" + bodyText).slice(0, 10000), mood, note, moreQ });
       }
     }
-    return reply(res, 200, { ok: true, title: title || (kind === "memoir" ? "思い出話" : "今日の日記"), body: bodyText, mood, note });
+    return reply(res, 200, { ok: true, title: title || (kind === "memoir" ? "思い出話" : "今日の日記"), body: bodyText, mood, note, moreQ });
   } catch (err) {
     return replyApiError(res, err);
   }
