@@ -3898,6 +3898,7 @@
       if (p.k !== "spark" || p.life < 70) keep.push(p);
     }
     s.parts = keep.length > 900 ? keep.slice(-900) : keep;
+    duckSceneSong(s);
     s.raf = requestAnimationFrame(scLoop);
   }
   // ---- 音（コードで作る。ファイルは使わない） ----
@@ -3927,6 +3928,38 @@
   function musicBox() { // ハッピーバースデーの最初のところ（オルゴール風）
     const m = [[67, 0, .3], [67, .3, .15], [69, .45, .45], [67, .9, .45], [72, 1.35, .45], [71, 1.8, .9], [67, 2.7, .3], [67, 3, .15], [69, 3.15, .45], [67, 3.6, .45], [74, 4.05, .45], [72, 4.5, .9]];
     notes(m.map(([n, t, l]) => [N(n + 12), t, l + 0.6]), "sine", 0.1); notes(m.map(([n, t, l]) => [N(n + 24), t, 0.25]), "triangle", 0.025);
+  }
+  // ---- お祝いの曲（作者のSuno曲。大みそかは、届いたら足す） ----
+  const SCENE_SONG = { bday: "events/bday.mp3", ny: "events/ny.mp3", xmas: "events/xmas.mp3" };
+  const SONG_VOL = 0.7, SONG_DUCK = 0.2; // キャラが話している間は、曲を小さくする
+  const sceneSongBuf = {};
+  function loadSceneSong(kind) {
+    const url = SCENE_SONG[kind], a = scAudio(); if (!url || !a) return null;
+    if (!sceneSongBuf[url]) sceneSongBuf[url] = fetch(url).then((r) => { if (!r.ok) throw 0; return r.arrayBuffer(); })
+      .then((ab) => new Promise((ok, ng) => a.decodeAudioData(ab, ok, ng))).catch(() => { delete sceneSongBuf[url]; return null; });
+    return sceneSongBuf[url];
+  }
+  async function playSceneSong(s) {
+    const p = loadSceneSong(s.kind); if (!p) return;
+    const buf = await p, a = scAudio();
+    if (!buf || !a || !scAlive(s) || s.song) return;
+    try {
+      const src = a.createBufferSource(), g = a.createGain(), t = a.currentTime;
+      src.buffer = buf; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(SONG_VOL, t + 0.4);
+      src.connect(g).connect(a.destination); src.start(t);
+      const song = s.song = { src, g, ducked: false };
+      src.onended = () => { if (s.song === song) s.song = null; }; // 曲が終わったら、そのまま止まる（くり返さない）
+    } catch {}
+  }
+  function duckSceneSong(s) {
+    const song = s.song; if (!song || !actx) return;
+    const busy = voiceBusy(); if (busy === song.ducked) return;
+    song.ducked = busy;
+    try { song.g.gain.setTargetAtTime(busy ? SONG_DUCK : SONG_VOL, actx.currentTime, 0.15); } catch {}
+  }
+  function stopSceneSong(s) { // ふわっと小さくして止める
+    const song = s.song; s.song = null; if (!song || !actx) return;
+    try { const t = actx.currentTime; song.g.gain.cancelScheduledValues(t); song.g.gain.setValueAtTime(song.g.gain.value, t); song.g.gain.linearRampToValueAtTime(0, t + 0.6); song.src.stop(t + 0.7); } catch {}
   }
   function kotoPluck() { notes([[N(64), 0, 1.2], [N(65), 0.25, 1.2], [N(69), 0.5, 1.2], [N(71), 0.75, 1.2], [N(72), 1.0, 1.6], [N(76), 1.5, 2.0]], "triangle", 0.12); }
   function bell() { notes([[110, 0, 5], [220.5, 0, 4], [331, 0, 3], [446, 0, 2]], "sine", 0.12); } // 除夜の鐘
@@ -3976,7 +4009,8 @@
     const el = $("scene");
     for (const id of ["scBody", "scChar", "scTitle", "scBouquet", "scFlash"]) { try { $(id).getAnimations().forEach(a => a.cancel()); } catch {} }
     el.className = "scene " + kind; el.hidden = false;
-    const s = scene = { kind, seq: 0, timers: [], parts: [], raf: 0, cx: scCanvas(), done };
+    const s = scene = { kind, seq: 0, timers: [], parts: [], raf: 0, cx: scCanvas(), done, useSong: !!SCENE_SONG[kind], song: null };
+    loadSceneSong(kind); // 先に読みこんでおく
     for (const p of [...POSE_EXTRA, "banzai", "happy", "wave"]) { const im = new Image(); im.src = scenePose(profile.char, p); }
     const lines = sceneLines(kind);
     const pv = (t) => (voiceOn() && t ? fetchVoice(voiceText(t.replace(/\|/g, ""))) : null);
@@ -4003,7 +4037,7 @@
         popSound(); flash();
         const [px, py] = popPoint(); scBurst(px, py, -Math.PI / 2 + 0.35, 1.3, 140, 15); scBurst(px, py, -Math.PI / 2 + 0.35, 0.8, 30, 11, "spark");
         title(); hop(40, 1);
-        setTimeout(fanfare, 250);
+        if (s.useSong) playSceneSong(s); else setTimeout(fanfare, 250); // 「パン！」のあとに曲
         scRain(kind === "xmas" ? "snow" : "paper", kind === "xmas" ? 70 : 40);
         await scWait(1200); if (!scAlive(s)) return;
         setScenePose(kind === "xmas" ? "happy" : "banzai"); hop(24, 2);
@@ -4015,9 +4049,9 @@
           scButtons([["💐 受け取る", true, () => receiveFlowers(s, lines, voiceC)], ["閉じる", false, closeScene]]);
           return;
         }
-        t = scSay(lines.b, voiceB); jingle(); await scWaitSay(t); finish();
+        t = scSay(lines.b, voiceB); if (!s.useSong) jingle(); await scWaitSay(t); finish();
       } else if (kind === "ny") {
-        el.classList.add("rise"); kotoPluck();
+        el.classList.add("rise"); if (s.useSong) playSceneSong(s); else kotoPluck();
         await scWait(900); if (!scAlive(s)) return;
         setScenePose("bow");
         scMove([{ transform: "rotate(0)" }, { transform: "rotate(0) translateY(3%)" }], { duration: 900, easing: "ease-in-out" });
@@ -4027,7 +4061,7 @@
         scBurst(innerWidth / 2, innerHeight * 0.5, -Math.PI / 2, 2.4, 90, 13);
         t = scSay(lines.b, voiceB); await scWaitSay(t); finish();
       } else { // 大みそか：夜空と、鐘の音と、おじぎ
-        scTwinkle(70); bell();
+        scTwinkle(70); if (s.useSong) playSceneSong(s); else bell();
         await scWait(1200); if (!scAlive(s)) return;
         setScenePose("bow"); title();
         scMove([{ transform: "rotate(0)" }, { transform: "translateY(3%)" }], { duration: 1100, easing: "ease-in-out" });
@@ -4046,7 +4080,7 @@
     const fromX = cr.left + cr.width / 2 - innerWidth / 2, fromY = cr.top + cr.height * 0.62 - innerHeight / 2;
     bq.style.opacity = "1";
     try { bq.animate([{ transform: `translate(${fromX}px, ${fromY}px) scale(.35) rotate(-10deg)`, opacity: .4 }, { transform: "translate(0, -19vh) scale(.98) rotate(4deg)", opacity: 1, offset: .7 }, { transform: "translate(0, -17vh) scale(.9) rotate(0)", opacity: 1 }], { duration: 900, easing: "cubic-bezier(.2,.8,.3,1)", fill: "forwards" }); } catch {}
-    setTimeout(() => { if (!scAlive(s)) return; scBurst(innerWidth / 2, innerHeight * 0.33, 0, 6.3, 60, 9, "petal"); scBurst(innerWidth / 2, innerHeight * 0.33, 0, 6.3, 24, 8, "spark"); scRain("petal", 30); musicBox(); }, 700);
+    setTimeout(() => { if (!scAlive(s)) return; scBurst(innerWidth / 2, innerHeight * 0.33, 0, 6.3, 60, 9, "petal"); scBurst(innerWidth / 2, innerHeight * 0.33, 0, 6.3, 24, 8, "spark"); scRain("petal", 30); if (!s.useSong) musicBox(); }, 700);
     setScenePose("banzai"); scMove([{ transform: "scale(1.1) translateY(4%)" }, { transform: "scale(.8) translateY(30%)" }], { duration: 700, easing: "ease-in-out" }); // キャラは少し下がって、花束を見せる
     // 思い出（もらったもの）に残す
     const list = gifts(); list.push({ kind: "flower", date: today(), title: "お誕生日の花束", char: profile.char }); if (list.length > 20) list.splice(0, list.length - 20);
@@ -4063,7 +4097,7 @@
     const s = scene; if (!s) return;
     scene = null;
     s.timers.forEach(clearTimeout); cancelAnimationFrame(s.raf);
-    stopVoice();
+    stopVoice(); stopSceneSong(s);
     const el = $("scene"); el.classList.remove("on");
     setTimeout(() => { if (!scene) { el.hidden = true; el.classList.remove("rise"); s.cx.clearRect(0, 0, innerWidth, innerHeight); } }, 450);
     try { s.done && s.done(); } catch {}
