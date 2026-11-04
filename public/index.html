@@ -1788,7 +1788,7 @@
       const b = document.createElement("button");
       b.type = "button";
       b.textContent = sg.title;
-      if (sg.tag) { const t = document.createElement("span"); t.className = "tag"; t.textContent = sg.tag; b.appendChild(t); }
+      // 曲の札（おはよう・寄り添いなど）は、AIが曲を選ぶためのもの。画面には出さない（作者 11/4）
       b.addEventListener("click", () => { $("songs").hidden = true; openPlayer(sg.id); });
       li.appendChild(b);
       ul.appendChild(li);
