@@ -2172,7 +2172,11 @@
       }
       else if (m === "sleep") mv.phraseFace = t < 8 ? "normal" : len && t > len * 0.8 ? "sleepy" : L > 0.7 ? (alt ? "happy" : "normal") : L < 0.4 ? (alt ? "serious" : "normal") : alt ? "sleepy" : "normal";
       else if (m === "calm") mv.phraseFace = Math.random() < 0.5 ? "happy" : "normal";
-      else if (m === "morning") mv.phraseFace = ["normal", "wave", "happy", "wave"][Math.floor(bi / 8) % 4];
+      else if (m === "morning") {
+        mv.phraseFace = ["normal", "wave", "happy", "wave"][Math.floor(bi / 8) % 4];
+        // サビかどうかは8拍ごとに決める。入るのは0.7より大きいとき、出るのは0.5より小さいとき（境目で、手が左右に何度も変わらないように）
+        mv.chorus = L > 0.7 ? true : L < 0.5 ? false : !!mv.chorus;
+      }
       else mv.phraseFace = Math.random() < 0.5 ? "happy" : "normal";
     }
   }
@@ -2205,9 +2209,9 @@
     } else if (m === "morning") {
       if (t < 4.5) {                                    // はじめに、のび〜
         const k = Math.min(1, t / 3); sy = 1 + 0.08 * S(P * k); sx = 1 - 0.03 * S(P * k); face = "banzai";
-      } else if (L > 0.65) {                            // サビ：かるく、はずむ
-        y = -(4 + 8 * e) * A(S(P * b)); x = 8 * S(P * b / 2); r = 4 * S(P * b / 2);
-        face = Math.floor(b / 2) % 2 ? "danceL" : "danceR";
+      } else if (mv.chorus) {                           // サビ：かるく、はずむ
+        y = -(4 + 8 * e) * A(S(P * b)); x = 8 * S(P * b / 4); r = 4 * S(P * b / 4);
+        face = Math.floor(b / 4) % 2 ? "danceL" : "danceR"; // 右手・左手は4拍ごとに（作者：2拍ごとは早すぎる）
       } else {                                          // ゆらゆら
         x = 9 * S(P * b / 2); r = 4 * S(P * b / 2); y = -3 * A(S(P * b));
         if (face === "wave") face = Math.floor(b / 2) % 2 ? "wave" : "waveMid"; // 手をふる（2拍ごとに上げ下げ）
