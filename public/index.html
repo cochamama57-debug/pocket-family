@@ -214,7 +214,8 @@
   .book-pg { font-size: 17px; color: var(--sub); flex: 1; min-width: 0; }
   .sheet .book-save { padding: 0 12px; font-size: 16px; }
   .book-save:disabled { opacity: .5; }
-  @media (max-width: 360px) { .book-pg { font-size: 15px; } .sheet .book-save { font-size: 15px; padding: 0 10px; } }
+  .book-pg { white-space: nowrap; }
+  @media (max-width: 360px) { .book-pg .pg-w { display: none; } .book-pg { font-size: 15px; } .sheet .book-save { font-size: 15px; padding: 0 10px; } }
   .book-pages { flex: 1; min-height: 0; display: flex; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
   .book-pages::-webkit-scrollbar { display: none; }
   .bpage { flex: 0 0 100%; scroll-snap-align: center; scroll-snap-stop: always; box-sizing: border-box; padding: 4px 16px; display: flex; justify-content: center; }
@@ -241,6 +242,14 @@
   .book-nav { display: flex; gap: 12px; justify-content: center; padding: 10px 16px 0; }
   .book-arrow { min-height: 52px; min-width: 128px; font-size: 19px; border: 2px solid var(--line); border-radius: 999px; background: #fff; color: var(--ink); }
   .book-arrow:disabled { opacity: .35; }
+  .book-nav { flex-wrap: wrap; }
+  .book-read { min-height: 52px; padding: 0 20px; font-size: 19px; border: 2px solid #e2b866; border-radius: 999px; background: #fff3d6; color: var(--ink); }
+  .book-read.on { background: #b8501f; border-color: #b8501f; color: #fff; }
+  @media (max-width: 440px) { .book-read { flex: 1 0 100%; order: -1; } }
+  .paper .bk-photo img { display: block; width: 100%; max-height: 60vh; object-fit: contain; background: #fff; border-radius: 6px; margin: 0 0 14px; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+  .paper .bk-photo-btns { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+  .paper .bk-photo-btns button { min-height: 48px; padding: 0 16px; font-size: 17px; font-family: inherit; border: 2px solid var(--line); border-radius: 12px; background: #fff; color: var(--ink); }
+  .paper .bk-photo-msg { font-size: 15px; color: #9a5a20; margin-top: 8px; }
   .diary-card { margin-top: 10px; background: #fffdf6; border: 1px solid #ecd9b0; border-left: 6px solid #f0c96a; border-radius: 12px; padding: 12px 14px; }
   .diary-card .dt { font-size: 15px; color: var(--sub); }
   .diary-card h4 { margin: 2px 0 6px; font-size: 20px; }
@@ -859,8 +868,10 @@
   <div class="book-pages" id="bookPages"></div>
   <div class="book-nav">
     <button type="button" class="book-arrow" id="bookPrev">‹ まえ</button>
+    <button type="button" class="book-read" id="bookRead">🔊 読む</button>
     <button type="button" class="book-arrow" id="bookNext">つぎ ›</button>
   </div>
+  <input class="sr" id="bookPhotoInput" type="file" accept="image/*" tabindex="-1" aria-hidden="true">
 </div>
 <div class="sheet game" id="game" hidden role="dialog" aria-label="神経衰弱">
   <div class="game-in">
@@ -1539,7 +1550,7 @@
       + "<li>" + L((memoir ? "昔のことを、|" : "今日あったことを、|") + "話すか書いて、|「送る」を|押してください。|" + nm + "が聞きながら、|続きをうながします。") + "</li>"
       + "<li>" + L("話し終わったら、|<b>「まとめる」</b>を|押すと、|" + nm + "が|あなたの言葉で|" + (memoir ? "思い出話に" : "日記に") + "|まとめます。") + "</li>"
       + "<li>" + L("下書きを見て、|<b>「これで保存」</b>を|押してください。|直したいときは|「直してほしい」、|話し足りないときは|「もう少し話す」を|押してください。") + "</li>"
-      + "<li>" + L("保存すると、|日記帳の本に入ります。|<b>「📖 本」</b>で、|いつでも読めます。") + "</li>"
+      + "<li>" + L("保存すると、|日記帳の本に入ります。|<b>「📖 本」</b>で、|いつでも読めます。|本では、|写真を入れたり、|" + nm + "に|声で読んでもらったり|できます。") + "</li>"
       + "<li>" + L("書くのをやめて|おしゃべりに戻るときは、|<b>「おしゃべりに戻る」</b>を|押してください。") + "</li>"
       + "</ol>"
       + '<span class="tip">' + L("🎤 声で話すときは、|キーボードの|" + where + "の|マイクを押して、|ゆっくり話してください。") + "</span>";
@@ -2516,7 +2527,9 @@
       const ja = speechSynthesis.getVoices().find(v => /ja[-_]JP/i.test(v.lang));
       if (ja) u.voice = ja;
       speechSynthesis.speak(u);
+      return u;
     } catch {}
+    return null;
   }
   // 声にする文：「わたし」「私」は「ワタシ」にして渡す（声が「わたくし」と読まないように。画面の文字はそのまま）
   const voiceText = (text) => {
@@ -3452,7 +3465,7 @@
     { pic: helpDemo, h: "助けて",
       p: ["困ったときは、", "上の赤い「助けて」を", "長押ししてくださいね。", "8秒たつと、", "登録した連絡先に", "LINEでお知らせします。", "間違えて押したときは、", "「いらない」を押せば", "止められます。", "連絡先", "（友人や家族など、", "連絡を受け取って", "くれる人）は、", "「📖 ノート」から", "登録できます。"] },
     { pic: '<div class="tour-pic">📔</div>', h: "日記",
-      p: ["「📖 ノート」の", "「日記」で、", "「今日の日記を書く」を", "押してください。", "今日のことを", "話すだけで、", "AIファミリーが", "あなたの言葉で", "日記に", "まとめます。", "昔の思い出は、", "「思い出話を書く」から、", "子どものころ・", "仕事・家族などに", "分けて", "書きとめられます。", "「これで保存」を押すと、", "日記帳の本に", "入ります。", "おしゃべりに", "戻るときは、", "「おしゃべりに戻る」を", "押してください。"] },
+      p: ["「📖 ノート」の", "「日記」で、", "「今日の日記を書く」を", "押してください。", "今日のことを", "話すだけで、", "AIファミリーが", "あなたの言葉で", "日記に", "まとめます。", "昔の思い出は、", "「思い出話を書く」から、", "子どものころ・", "仕事・家族などに", "分けて", "書きとめられます。", "「これで保存」を押すと、", "日記帳の本に", "入ります。", "本には、", "写真も", "入れられます。", "おしゃべりに", "戻るときは、", "「おしゃべりに戻る」を", "押してください。"] },
     { pic: '<div class="tour-pic">🎵</div>', h: "歌う",
       p: ["上の「🎵 歌う」から、", "いっしょに歌えます。", "歌詞が大きく出て、", "曲に合わせて", "AIファミリーが踊ります。", "歌えたら「歌えた！」を", "ぜひ押してくださいね。", "AIファミリーが", "よろこびます。"] },
     { pic: '<div class="tour-pic">📖</div>', h: "ノート",
@@ -4007,7 +4020,10 @@
       const h = el("h3"); setPhrases(h, phr(d.title || "")); p.appendChild(h);
       if (d.drawing && Array.isArray(d.drawing.shapes)) p.appendChild(giftCard(d.drawing));
       if (d.good) { const g = el("p", "good-note"); setPhrases(g, "🌼 " + (d.by || profile.name) + "が|見つけた、|いいこと：|" + phr(d.good)); p.appendChild(g); }
+      const pic = el("div", "bk-photo"); p.appendChild(pic);
       p.appendChild(el("div", "pb", d.body || ""));
+      const pbtn = el("div"); p.appendChild(pbtn);
+      fillPhoto(d, pic, pbtn);
       p.appendChild(el("div", "pn", "― " + (startAt + i + 1) + " ―"));
     });
     // おわり
@@ -4016,16 +4032,145 @@
     const et = el("p"); setPhrases(et, "このつづきも、|いっしょに|書いていこうね。"); end.appendChild(et);
     ed.appendChild(end);
   }
+  // ---- 日記の写真（スマホの中だけにしまう。AIにも、サーバーにも送らない） ----
+  function photoDb() {
+    return new Promise((ok, ng) => {
+      try { const r = indexedDB.open("pf-photos", 1); r.onupgradeneeded = () => r.result.createObjectStore("p"); r.onsuccess = () => ok(r.result); r.onerror = () => ng(r.error); } catch (e) { ng(e); }
+    });
+  }
+  async function photoOp(mode, fn) {
+    const db = await photoDb();
+    return new Promise((ok, ng) => {
+      const tx = db.transaction("p", mode), rq = fn(tx.objectStore("p"));
+      tx.oncomplete = () => { db.close(); ok(rq && rq.result); };
+      tx.onerror = tx.onabort = () => { db.close(); ng(tx.error); };
+    });
+  }
+  const photoGet = (id) => photoOp("readonly", (st) => st.get(id)).then((v) => (typeof v === "string" && v.startsWith("data:image/") ? v : null)).catch(() => null);
+  const photoPut = (id, url) => photoOp("readwrite", (st) => st.put(url, id));
+  const photoDel = (id) => photoOp("readwrite", (st) => st.delete(id)).catch(() => {});
+  let photoFor = null;
+  async function fillPhoto(d, pic, pbtn, msg) {
+    const url = await photoGet(d.id);
+    pic.textContent = ""; pbtn.textContent = ""; pbtn.className = "bk-photo-btns";
+    if (url) { const im = document.createElement("img"); im.src = url; im.alt = "日記の写真"; pic.appendChild(im); }
+    const add = document.createElement("button"); add.type = "button"; add.textContent = url ? "📷 写真を替える" : "📷 写真を入れる";
+    add.addEventListener("click", () => { stopReading(); photoFor = { d, pic, pbtn }; $("bookPhotoInput").click(); });
+    pbtn.appendChild(add);
+    if (url) {
+      const rm = document.createElement("button"); rm.type = "button"; rm.textContent = "写真を外す";
+      rm.addEventListener("click", async () => {
+        if (!rm.dataset.sure) { rm.dataset.sure = "1"; rm.textContent = "もう一度押すと外します"; return; }
+        await photoDel(d.id); fillPhoto(d, pic, pbtn, "写真を外しました。（スマホの写真は、そのまま残っています）");
+      });
+      pbtn.appendChild(rm);
+    }
+    if (msg) { const m = document.createElement("p"); m.className = "bk-photo-msg"; m.textContent = msg; pbtn.appendChild(m); }
+  }
+  $("bookPhotoInput").addEventListener("change", async () => {
+    const inp = $("bookPhotoInput"), file = inp.files && inp.files[0], t = photoFor;
+    inp.value = ""; photoFor = null;
+    if (!file || !t) return;
+    try {
+      const sm = await shrink(file);
+      await photoPut(t.d.id, sm.url);
+      fillPhoto(t.d, t.pic, t.pbtn, "写真を入れました。PDFにも入ります。");
+    } catch { fillPhoto(t.d, t.pic, t.pbtn, "この写真は入れられませんでした。ほかの写真でお試しください。"); }
+  });
+
+  // ---- 本を、キャラが声で読む（題名・本文・見つけた、いいこと） ----
+  const PRIVATE_VOICE = /薬|くすり|クスリ|病院|住所|番地|電話|\d{2,4}-\d{2,4}-\d{3,4}|〒/; // サーバーと同じ。外に送らず、スマホの声で読む
+  const pause = (ms) => new Promise((ok) => setTimeout(ok, ms));
+  function splitLong(c) { // 声は1回200字まで。長い文は「、」で分ける
+    const out = []; let r = c;
+    while (r.length > 150) { let k = r.lastIndexOf("、", 150); k = k < 40 ? 150 : k + 1; out.push(r.slice(0, k)); r = r.slice(k); }
+    if (r) out.push(r);
+    return out;
+  }
+  function sayDevice(text) {
+    return new Promise((ok) => {
+      const u = speakDevice(text); if (!u) return ok();
+      const t = setTimeout(ok, text.length * 300 + 4000);
+      u.onend = u.onerror = () => { clearTimeout(t); ok(); };
+    });
+  }
+  async function playVoice(url, my) {
+    if (voiceUrl) URL.revokeObjectURL(voiceUrl);
+    voiceUrl = url; voiceEl.src = url;
+    const rate = profile.char === "chamu" ? 1.41 : 1.25;
+    try { voiceEl.preservesPitch = false; voiceEl.webkitPreservesPitch = false; voiceEl.mozPreservesPitch = false; } catch {}
+    voiceEl.defaultPlaybackRate = rate; voiceEl.playbackRate = rate;
+    await voiceEl.play();
+    await new Promise((ok) => {
+      const done = () => { voiceEl.removeEventListener("ended", done); voiceEl.removeEventListener("pause", done); voiceEl.removeEventListener("error", done); ok(); };
+      voiceEl.addEventListener("ended", done); voiceEl.addEventListener("pause", done); voiceEl.addEventListener("error", done);
+    });
+    return my === voiceSeq && !(voiceEl.paused && !voiceEl.ended);
+  }
+  // 最後まで読めたら true。止められたら false
+  async function readAloud(text) {
+    stopVoice(); const my = voiceSeq; voicePending = my;
+    const chunks = voiceChunks(text).flatMap(splitLong);
+    const make = (c) => (PRIVATE_VOICE.test(c) ? Promise.resolve(null) : fetchVoice(c));
+    let next = make(chunks[0]);
+    const drop = () => { if (next) next.then((u) => u && URL.revokeObjectURL(u)); };
+    try {
+      for (let i = 0; i < chunks.length; i++) {
+        const url = await next;
+        if (my !== voiceSeq) { if (url) URL.revokeObjectURL(url); return false; }
+        next = i + 1 < chunks.length ? make(chunks[i + 1]) : null;
+        if (!url) await sayDevice(voiceText(chunks[i]));
+        else if (!(await playVoice(url, my))) { drop(); return false; }
+        if (my !== voiceSeq) { drop(); return false; }
+      }
+      return true;
+    } catch { drop(); return false; } finally { if (voicePending === my) voicePending = 0; }
+  }
+  function bookPageText(i) {
+    const { memo, days } = bookEntries(), order = memo.concat(days), n = order.length + 3;
+    if (i === 0) return bookOwner() + "。";
+    if (i === 1) return "";
+    if (i >= n - 1) return "このつづきも、いっしょに書いていこうね。";
+    const d = order[i - 2]; if (!d) return "";
+    const dt = new Date(d.date + "T00:00:00");
+    let t = (dt.getMonth() + 1) + "月" + dt.getDate() + "日。" + (d.title ? d.title + "。" : "") + "\n" + (d.body || "");
+    if (d.good) { const me = profile.char === "chamu" ? "ぼく" : "わたし"; t += "\n" + (!d.by || d.by === profile.name ? me : d.by) + "が見つけた、いいこと。" + d.good; }
+    return t;
+  }
+  let bookReading = 0, bookReadOn = false, readIdx = 0, readMoveUntil = 0;
+  const readGo = (i) => { readIdx = i; readMoveUntil = Date.now() + 1500; bookGo(i); };
+  function readBtnUI() { const b = $("bookRead"); b.classList.toggle("on", bookReadOn); b.textContent = bookReadOn ? "■ 止める" : "🔊 " + profile.name + "が読む"; }
+  function stopReading() { if (!bookReadOn) return; bookReading++; bookReadOn = false; stopVoice(); readBtnUI(); }
+  async function readBook() {
+    const my = ++bookReading; bookReadOn = true; readBtnUI();
+    const n = $("bookPages").children.length;
+    let i = bookIndex();
+    readIdx = i;
+    if (i < 2) { i = Math.min(2, n - 1); readGo(i); await pause(700); }
+    while (my === bookReading) {
+      const pg = $("bookPages").children[i]; const pp = pg && pg.querySelector(".paper"); if (pp) pp.scrollTop = 0;
+      const t = bookPageText(i);
+      if (t && !(await readAloud(t))) break;
+      if (my !== bookReading || i >= n - 1) break;
+      await pause(900); if (my !== bookReading) break;
+      i++; readGo(i); await pause(800);
+    }
+    if (my === bookReading) { bookReadOn = false; readBtnUI(); }
+  }
+  $("bookRead").addEventListener("click", () => { if (bookReadOn) stopReading(); else readBook(); });
+  // 読んでいる途中で、自分でページをめくったら、読むのをやめる（上下に動かすだけなら続ける）
+  $("bookPages").addEventListener("scroll", () => { if (bookReadOn && Date.now() > readMoveUntil && bookIndex() !== readIdx) stopReading(); }, { passive: true });
   function bookIndex() { const b = $("bookPages"); return b.clientWidth ? Math.round(b.scrollLeft / b.clientWidth) : 0; }
   function bookUI() {
     const n = $("bookPages").children.length, i = Math.min(n - 1, Math.max(0, bookIndex()));
-    $("bookPg").textContent = i === 0 ? "表紙" : (i + 1) + " / " + n + " ページ";
+    $("bookPg").innerHTML = i === 0 ? "表紙" : (i + 1) + " / " + n + '<span class="pg-w"> ページ</span>';
     $("bookPrev").disabled = i <= 0; $("bookNext").disabled = i >= n - 1;
   }
   function bookGo(i) { const b = $("bookPages"); b.scrollTo({ left: i * b.clientWidth, behavior: "smooth" }); }
   function openBook(id) {
     if (!profile || !diaries().length) return;
     buildBook();
+    stopVoice(); readBtnUI();
     $("book").hidden = false;
     const { memo, days } = bookEntries(), i = typeof id === "string" ? memo.concat(days).findIndex(d => d.id === id) : -1;
     const b = $("bookPages"); b.scrollLeft = i >= 0 ? (2 + i) * b.clientWidth : 0;
@@ -4033,9 +4178,9 @@
   }
   let bookTick = 0;
   $("bookPages").addEventListener("scroll", () => { cancelAnimationFrame(bookTick); bookTick = requestAnimationFrame(bookUI); }, { passive: true });
-  $("bookPrev").addEventListener("click", () => bookGo(bookIndex() - 1));
-  $("bookNext").addEventListener("click", () => bookGo(bookIndex() + 1));
-  $("bookClose").addEventListener("click", () => { $("book").hidden = true; bookFile = null; $("bookSave").textContent = "保存（PDF）"; });
+  $("bookPrev").addEventListener("click", () => { stopReading(); bookGo(bookIndex() - 1); });
+  $("bookNext").addEventListener("click", () => { stopReading(); bookGo(bookIndex() + 1); });
+  $("bookClose").addEventListener("click", () => { stopReading(); $("book").hidden = true; bookFile = null; $("bookSave").textContent = "保存（PDF）"; });
   window.addEventListener("resize", () => { if (!$("book").hidden) { const i = bookIndex(); requestAnimationFrame(() => { $("bookPages").scrollLeft = i * $("bookPages").clientWidth; bookUI(); }); } });
   $("bookOpen").addEventListener("click", () => openBook());
   $("diaryBook").addEventListener("click", () => openBook());
@@ -4121,20 +4266,34 @@
     // もくじのページ割り（高さで区切る）
     const tocSplit = []; { let cur = [], y = 220; for (const r of tocRows) { const hh = r.sec ? 60 : 50; if (y + hh > PH - 130 && cur.length) { tocSplit.push(cur); cur = []; y = 120; } cur.push(r); y += hh; } tocSplit.push(cur); }
     const tocPages = tocSplit.length;
-    // 本文のページ割り（表紙1・もくじ tocPages のあと）
-    let p = 1 + tocPages;
-    const layouts = order.map((d) => {
-      font(34); const lines = wrapText(ctx, d.body || "", TW);
-      return { d, lines };
-    });
-    // 1ページめ：見出し・絵・いいことの分だけ、本文が少ない
-    for (const L of layouts) {
-      font(46, true); const tl = wrapText(ctx, L.d.title || "", TW).length;
-      font(30); const gl = L.d.good ? Math.min(3, wrapText(ctx, "🌼 " + (L.d.by || profile.name) + "が見つけた、いいこと：" + L.d.good, TW - 40).length) : 0;
-      const head = 220 + tl * 64 + 20 + (L.d.drawing && Array.isArray(L.d.drawing.shapes) ? TW * 0.75 + 30 : 0) + (gl ? gl * 46 + 60 : 0);
-      const per1 = Math.max(0, Math.floor((PH - 130 - head) / 64)), perN = Math.floor((PH - 130 - 200) / 64);
-      L.first = p + 1; L.per1 = per1; L.perN = perN;
-      p += 1 + Math.max(0, Math.ceil((L.lines.length - per1) / perN));
+    // 本文のページ割り（表紙1・もくじ tocPages のあと）。見出し・絵・いいこと・写真・本文の行を、上から順に入るだけ入れる
+    const BOTTOM = PH - 130;
+    const layouts = []; let p = 1 + tocPages;
+    for (const d of order) {
+      const items = [];
+      font(46, true); const tls = wrapText(ctx, d.title || "", TW);
+      items.push({ h: 64 + tls.length * 64 + 20, draw: (y) => { font(30); ctx.fillStyle = "#8a7660"; ctx.fillText(jpFullDate(d.date), M, y); ctx.fillStyle = "#3a2e24"; font(46, true); tls.forEach((ln, k) => ctx.fillText(ln, M, y + 64 + k * 64)); } });
+      if (d.drawing && Array.isArray(d.drawing.shapes)) items.push({ h: TW * 0.75 + 30, draw: async (y) => { const im = await svgImage(d.drawing); if (im) { ctx.fillStyle = "#fff"; ctx.fillRect(M, y, TW, TW * 0.75); ctx.drawImage(im, M, y, TW, TW * 0.75); } ctx.fillStyle = "#3a2e24"; } });
+      if (d.good) {
+        font(30); const gl = wrapText(ctx, "🌼 " + (d.by || profile.name) + "が見つけた、いいこと：" + d.good, TW - 40).slice(0, 3);
+        items.push({ h: gl.length * 46 + 60, draw: (y) => { font(30); ctx.fillStyle = "#fff6d8"; ctx.fillRect(M, y, TW, gl.length * 46 + 30); ctx.fillStyle = "#5d4a12"; gl.forEach((ln, k) => ctx.fillText(ln, M + 20, y + 15 + k * 46)); ctx.fillStyle = "#3a2e24"; } });
+      }
+      const pu = await photoGet(d.id), pim = pu ? await loadImg(pu) : null;
+      if (pim && pim.naturalWidth) {
+        let pw = TW, ph = TW * pim.naturalHeight / pim.naturalWidth;
+        if (ph > 760) { ph = 760; pw = ph * pim.naturalWidth / pim.naturalHeight; }
+        items.push({ h: ph + 30, draw: (y) => { ctx.drawImage(pim, M + (TW - pw) / 2, y, pw, ph); } });
+      }
+      font(34);
+      for (const ln of wrapText(ctx, d.body || "", TW)) items.push({ h: 64, draw: (y) => { font(34); ctx.fillStyle = "#3a2e24"; ctx.fillText(ln, M, y); } });
+      const pages2 = [[]]; let y = 156;
+      for (const it of items) {
+        const cur = pages2[pages2.length - 1];
+        if (cur.length && y + it.h > BOTTOM) { pages2.push([]); y = 196; }
+        pages2[pages2.length - 1].push(it); y += it.h;
+      }
+      layouts.push({ d, pages: pages2, first: p + 1 });
+      p += pages2.length;
     }
     tocRows.forEach((r) => { if (r.d) r.page = layouts.find(L => L.d === r.d).first; });
     for (let tp = 0; tp < tocPages; tp++) {
@@ -4155,21 +4314,14 @@
     }
     // 本文
     for (const L of layouts) {
-      const d = L.d; let at = 0, num = L.first, firstPage = true;
-      do {
-        paper(); let y = 110;
-        font(26); ctx.fillStyle = "#9a8670"; ctx.fillText((d.kind === "memoir" ? "思い出話・" + eraOf(d) : "毎日の日記") + (firstPage ? "" : "（つづき）"), M, y); y += 46;
-        if (firstPage) {
-          font(30); ctx.fillStyle = "#8a7660"; ctx.fillText(jpFullDate(d.date), M, y); y += 64; ctx.fillStyle = "#3a2e24";
-          font(46, true); for (const ln of wrapText(ctx, d.title || "", TW)) { ctx.fillText(ln, M, y); y += 64; } y += 20;
-          if (d.drawing && Array.isArray(d.drawing.shapes)) { const im = await svgImage(d.drawing); if (im) { ctx.fillStyle = "#fff"; ctx.fillRect(M, y, TW, TW * 0.75); ctx.drawImage(im, M, y, TW, TW * 0.75); } y += TW * 0.75 + 30; ctx.fillStyle = "#3a2e24"; }
-          if (d.good) { font(30); const gl = wrapText(ctx, "🌼 " + (d.by || profile.name) + "が見つけた、いいこと：" + d.good, TW - 40).slice(0, 3); ctx.fillStyle = "#fff6d8"; ctx.fillRect(M, y, TW, gl.length * 46 + 30); ctx.fillStyle = "#5d4a12"; gl.forEach((ln, i) => ctx.fillText(ln, M + 20, y + 15 + i * 46)); y += gl.length * 46 + 60; ctx.fillStyle = "#3a2e24"; }
-        } else y += 40;
-        ctx.fillStyle = "#3a2e24"; font(34);
-        const per = firstPage ? L.per1 : L.perN;
-        for (const ln of L.lines.slice(at, at + per)) { ctx.fillText(ln, M, y); y += 64; }
-        at += per; await finish(num); num++; firstPage = false;
-      } while (at < L.lines.length);
+      const d = L.d;
+      for (let k = 0; k < L.pages.length; k++) {
+        paper();
+        font(26); ctx.fillStyle = "#9a8670"; ctx.fillText((d.kind === "memoir" ? "思い出話・" + eraOf(d) : "毎日の日記") + (k ? "（つづき）" : ""), M, 110); ctx.fillStyle = "#3a2e24";
+        let y = k ? 196 : 156;
+        for (const it of L.pages[k]) { await it.draw(y); y += it.h; }
+        await finish(L.first + k);
+      }
     }
     // おわり
     paper(); const ei = await loadImg(CHARS[profile.char].img); if (ei) ctx.drawImage(ei, (PW - 260) / 2, 470, 260, 260);
