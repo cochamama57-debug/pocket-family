@@ -678,6 +678,12 @@
         <button type="button" class="big-btn" id="memoNameOk" style="margin:0">この名前にする</button>
         <p class="hint-s" style="margin:6px 0 0"><span class="nb">思い出と</span><span class="nb">仲よし度は、</span><span class="nb">そのまま残ります。</span></p>
       </div>
+      <div id="memoYomiRow" hidden>呼び名の読み方　<b id="memoYomi"></b>　<button type="button" class="tour-skip" id="memoYomiEdit" style="min-height:40px;font-size:15px">変える</button></div>
+      <div id="memoYomiBox" hidden style="margin:6px 0 10px">
+        <input class="name-input" id="memoYomiInput" maxlength="16" autocomplete="off" enterkeyhint="done" aria-label="呼び名の読み方（ひらがな）" placeholder="ひらがなで" style="margin-bottom:8px">
+        <button type="button" class="big-btn" id="memoYomiOk" style="margin:0">この読み方にする</button>
+        <p class="hint-s" style="margin:6px 0 0"><span class="nb">声でお話しするときに、</span><span class="nb">この読み方を使います。</span></p>
+      </div>
       <div>一緒に過ごした日　<span class="big" id="memoDays"></span></div>
       <div>あなたのお誕生日　<b id="memoBday"></b>　<button type="button" class="tour-skip" id="memoBdayEdit" style="min-height:40px;font-size:15px">変える</button></div>
       <div>仲よし度　<span class="hearts" id="memoHearts"></span>　<b id="memoStage"></b></div>
@@ -1365,7 +1371,12 @@
     saveProfile();
     history.push({ role: "user", content: String(said).slice(0, 100) }); save(); bubble("me", said);
     askPending = true;
-    setTimeout(() => { askPending = false; if (profile && QUESTIONS[p.next]) sayScripted(QUESTIONS[p.next].ask(profile.name)); }, 500);
+    setTimeout(() => { askPending = false; if (!profile) return; if (HAS_KANJI.test(p.base)) askYomi(p.base, p.next); else if (QUESTIONS[p.next]) sayScripted(QUESTIONS[p.next].ask(profile.name)); }, 500);
+  }
+  let yomiPending = null;
+  function askYomi(base, next) {
+    yomiPending = { base, next };
+    sayScripted("「" + base + "」は、なんと読みますか？\nひらがなで教えてください。\n（声でお話しするときに、まちがえないように）");
   }
 
   function sayScripted(text) {
@@ -1522,8 +1533,10 @@
     for (let i = 0; i < results.length; i++) {
       const t = results[i][0].transcript;
       if (!t) continue;
-      if (text && t.startsWith(text)) text = t;      // 前の分を含んで届いた
-      else if (text.endsWith(t)) continue;            // 同じものが重ねて届いた
+      const nt = t.replace(/\s+/g, ""), nx = text.replace(/\s+/g, ""), k = Math.min(4, nx.length, nt.length);
+      if (text && nt.startsWith(nx)) text = t;         // 前の分を含んで届いた
+      else if (nx.endsWith(nt) || nx.includes(nt)) continue; // 同じものが重ねて届いた
+      else if (k >= 2 && nt.slice(0, k) === nx.slice(0, k)) { if (nt.length > nx.length) text = t; } // Android：最初から送り直してきた → 長いほうだけ
       else text += t;
     }
     return text;
@@ -1606,9 +1619,21 @@
     if (!text && !photo) { input.focus(); return; }
     if (!text && photo) text = PHOTO_TEXT;
 
-    // 「さん」「ちゃん」の質問に、ボタンではなく文字で答えたとき
-    if (suffixPending && profile && text !== SKIPPED && !photo) {
+    // 呼び名の読み方の答え
+    if (yomiPending && profile && !photo) {
       input.value = ""; autoGrow(); hideGuide();
+      const p = yomiPending; yomiPending = null;
+      const y = text === SKIPPED ? "" : toHira(text);
+      if (y) { profile.answers.callYomi = y; saveProfile(); }
+      history.push({ role: "user", content: text === SKIPPED ? "（とばした）" : text.slice(0, 100) }); save(); bubble("me", text === SKIPPED ? "（とばした）" : text);
+      askPending = true;
+      setTimeout(() => { askPending = false; if (profile && QUESTIONS[p.next]) sayScripted((y ? "「" + y + "」ですね。\n" : "") + QUESTIONS[p.next].ask(profile.name)); }, 500);
+      return;
+    }
+    // 「さん」「ちゃん」の質問に、ボタンではなく文字で答えたとき
+    if (suffixPending && profile && !photo) {
+      input.value = ""; autoGrow(); hideGuide();
+      if (text === SKIPPED) { chooseSuffix("", "（とばした）"); return; }
       chooseSuffix(/ちゃん/.test(text) ? "ちゃん" : /さん|様|さま/.test(text) && !/(付けない|いらない|なし|そのまま|のまま)/.test(text) ? "さん" : "", text);
       return;
     }
@@ -1647,6 +1672,11 @@
         if (base && !HONOR.test(base)) {
           askPending = true;
           setTimeout(() => { askPending = false; askSuffix(base, next); }, 500);
+          return;
+        }
+        if (base && HAS_KANJI.test(base.replace(HONOR, ""))) {
+          askPending = true;
+          setTimeout(() => { askPending = false; askYomi(base.replace(HONOR, ""), next); }, 500);
           return;
         }
         askPending = true;
@@ -2415,7 +2445,7 @@
     } catch {}
   }
   // 声にする文：「わたし」「私」は「ワタシ」にして渡す（声が「わたくし」と読まないように。画面の文字はそのまま）
-  const voiceText = (text) => String(text).replace(/[🔊🎵📅🚶🏠✓]/gu, "").replace(/わたし|私/g, "ワタシ").slice(0, 200);
+  const voiceText = (text) => { let t = String(text).replace(/[🔊🎵📅🚶🏠✓]/gu, ""); const y = callYomi(); if (y) t = t.split(y.base).join(y.yomi); return t.replace(/わたし|私/g, "ワタシ").slice(0, 200); };
   // 声を先に作っておく（できたら音のURL、できなければ null）
   async function fetchVoice(text) {
     try {
@@ -2857,6 +2887,14 @@
   // 「はなこって呼んで」「はなこだよ。」→「はなこ」
   // 「はなこって呼んでね」→「はなこ」。名前の中の「よ」「ね」（きよみ・よしこ・かよ）は消さない
   const cleanCall = (raw) => String(raw || "").replace(/\s+/g, "").replace(/(って|と)?(呼んで|よんで|でいい|がいい|です|だよ|でお願い).*$/, "").replace(/[！!。、]+$/, "").slice(0, 12);
+  // 呼び名の読み方（漢字の名前を、声でまちがえて読まないように）
+  const HAS_KANJI = /[\u4e00-\u9fff々]/;
+  function callBase() { return cleanCall(profile && profile.answers.call).replace(HONOR, ""); }
+  function callYomi() {
+    const base = profile ? callBase() : "", yomi = profile && profile.answers && profile.answers.callYomi;
+    return base && HAS_KANJI.test(base) && typeof yomi === "string" && yomi ? { base, yomi } : null;
+  }
+  const toHira = (s) => String(s || "").replace(/[\u30a1-\u30f6]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60)).replace(/[^\u3041-\u3096ー]/g, "").slice(0, 16);
   function callName() {
     if (profile && typeof profile.famName === "string" && profile.famName.trim()) return profile.famName.trim().slice(0, 12);
     return cleanCall(profile && profile.answers.call);
@@ -3102,6 +3140,8 @@
     $("memoTitle").append(t1, t2);
     $("memoName").textContent = profile.name;
     $("memoNameBox").hidden = true;
+    { const b = callBase(); $("memoYomiRow").hidden = !(b && HAS_KANJI.test(b)); $("memoYomiBox").hidden = true;
+      $("memoYomi").textContent = b + "（" + ((profile.answers && profile.answers.callYomi) || "まだです") + "）"; }
     $("memoDays").textContent = Math.max(1, g.days.length) + "日";
     $("memoHearts").textContent = heartsFor(st);
     $("memoStage").textContent = STAGE_NAMES[st];
@@ -3363,6 +3403,18 @@
   $("tourBack").addEventListener("click", () => { if (tourAt > 0) { tourAt--; drawTour(); } });
   $("tourSkip").addEventListener("click", closeTour);
   $("memoTour").addEventListener("click", () => openTour("memo"));
+  $("memoYomiEdit").addEventListener("click", () => {
+    const box = $("memoYomiBox"); box.hidden = !box.hidden;
+    if (!box.hidden) { $("memoYomiInput").value = (profile.answers && profile.answers.callYomi) || ""; $("memoYomiInput").focus(); }
+  });
+  $("memoYomiInput").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("memoYomiOk").click(); } });
+  $("memoYomiOk").addEventListener("click", () => {
+    if (!profile) return;
+    const y = toHira($("memoYomiInput").value);
+    $("memoYomiInput").blur();
+    if (y) { profile.answers.callYomi = y; saveProfile(); }
+    openMemo();
+  });
   $("memoNameEdit").addEventListener("click", () => {
     const box = $("memoNameBox"); box.hidden = !box.hidden;
     if (!box.hidden) { $("memoNameInput").value = profile.name; $("memoNameInput").focus(); }
