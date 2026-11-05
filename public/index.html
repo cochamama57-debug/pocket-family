@@ -398,6 +398,7 @@
   .sheet-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
   .sheet-head img { width: 88px; height: 88px; object-fit: contain; }
   .sheet-head h2 { flex: 1; font-size: 24px; margin: 0; line-height: 1.35; }
+  @media (max-width: 360px) { .sheet-head img { width: 60px; height: 60px; } .sheet-head h2 { font-size: 18px; } .game-say { font-size: 15px !important; padding: 6px 8px; } .game-top img { width: 52px; height: 52px; } }
   .sheet .close-btn { flex: none; font-size: 17px; min-height: 48px; padding: 0 16px; border: 2px solid var(--line); border-radius: 999px; background: #fff; color: var(--ink); }
   .stat { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; margin-bottom: 12px; }
   .stat .big { font-size: 24px; font-weight: 700; }
@@ -1967,7 +1968,7 @@
       const li = document.createElement("li");
       const b = document.createElement("button");
       b.type = "button";
-      b.textContent = sg.title;
+      setPhrases(b, phr(sg.title)); // 「の」などのあとでだけ改行（言葉の途中で切らない）
       // 曲の札（おはよう・寄り添いなど）は、AIが曲を選ぶためのもの。画面には出さない（作者 11/4）
       b.addEventListener("click", () => { $("songs").hidden = true; openPlayer(sg.id); });
       li.appendChild(b);
@@ -3924,7 +3925,7 @@
     for (const d of list) {
       const c = diaryCard(d, d.date);
       if (d.drawing && Array.isArray(d.drawing.shapes)) { const dw = giftCard(d.drawing); dw.classList.add("diary-drawing"); c.querySelector(".db").before(dw); }
-      if (d.good) { const g = document.createElement("p"); g.className = "good-note"; g.textContent = "🌼 " + (d.by || profile.name) + "が見つけた、いいこと：" + d.good; c.querySelector(".db").before(g); }
+      if (d.good) { const g = document.createElement("p"); g.className = "good-note"; setPhrases(g, "🌼 " + (d.by || profile.name) + "が|見つけた、|いいこと：|" + phr(d.good)); c.querySelector(".db").before(g); }
       const db = c.querySelector(".db");
       if ((d.body || "").length > 300) {
         db.classList.add("fold");
@@ -4248,7 +4249,7 @@
     } catch {}
   }
   function gameSay(text, face) {
-    setPhrases($("gameSay"), myWord(text).replace(/([、。！？…])\s*/g, "$1|")); // 句読点のところでだけ折り返す
+    setPhrases($("gameSay"), myWord(text).replace(/([、。！？…])\s*/g, "$1|").replace(/([のをに])(?=[^|])/g, "$1|").replace(/([でがはと])(?=[\u4e00-\u9fff])/g, "$1|")); // 句読点・の・を・に のあと、漢字の前の で・が・は・と のあとでだけ折り返す
     if (face) $("gameChar").src = faceSrc(profile.char, face);
   }
   function openGame() {
