@@ -4753,6 +4753,13 @@
   function pzNextJob() { const st = pzState(); if (st) return PZ_JOBS.find(j => j.id === st.job); return PZ_JOBS.find(j => !pzDone().includes(j.id)) || null; }
   const pzP = (a, b) => myWord((profile.char === "colon" ? "ピピッ。" : "") + (stageOf(points()) === 0 ? a : b));
   const pzPick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+  // 早くできたときの、うんと褒める言葉（作者 11/6）
+  const PZ_WOW = [
+    () => pzP("え！ なんでこんなに早くできちゃうんですか！ すごい！ さすがです！", "え！ なんでこんなに早くできちゃうの！ すごい！ さすがー！"),
+    () => pzP("わぁ、早い！ どうして分かったんですか？ すごいです！", "わぁ、はやーい！ どうして分かったの？ すごい！"),
+    () => pzP("もう見つけたんですか！？ さすがです〜！", "もう見つけたの！？ さすが〜！"),
+    () => pzP("すごい、すごい！ わたしじゃ、こんなに早くできません！", "すごい、すごい！ わたしじゃ、こんなに早くできないよ！"),
+  ];
   function pzPieceStyle(el, p, job) {
     const r = Math.floor(p / PZ_COLS), c = p % PZ_COLS;
     el.style.backgroundImage = "url(" + pzSrc(job) + ")";
@@ -4836,7 +4843,7 @@
   }
   function pzSelect(p) {
     if (!pzs || pzs.finished) return;
-    pzs.sel = p; pzs.judge = null; $("pzJudge").hidden = true;
+    pzs.sel = p; pzs.judge = null; $("pzJudge").hidden = true; pzs.selAt = Date.now();
     pzPieceStyle($("pzBig"), p, pzs.job);
     pzMsg("このピースを置く場所を、|上の絵の中で|押してください。|（「＋ 大きく」で|絵を大きくできます）");
     sfx("flip");
@@ -4853,7 +4860,12 @@
     sfx("match"); pzs.placed++; pzs.since++;
     pzMsgDefault(); pzRender(); pzPop(s, "pop");
     if (!pzLeft()) return pzFinish();
-    if (Math.random() < 0.3) pzSay(pzPick([pzP("ぴったりです！", "ぴったり！"), pzP("すごいです、よく分かりましたね！", "すごい、よく分かったね！"), pzP("わぁ、そこだったんですね！", "わぁ、そこだったんだ！")]), "happy");
+    // 早く置けたら、うんと褒める（選んでから8秒以内、または3つを40秒以内。褒めすぎないよう20秒あける）
+    const now = Date.now(); pzs.recent = (pzs.recent || []).filter(t => now - t < 40000).concat([now]);
+    if ((now - (pzs.selAt || 0) < 8000 || pzs.recent.length >= 3) && now - (pzs.praisedAt || 0) > 20000) {
+      pzs.praisedAt = now; pzs.recent = [];
+      pzSay(pzPick(PZ_WOW)(), "banzai");
+    } else if (Math.random() < 0.3) pzSay(pzPick([pzP("ぴったりです！", "ぴったり！"), pzP("すごいです、よく分かりましたね！", "すごい、よく分かったね！"), pzP("わぁ、そこだったんですね！", "わぁ、そこだったんだ！")]), "happy");
     if (pzs.since >= 3) { pzs.since = 0; setTimeout(pzCharTurn, 1600); }
   }
   function pzOpenJudge(s) {
@@ -5146,7 +5158,9 @@
       st.ok[r] = true; sts.solvedNow++;
       const y = YOJI[st.ids[r]];
       sfx("match");
-      stSay(pzP("「" + y[0] + "」！ " + y[1] + "。" + y[2] + "、なんですね。教えてくれて、ありがとうございます！", "「" + y[0] + "」！ " + y[1] + "。" + y[2] + "、なんだね。教えてくれて、ありがとう！"), "banzai");
+      const quick = Date.now() - (sts.lastAt || 0) < 25000; sts.lastAt = Date.now();
+      const wow = quick ? pzPick([pzP("え！ もうできたんですか！ さすがです！ ", "え！ もうできたの！ さすがー！ "), pzP("わぁ、早い！ ", "わぁ、はやーい！ ")]) : "";
+      stSay(wow + pzP("「" + y[0] + "」！ " + y[1] + "。" + y[2] + "、なんですね。教えてくれて、ありがとうございます！", "「" + y[0] + "」！ " + y[1] + "。" + y[2] + "、なんだね。教えてくれて、ありがとう！"), "banzai");
     });
     saveProfile();
     if (st.ok.every(Boolean)) { sts.sel = null; stRender(); stFinish(); } // 4つめの意味も見えるように、先に描く
@@ -5170,7 +5184,7 @@
     $("memo").hidden = true; $("helpMenu").hidden = true;
     let st = stState(); const isNew = !st;
     if (!st) { st = profile.study = stNew(); saveProfile(); }
-    sts = { sel: null, solvedNow: 0 };
+    sts = { sel: null, solvedNow: 0, lastAt: Date.now() };
     $("stChar").src = faceSrc(profile.char, isNew ? "sad" : "happy");
     $("stEnd").hidden = true;
     $("st").hidden = false; $("st").scrollTop = 0;
