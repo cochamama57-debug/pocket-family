@@ -1261,9 +1261,8 @@
   const BRIDGE_MS = 80;
   function bridgeOf(a, b) {
     const pair = (x, y) => (a === x && b === y) || (a === y && b === x);
-    if (pair("danceL", "danceR")) return "danceC";
+    // 踊りの真ん中の絵（danceC）は、顔と体の形がほかの絵とちがって「変」に見えたので、はさまない（作者 11/5）
     if ((a === "wave" && BODY_FACES.has(b)) || (b === "wave" && BODY_FACES.has(a))) return "waveMid";
-    if (((a === "danceL" || a === "danceR") && BODY_FACES.has(b)) || ((b === "danceL" || b === "danceR") && BODY_FACES.has(a))) return "danceC";
     return null;
   }
   let stageBridge = null, stageBridgeAfter = false; // 中割りのあとの2回目は、弾ませない（1回目の弾みが続いているため）
@@ -2066,7 +2065,7 @@
     };
     stageEl.dataset.mood = mood;
     delete stageEl.dataset.clear;
-    playerChar.style.setProperty("--fade", { dance: ".08s", morning: ".12s", comfort: ".7s", sleep: ".7s", calm: ".5s" }[mood] || ".3s");
+    playerChar.style.setProperty("--fade", { dance: ".06s", morning: ".06s", comfort: ".7s", sleep: ".7s", calm: ".5s" }[mood] || ".3s");
     fxEl.textContent = "";
   }
   function rawSongTime() {
