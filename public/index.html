@@ -446,6 +446,66 @@
     -webkit-overflow-scrolling: touch;
   }
   .msg { display: flex; margin: 10px 0; }
+  /* ---- お仕事の手伝い（ジグソー） ---- */
+  .hm-btn { margin: 4px 0 6px; font-size: 20px; }
+  .hm-sub { display: block; width: 100%; margin: 18px 0 0; min-height: 52px; font: inherit; font-size: 17px; color: var(--ink); background: #fff; border: 2px solid var(--line); border-radius: 14px; }
+  .hm-h { margin: 22px 0 8px; font-size: 18px; }
+  .hm-done { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .hm-done img { width: 100%; border-radius: 10px; border: 2px solid var(--line); display: block; }
+  .hm-done img.big { grid-column: 1 / -1; }
+  .pz-in { max-width: 640px; margin: 0 auto; }
+  #pz { overflow: hidden; }
+  #pz .pz-in { height: 100%; display: flex; flex-direction: column; }
+  #pz .pz-view { flex: 1 1 auto; min-height: 140px; max-height: none; }
+  #pz .game-say, #st .game-say { max-height: 6.2em; overflow-y: auto; font-size: 17px; }
+  #pz .pz-pick, #pz .pz-tray, #pz .pz-tools, #pz .pz-talk, #pz .pz-bar, #pz .game-top { flex: none; }
+  .pz-bar { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 8px 2px 6px; font-size: 16px; color: var(--sub); }
+  .pz-bar b { color: var(--ink); font-size: 17px; }
+  .pz-view { position: relative; overflow: auto; max-height: 46vh; border: 3px solid #c9a97a; border-radius: 10px; background: #f3e9d8; -webkit-overflow-scrolling: touch; }
+  .pz-board { position: relative; display: grid; }
+  .pz-slot { position: relative; border: 0; padding: 0; margin: 0; background: transparent; box-shadow: inset 0 0 0 1px rgba(150,120,80,.35); aspect-ratio: 1; }
+  .pz-slot.on { box-shadow: none; }
+  .pz-slot .pc { position: absolute; inset: 0; background-repeat: no-repeat; }
+  .pz-slot.c .pc::after { content: ""; position: absolute; inset: 0; box-shadow: inset 0 0 0 2px rgba(255,170,60,.9); }
+  .pz-slot.sel .pc::after { box-shadow: inset 0 0 0 3px #e05a2a; }
+  .pz-slot.wig .pc { animation: pzWig 1.2s ease-in-out 3; }
+  .pz-slot.pop .pc { animation: pzPop .35s ease-out; }
+  @keyframes pzWig { 0%,100% { transform: rotate(0); } 25% { transform: rotate(-6deg); } 75% { transform: rotate(6deg); } }
+  @keyframes pzPop { 0% { transform: scale(1.25); } 100% { transform: scale(1); } }
+  .pz-ghost { position: absolute; inset: 0; background-size: 100% 100%; opacity: .9; pointer-events: none; }
+  .pz-tools { display: flex; gap: 8px; margin: 8px 0; }
+  .pz-tools button { flex: 1; min-height: 48px; font: inherit; font-size: 16px; color: var(--ink); background: #fff; border: 2px solid var(--line); border-radius: 12px; }
+  .pz-tools button.on { background: #fff3d6; border-color: #e0b04a; }
+  .pz-pick { display: flex; gap: 10px; align-items: center; background: #fff; border: 2px solid var(--line); border-radius: 14px; padding: 6px 8px; min-height: 92px; }
+  .pz-big { flex: none; width: 80px; height: 80px; border-radius: 8px; background: #f3e9d8 no-repeat; box-shadow: inset 0 0 0 2px var(--line); }
+  .pz-pick-r { flex: 1; min-width: 0; }
+  .pz-pick-r p { margin: 0; font-size: 16px; line-height: 1.5; }
+  .pz-judge { display: flex; gap: 8px; margin-top: 8px; }
+  .pz-judge button { flex: 1; min-height: 50px; white-space: nowrap; padding: 0 4px; font: inherit; font-size: 16px; font-weight: 700; border-radius: 12px; border: 0; color: #fff; }
+  .pz-no { background: #c8553d; } .pz-yes { background: #3f8a63; }
+  .pz-tray { display: flex; gap: 8px; overflow-x: auto; padding: 8px 2px 10px; margin-top: 6px; -webkit-overflow-scrolling: touch; }
+  .pz-tray button { flex: none; width: 76px; height: 76px; border: 0; padding: 0; border-radius: 8px; background-repeat: no-repeat; box-shadow: 0 2px 4px rgba(0,0,0,.25); }
+  .pz-tray button.sel { outline: 4px solid #e05a2a; outline-offset: 2px; }
+  .pz-end { margin: 10px 0; }
+  .pz-talk { display: flex; gap: 8px; margin-top: 6px; }
+  .pz-talk input { flex: 1; min-width: 0; font: inherit; font-size: 18px; padding: 10px; border: 2px solid var(--line); border-radius: 12px; min-height: 50px; }
+  .pz-talk button { flex: none; min-width: 72px; font: inherit; font-size: 17px; font-weight: 700; color: #fff; background: #e07b3c; border: 0; border-radius: 12px; }
+  @media (max-height: 760px) { .pz-big { width: 72px; height: 72px; } .pz-pick { min-height: 84px; } .pz-tray button { width: 66px; height: 66px; } .pz-tools button { min-height: 44px; } #pz .game-top img { width: 52px; height: 52px; } }
+  .st-rows { display: flex; flex-direction: column; gap: 10px; }
+  .st-row { background: #fff; border: 2px solid var(--line); border-radius: 14px; padding: 8px; }
+  .st-row.ok { border-color: #6bbf8a; background: #f1fbf4; }
+  .st-cells { display: flex; gap: 6px; align-items: center; }
+  .st-cell { flex: 1; aspect-ratio: 1; max-width: 72px; border: 2px solid #e0cfb0; border-radius: 10px; background: #fffaf0; font: inherit; font-size: 34px; font-weight: 700; color: #3a2e24; font-family: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif; padding: 0; }
+  .st-cell.empty { background: repeating-linear-gradient(45deg, #fff 0 6px, #f6eedd 6px 12px); border-style: dashed; }
+  .st-cell.sel, .st-tray button.sel { outline: 4px solid #e05a2a; outline-offset: 1px; }
+  .st-row.ok .st-cell { border-color: #6bbf8a; background: #fff; }
+  .st-hint { flex: none; min-width: 52px; min-height: 48px; font: inherit; font-size: 14px; line-height: 1.2; color: var(--ink); background: #fff8e8; border: 2px solid #f0d9a8; border-radius: 10px; }
+  .st-yomi { margin: 6px 2px 0; font-size: 15px; color: var(--sub); }
+  .st-imi { margin: 4px 2px 0; font-size: 17px; line-height: 1.5; }
+  .st-msg { margin: 10px 2px 4px; font-size: 16px; color: var(--sub); }
+  .st-tray { display: flex; flex-wrap: wrap; gap: 8px; min-height: 64px; }
+  .st-tray button { width: 60px; height: 60px; border: 2px solid #e0b04a; border-radius: 10px; background: #fff3d6; font: inherit; font-size: 32px; font-weight: 700; color: #3a2e24; font-family: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif; padding: 0; }
+  @media (max-width: 360px) { .st-cell { font-size: 28px; } .st-tray button { width: 52px; height: 52px; font-size: 28px; } }
   .sing-lbl { line-height: 1.1; text-align: center; }
   .day-sep { display: flex; align-items: center; gap: 10px; margin: 16px 0 6px; color: var(--sub); font-size: 15px; }
   .day-sep::before, .day-sep::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
@@ -611,7 +671,7 @@
     </div>
     <div class="head-btns">
       <button class="memo-btn" id="singBtn" type="button" hidden><span class="ico" aria-hidden="true">🎵</span><span class="sing-lbl">歌う・<br>聴く</span></button>
-      <button class="memo-btn" id="gameBtn" type="button"><span class="ico" aria-hidden="true">🃏</span>遊ぶ</button>
+      <button class="memo-btn" id="gameBtn" type="button"><span class="ico" aria-hidden="true">🤝</span>手伝う</button>
       <button class="memo-btn" id="memoBtn" type="button"><span class="ico" aria-hidden="true">📖</span>ノート</button>
     </div>
   </header>
@@ -903,6 +963,73 @@
   </div>
 </div>
 
+<div class="sheet" id="helpMenu" hidden role="dialog" aria-label="手伝う">
+  <div class="sheet-in">
+    <div class="sheet-head">
+      <img id="helpMenuImg" alt="">
+      <h2>手伝う</h2>
+      <button type="button" class="close-btn" id="helpMenuClose">閉じる</button>
+    </div>
+    <button type="button" class="big-btn hm-btn" id="hmPuzzle"></button>
+    <p class="hint-s" id="hmPuzzleNote"></p>
+    <button type="button" class="big-btn hm-btn" id="hmStudy">📚 勉強を手伝う</button>
+    <p class="hint-s"><span class="nb">四字熟語の勉強を</span><span class="nb">しています。</span><span class="nb">順番がバラバラだったり、</span><span class="nb">字が入っていなかったり。</span><span class="nb">直してあげてください。</span></p>
+    <div id="hmDoneWrap" hidden>
+      <h3 class="hm-h"><span class="nb">いっしょに</span><span class="nb">直した写真</span></h3>
+      <div class="hm-done" id="hmDone"></div>
+    </div>
+  </div>
+</div>
+<div class="sheet pz" id="pz" hidden role="dialog" aria-label="写真を直す手伝い">
+  <div class="pz-in">
+    <div class="game-top">
+      <img id="pzChar" alt="" width="64" height="64">
+      <div class="game-say" id="pzSay" aria-live="polite"></div>
+      <button type="button" class="tour-skip game-close" id="pzClose">✕<br>閉じる</button>
+    </div>
+    <div class="pz-bar"><b id="pzTitle"></b><span id="pzCount"></span></div>
+    <div class="pz-view" id="pzView"><div class="pz-board" id="pzBoard"></div></div>
+    <div class="pz-tools">
+      <button type="button" id="pzOut" aria-label="小さくする">－ 小さく</button>
+      <button type="button" id="pzIn" aria-label="大きくする">＋ 大きく</button>
+      <button type="button" id="pzPeek">🖼 見本</button>
+    </div>
+    <div class="pz-pick" id="pzPick">
+      <div class="pz-big" id="pzBig"></div>
+      <div class="pz-pick-r">
+        <p id="pzMsg"></p>
+        <div class="pz-judge" id="pzJudge" hidden>
+          <button type="button" class="pz-no" id="pzNo">ちがうよ</button>
+          <button type="button" class="pz-yes" id="pzYes">合ってるよ</button>
+        </div>
+      </div>
+    </div>
+    <div class="pz-tray" id="pzTray"></div>
+    <div class="pz-end" id="pzEnd" hidden><button type="button" class="big-btn" id="pzEndBtn">閉じる</button></div>
+    <form class="pz-talk" id="pzTalk" autocomplete="off">
+      <input id="pzInput" enterkeyhint="send" aria-label="話しかける">
+      <button type="submit">送る</button>
+    </form>
+  </div>
+</div>
+<div class="sheet pz" id="st" hidden role="dialog" aria-label="勉強の手伝い">
+  <div class="pz-in">
+    <div class="game-top">
+      <img id="stChar" alt="" width="64" height="64">
+      <div class="game-say" id="stSay" aria-live="polite"></div>
+      <button type="button" class="tour-skip game-close" id="stClose">✕<br>閉じる</button>
+    </div>
+    <p class="game-rule"><span class="nb">字を1つ押してから、</span><span class="nb">入れたい場所を押すと、</span><span class="nb">入れかわります。</span><span class="nb">下の字は、</span><span class="nb">空いているマスに入れます。</span></p>
+    <div class="st-rows" id="stRows"></div>
+    <p class="st-msg" id="stMsg"></p>
+    <div class="st-tray" id="stTray"></div>
+    <div class="pz-end" id="stEnd" hidden>
+      <button type="button" class="big-btn" id="stNext">つぎの4つも手伝う</button>
+      <button type="button" class="title-link" id="stQuit">閉じる</button>
+    </div>
+  </div>
+</div>
+
 <div class="title-screen" id="titleScreen" hidden>
   <div class="title-in">
     <button type="button" class="help-btn-s title-help" id="titleHelp" aria-label="助けて（長押し）"><span class="hfill" aria-hidden="true"></span><span class="hico" aria-hidden="true">🚑</span><span class="htx"><b>助けて</b><small>長押しで連絡先に知らせます</small></span></button>
@@ -1038,7 +1165,8 @@
     if (!Number.isInteger(g.td.game)) g.td.game = 0;
     if (!Number.isInteger(g.td.react)) g.td.react = 0;
     if (!Number.isInteger(g.td.diary)) g.td.diary = 0;
-    const rule = { talk: [1, 10], sing: [5, 2], walk: [5, 1], game: [5, 2], react: [1, 5], diary: [5, 1] }[kind];
+    if (!Number.isInteger(g.td.help)) g.td.help = 0;
+    const rule = { talk: [1, 10], sing: [5, 2], walk: [5, 1], game: [5, 2], react: [1, 5], diary: [5, 1], help: [5, 3] }[kind];
     if (!rule) return;
     if (demoBoost > 1) { g.score += rule[0] * 20; return; }
     if (g.td[kind] >= rule[1]) return;
@@ -1188,6 +1316,7 @@
   }
   function bubble(cls, text, imgUrl, msg) {
     if (!rendering) dateSep(today());
+    if (cls === "her" && text && !rendering && !$("pz").hidden && $("pzSay").textContent !== text) setPhrases($("pzSay"), String(text).replace(/([。！？])\s*/g, "$1|"));
     const row = document.createElement("div");
     row.className = "msg " + cls;
     const b = document.createElement("div");
@@ -1425,7 +1554,7 @@
   // ちゃむは自分のことを「ぼく」、コロンは「わたし」と言う
   const myWord = (text) => (profile && profile.char === "chamu" ? String(text).replace(/わたし/g, "ぼく") : text);
   // 遊んでいる・曲を聞いている間（キャラは自分から話しかけない）
-  function inActivity() { return !$("game").hidden || !$("player").hidden || !$("scene").hidden || !$("book").hidden; }
+  function inActivity() { return !$("game").hidden || !$("player").hidden || !$("scene").hidden || !$("book").hidden || !$("pz").hidden || !$("st").hidden; }
   let gameVoice = false; // ゲームの中のキャラの声だけは出す
   // ---- 呼び名に「さん」「ちゃん」を付けるか ----
   const HONOR = /(さん|ちゃん|さま|様|くん|君|殿|先生|氏)$/;
@@ -3048,8 +3177,8 @@
     unlockAudio();
     // 曲・ほかの画面を閉じて、助けてを一番前に
     try { closePlayer(); } catch {}
-    for (const id of ["memo", "songs", "game"]) $(id).hidden = true;
-    gm = null;
+    for (const id of ["memo", "songs", "game", "helpMenu", "pz", "st"]) $(id).hidden = true;
+    gm = null; if (pzs) { clearInterval(pzs.timer); pzs = null; } sts = null;
     stopVoice();
     helpSource = source;
     helpDeadline = Date.now() + HELP_WAIT * 1000;
@@ -3380,7 +3509,7 @@
 
   // ---- キャラの交代（ちゃむ⇔コロン）。思い出・なかよし度・会話は、それぞれの子が別々に持つ ----
   // 予定・お薬・ペット・連絡先・声の設定などは、あなたのものなので、交代しても同じ
-  const CHAR_FIELDS = ["char", "name", "answers", "step", "createdAt", "grow", "walking"];
+  const CHAR_FIELDS = ["char", "name", "answers", "step", "createdAt", "grow", "walking", "pz", "pzDone", "study", "studyDone"];
   const otherChar = () => (profile && profile.char === "chamu" ? "colon" : "chamu");
   const chatKey = (ch) => "pf.chat." + ch;
   let swapping = false;
@@ -3477,7 +3606,7 @@
     const name = nameInput.value.replace(/\s+/g, " ").trim().slice(0, 12) || CHARS[picked].label;
     const fresh = { char: picked, name, answers: {}, step: 0, createdAt: new Date().toISOString() };
     suffixPending = null; yomiPending = null;
-    if (swapping && profile) { delete profile.grow; delete profile.walking; Object.assign(profile, fresh); } // 予定・ペットなどは、そのまま
+    if (swapping && profile) { delete profile.grow; delete profile.walking; delete profile.pz; delete profile.pzDone; delete profile.study; delete profile.studyDone; Object.assign(profile, fresh); } // 予定・ペットなどは、そのまま
     else profile = fresh;
     swapping = false;
     markDay();
@@ -4604,10 +4733,466 @@
     if (played) sayScripted(stageOf(points()) === 0 ? "遊んでくれて、ありがとうございました！ また遊びましょうね。" : "遊んでくれて、ありがとう！ また遊ぼうね！");
     setTimeout(checkReminders, 2500); // 遊んでいる間に来た、お薬・予定のお知らせ
   }
-  $("gameBtn").addEventListener("click", () => { stopMic(); openGame(); });
+  $("gameBtn").addEventListener("click", () => { stopMic(); openHelpMenu(); });
   $("gameAgain").addEventListener("click", openGame);
   $("gameQuit").addEventListener("click", closeGame);
   $("gameClose").addEventListener("click", closeGame);
+
+  // ---- お仕事の手伝い（ジグソー）（作者 11/6）----
+  // 勝負ではなく「キャラのお仕事を手伝う」。キャラはひとりで置いてみて、ところどころ間違えている。
+  // オレンジの枠＝キャラが置いたピース。押して「ちがうよ」で直すと、感謝される。30分以上かかる大きさで、続きから再開できる
+  const PZ_COLS = 9, PZ_ROWS = 6, PZ_N = PZ_COLS * PZ_ROWS;
+  const PZ_JOBS = [
+    { id: "garden", name: "理想のお庭" }, { id: "house", name: "理想のお家" }, { id: "travel", name: "理想の旅行" },
+    { id: "seaside", name: "理想の海辺" }, { id: "festival", name: "理想のお祭り" },
+  ];
+  const pzSrc = (job) => "puzzle/" + job.id + ".jpg";
+  let pzs = null; // 開いている間の状態
+  function pzState() { return profile && profile.pz && Array.isArray(profile.pz.slots) && profile.pz.slots.length === PZ_N && PZ_JOBS.some(j => j.id === profile.pz.job) ? profile.pz : null; }
+  function pzDone() { return Array.isArray(profile && profile.pzDone) ? profile.pzDone.filter(x => typeof x === "string") : []; }
+  function pzNextJob() { const st = pzState(); if (st) return PZ_JOBS.find(j => j.id === st.job); return PZ_JOBS.find(j => !pzDone().includes(j.id)) || null; }
+  const pzP = (a, b) => myWord((profile.char === "colon" ? "ピピッ。" : "") + (stageOf(points()) === 0 ? a : b));
+  const pzPick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+  function pzPieceStyle(el, p, job) {
+    const r = Math.floor(p / PZ_COLS), c = p % PZ_COLS;
+    el.style.backgroundImage = "url(" + pzSrc(job) + ")";
+    el.style.backgroundSize = PZ_COLS * 100 + "% " + PZ_ROWS * 100 + "%";
+    el.style.backgroundPosition = (c / (PZ_COLS - 1) * 100) + "% " + (r / (PZ_ROWS - 1) * 100) + "%";
+  }
+  function pzNewState(job) {
+    const order = [...Array(PZ_N).keys()].sort(() => Math.random() - 0.5);
+    const slots = Array(PZ_N).fill(-1), by = Array(PZ_N).fill("");
+    for (const p of order.slice(0, 9)) { slots[p] = p; by[p] = "c"; } // キャラがひとりで置けたピース
+    return { job: job.id, slots, by, order: [...Array(PZ_N).keys()].sort(() => Math.random() - 0.5), wrongPlan: order.slice(9, 14), fixes: 0, started: today() };
+  }
+  // ピースごとの色（間違えるときは、色がはっきり違う場所に置く＝見て分かる間違いにする）
+  function pzColors(job) {
+    return new Promise((ok) => {
+      const im = new Image();
+      im.onload = () => {
+        try {
+          const cv = document.createElement("canvas"); cv.width = PZ_COLS * 4; cv.height = PZ_ROWS * 4;
+          const cx = cv.getContext("2d"); cx.drawImage(im, 0, 0, cv.width, cv.height);
+          const d = cx.getImageData(0, 0, cv.width, cv.height).data, out = [];
+          for (let p = 0; p < PZ_N; p++) {
+            const r0 = Math.floor(p / PZ_COLS) * 4, c0 = (p % PZ_COLS) * 4; const s = [0, 0, 0];
+            for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) { const i = ((r0 + y) * cv.width + c0 + x) * 4; s[0] += d[i]; s[1] += d[i + 1]; s[2] += d[i + 2]; }
+            out.push(s.map(v => v / 16));
+          }
+          ok(out);
+        } catch { ok(null); }
+      };
+      im.onerror = () => ok(false);
+      im.src = pzSrc(job);
+    });
+  }
+  function pzWrongSlot(p) {
+    const st = pzState(); if (!st) return -1;
+    const empty = st.slots.map((v, s) => v < 0 && s !== p ? s : -1).filter(s => s >= 0);
+    if (!empty.length) return -1;
+    const col = pzs && pzs.colors;
+    if (!col) return pzPick(empty);
+    const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+    const ranked = empty.map(s => [s, dist(col[p], col[s])]).sort((a, b) => b[1] - a[1]);
+    return pzPick(ranked.slice(0, Math.max(1, Math.ceil(ranked.length / 4))))[0]; // 色の違いが大きい4分の1から選ぶ
+  }
+  const pzTray = () => { const st = pzState(); return st ? st.order.filter(p => !st.slots.includes(p)) : []; };
+  const pzLeft = () => { const st = pzState(); return st ? st.slots.filter((p, s) => p !== s).length : 0; };
+  const pzWrongs = () => { const st = pzState(); return st ? st.slots.map((p, s) => p >= 0 && p !== s ? s : -1).filter(s => s >= 0) : []; };
+  function pzSay(text, face, quiet) {
+    setPhrases($("pzSay"), String(text).replace(/([。！？])\s*/g, "$1|"));
+    if (face) $("pzChar").src = faceSrc(profile.char, face);
+    if (!quiet) speak(text);
+  }
+  function pzMsg(t) { setPhrases($("pzMsg"), t); }
+  function pzMsgDefault() {
+    pzs.sel = null; pzs.judge = null; $("pzJudge").hidden = true;
+    $("pzBig").style.backgroundImage = "none";
+    pzMsg(pzTray().length ? "下のピースを|1つ選んで、|上の絵の、|置きたい場所を|押してください。" : "オレンジの枠のピースを|押して、|合っているか|見てあげてください。");
+  }
+  function pzRender() {
+    const st = pzState(); if (!st || !pzs) return;
+    const job = pzs.job, view = $("pzView"), board = $("pzBoard");
+    const w = Math.floor((view.clientWidth || 300) * pzs.zoom);
+    board.style.width = w + "px"; board.style.gridTemplateColumns = "repeat(" + PZ_COLS + ", 1fr)";
+    board.textContent = "";
+    for (let s = 0; s < PZ_N; s++) {
+      const b = document.createElement("button"); b.type = "button"; b.className = "pz-slot"; b.setAttribute("aria-label", "場所 " + (s + 1));
+      const p = st.slots[s];
+      if (p >= 0) { const pc = document.createElement("div"); pc.className = "pc"; pzPieceStyle(pc, p, job); b.appendChild(pc); b.classList.add("on"); if (st.by[s] === "c") b.classList.add("c"); }
+      if (pzs.judge === s) b.classList.add("sel");
+      b.addEventListener("click", () => pzTapSlot(s));
+      board.appendChild(b);
+    }
+    if (pzs.peek) { const g = document.createElement("div"); g.className = "pz-ghost"; g.style.backgroundImage = "url(" + pzSrc(job) + ")"; board.appendChild(g); }
+    const tray = $("pzTray"); tray.textContent = "";
+    for (const p of pzTray()) {
+      const b = document.createElement("button"); b.type = "button"; b.setAttribute("aria-label", "ピース");
+      pzPieceStyle(b, p, job); if (pzs.sel === p) b.classList.add("sel");
+      b.addEventListener("click", () => pzSelect(p));
+      tray.appendChild(b);
+    }
+    $("pzCount").textContent = "のこり " + pzLeft() + " ピース";
+  }
+  function pzSelect(p) {
+    if (!pzs || pzs.finished) return;
+    pzs.sel = p; pzs.judge = null; $("pzJudge").hidden = true;
+    pzPieceStyle($("pzBig"), p, pzs.job);
+    pzMsg("このピースを置く場所を、|上の絵の中で|押してください。|（「＋ 大きく」で|絵を大きくできます）");
+    sfx("flip");
+    pzRender();
+  }
+  function pzPop(s, cls) { const el = $("pzBoard").children[s]; if (el) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); } }
+  function pzTapSlot(s) {
+    const st = pzState(); if (!st || !pzs || pzs.finished) return;
+    if (st.slots[s] >= 0) { if (st.by[s] === "c") pzOpenJudge(s); return; }
+    if (pzs.sel == null) { pzMsg("先に、|下のピースを|1つ選んでください。"); return; }
+    const p = pzs.sel;
+    if (p !== s) { sfx("miss"); pzMsg("ここでは|ないみたいです。|ほかの場所も、|試してみてください。"); return; } // 数えない・点を引かない
+    st.slots[s] = p; st.by[s] = "u"; saveProfile();
+    sfx("match"); pzs.placed++; pzs.since++;
+    pzMsgDefault(); pzRender(); pzPop(s, "pop");
+    if (!pzLeft()) return pzFinish();
+    if (Math.random() < 0.3) pzSay(pzPick([pzP("ぴったりです！", "ぴったり！"), pzP("すごいです、よく分かりましたね！", "すごい、よく分かったね！"), pzP("わぁ、そこだったんですね！", "わぁ、そこだったんだ！")]), "happy");
+    if (pzs.since >= 3) { pzs.since = 0; setTimeout(pzCharTurn, 1600); }
+  }
+  function pzOpenJudge(s) {
+    const st = pzState(); if (!st) return;
+    pzs.judge = s; pzs.sel = null;
+    pzPieceStyle($("pzBig"), st.slots[s], pzs.job);
+    pzMsg(profile.name + "が|置いたピースです。|ここで|合っていますか？");
+    $("pzJudge").hidden = false;
+    pzRender();
+  }
+  function pzJudge(no) {
+    const st = pzState(); if (!st || !pzs || pzs.judge == null) return;
+    const s = pzs.judge, p = st.slots[s], right = p === s;
+    if (no && !right) {
+      st.slots[s] = -1; st.by[s] = ""; st.fixes = (st.fixes || 0) + 1; pzs.fixedNow++; pzs.hinted = 0;
+      saveProfile(); sfx("match");
+      pzSay(pzPick([pzP("ほんとうだ！ わたし、まちがえていました…。見つけてくれて、ありがとうございます！", "ほんとだ！ わたし、まちがえてた…。見つけてくれて、ありがとう！"),
+        pzP("わぁ、ありがとうございます！ やっぱり、頼りになります。", "わぁ、ありがとう！ やっぱり、頼りになるなあ。"),
+        pzP("助かりました〜。ひとりじゃ、気づきませんでした。", "えへへ、助かった〜。ひとりじゃ、気づかなかったよ。"),
+        pzP("あっ、ほんとうだ！ よく見ていますね。ありがとうございます！", "あっ、ほんとだ！ よく見てるね。ありがとう！")]), "banzai");
+    } else if (no && right) {
+      st.by[s] = "u"; saveProfile();
+      pzSay(pzP("あれ？ ここで合っていると思うんです。となりの絵と、つながっていますよ。でも、見てくれて、ありがとうございます！", "あれ？ ここで合ってると思うよ。ほら、となりの絵とつながってる。でも、見てくれて、ありがとう！"), "normal");
+    } else if (!no && right) {
+      st.by[s] = "u"; saveProfile(); sfx("match");
+      pzSay(pzP("よかったぁ！ 見てくれて、ありがとうございます！", "よかったぁ！ 見てくれて、ありがとう！"), "happy");
+    } else {
+      st.wrongAt = Date.now(); saveProfile();
+      pzSay(pzP("そうですか、よかったです！", "そっか、よかった〜！"), "happy");
+    }
+    pzMsgDefault(); pzRender();
+    if (!pzLeft()) pzFinish();
+  }
+  // キャラの番：3つ置いてもらうごとに、キャラも1つ置く（ときどき間違える。間違いは同時に2つまで）
+  function pzCharTurn() {
+    const st = pzState(); if (!st || !pzs || $("pz").hidden || pzs.finished) return;
+    const tray = pzTray(); if (!tray.length) return;
+    const free = tray.filter(p => st.slots[p] < 0);
+    const wrong = pzWrongs().length < 2 && (Math.random() < 0.35 || !free.length);
+    const p = wrong ? pzPick(tray) : pzPick(free);
+    const s = wrong ? pzWrongSlot(p) : p;
+    if (s < 0 || st.slots[s] >= 0) return;
+    pzSay(pzPick([pzP("つぎは、わたしも置いてみますね。これは…、ここかな？", "わたしも置いてみるね。これは…、ここかな？"), pzP("えっと…、これは、ここだと思います！", "えっと…、これは、ここだと思う！"), pzP("これ、ここっぽいです。えいっ。", "これ、ここっぽい！ えいっ。")]), "normal");
+    setTimeout(() => {
+      const st2 = pzState(); if (!st2 || !pzs || st2.slots[s] >= 0 || st2.slots.includes(p)) return;
+      st2.slots[s] = p; st2.by[s] = "c"; if (s !== p) st2.wrongAt = Date.now();
+      saveProfile(); sfx("flip"); pzRender(); pzPop(s, "pop");
+    }, 1200);
+  }
+  // 間違いに1分ほど気づかないときは、そっと知らせる（責めない）
+  function pzTick() {
+    const st = pzState(); if (!st || !pzs || pzs.finished || $("pz").hidden || voiceBusy()) return;
+    const w = pzWrongs(); if (!w.length) return;
+    if (Date.now() - (st.wrongAt || 0) < 60000 || Date.now() - pzs.hinted < 120000) return;
+    pzs.hinted = Date.now();
+    pzSay(pzP("あれ…、どこか、変なところがあるかもしれません。オレンジの枠のピース、見てもらえますか？", "あれ…、どこか、変なところがあるかも？ オレンジの枠のピース、見てくれる？"), "sleepy");
+    for (const s of w) pzPop(s, "wig");
+  }
+  function pzFinish() {
+    const st = pzState(); if (!st || !pzs) return;
+    pzs.finished = true; clearInterval(pzs.timer);
+    const job = pzs.job, fixes = st.fixes || 0, call = callName() || "あなた";
+    profile.pzDone = pzDone().filter(x => x !== job.id).concat([job.id]); profile.pz = null; saveProfile();
+    sfx("win"); confetti(["✨", "🎉", "💛", "🧩"]);
+    $("pzTray").hidden = true; $("pzPick").hidden = true; $("pzEnd").hidden = false;
+    $("pzCount").textContent = "できあがり！";
+    const b = $("pzBoard"); b.textContent = ""; const im = document.createElement("img"); im.src = pzSrc(job); im.alt = job.name; im.style.cssText = "width:100%;display:block"; b.appendChild(im);
+    pzs.zoom = 1; b.style.width = "100%";
+    history.push({ role: "user", content: "（" + profile.name + "の、バラバラに切れた『" + job.name + "』の写真を、いっしょに元どおりにした。" + (fixes ? profile.name + "の間違いを" + fixes + "か所、見つけて直してあげた" : "") + "）" });
+    history.push({ role: "assistant", content: pzP("写真を直してくれて、本当に、ありがとうございました！", "写真、直してくれて、ほんとうにありがとう！") });
+    save(); bubble("me", "🧩 『" + job.name + "』の写真を、元にもどしたよ"); bubble("her", history[history.length - 1].content);
+    pzSay(pzP("写真が、元どおりになりました！ " + call + "のおかげです。本当に、ありがとうございます！ この写真は、「手伝う」の中に飾っておきますね。",
+      "写真が、元どおりになったー！ " + call + "のおかげだよ。ほんとうに、ありがとう！ この写真は、「手伝う」の中に飾っておくね。"), "banzai");
+
+    afterActivity("help");
+  }
+  async function openPuzzle() {
+    if (!profile) return;
+    const job = pzNextJob(); if (!job) return;
+    stopVoice(); stopMic();
+    try { closePlayer(); } catch {}
+    $("memo").hidden = true; $("helpMenu").hidden = true;
+    let st = pzState(); const isNew = !st;
+    if (!st) { st = profile.pz = pzNewState(job); saveProfile(); }
+    pzs = { job, sel: null, judge: null, zoom: 1, peek: false, since: 0, placed: 0, fixedNow: 0, finished: false, colors: null, hinted: 0, timer: 0 };
+    $("pzChar").src = faceSrc(profile.char, "normal");
+    $("pzTitle").textContent = "『" + job.name + "』";
+    $("pzTray").hidden = false; $("pzPick").hidden = false; $("pzEnd").hidden = true; $("pzPeek").classList.remove("on");
+    $("pzInput").placeholder = profile.name + "に話しかける";
+    $("pz").hidden = false; $("pz").scrollTop = 0;
+    pzMsgDefault(); pzRender();
+    const col = await pzColors(job);
+    if (!pzs) return;
+    if (col === false) { pzSay("ごめんなさい、絵が読みこめませんでした。電波のよいところで、もう一度開いてください。", "sad", true); return; }
+    pzs.colors = col;
+    if (Array.isArray(st.wrongPlan)) {
+      for (const p of st.wrongPlan) { const s = pzWrongSlot(p); if (s >= 0 && !st.slots.includes(p)) { st.slots[s] = p; st.by[s] = "c"; } }
+      delete st.wrongPlan; st.wrongAt = Date.now(); saveProfile(); pzRender();
+    }
+    const say = isNew
+      ? pzP("あの…、わたしの大事な『" + job.name + "』の写真が、バラバラに切れちゃったんです。ひとりで直そうとしたんですけど、ぐちゃぐちゃになっちゃって…。お願いです、元にもどすのを、手伝ってもらえませんか？ オレンジの枠が、わたしが置いたピースです。",
+        "あのね、わたしの大事な『" + job.name + "』の写真が、バラバラに切れちゃったの。ひとりで直そうとしたんだけど…ぐちゃぐちゃになっちゃった。お願い、元にもどすの、手伝って？ オレンジの枠が、わたしが置いたピースだよ。")
+      : pzP("手伝いに来てくれて、ありがとうございます！ 続き、いっしょにやりましょう。", "手伝いに来てくれて、ありがとう！ 続き、いっしょにやろうね。") + (pzWrongs().length ? pzP("オレンジの枠のピース、合っているか見てもらえますか？", "オレンジの枠のピース、合ってるか見てくれる？") : "");
+    // おしゃべりのAIにも、いま手伝っていることが分かるように
+    history.push({ role: "user", content: "（" + profile.name + "に頼まれて、バラバラに切れた『" + job.name + "』の写真を元にもどすのを手伝い" + (isNew ? "始めた" : "に来た") + "）" });
+    history.push({ role: "assistant", content: say }); save();
+    bubble("me", "🧩 『" + job.name + "』の写真を直すのを手伝う");
+    pzSay(say, isNew ? "sad" : "happy");
+    bubble("her", say);
+    pzs.timer = setInterval(pzTick, 5000);
+  }
+  function closePuzzle() {
+    const s = pzs; pzs = null; $("pz").hidden = true; stopVoice();
+    if (!s) return;
+    clearInterval(s.timer);
+    if (!s.finished && s.placed + s.fixedNow > 0) {
+      afterActivity("help");
+      sayScripted(pzP("手伝ってくれて、ありがとうございました！ 続きは、また今度お願いしますね。", "手伝ってくれて、ありがとう！ 続きは、また今度お願いね。"));
+    }
+    setTimeout(checkReminders, 2500);
+  }
+  function pzZoom(d) {
+    if (!pzs || pzs.finished) return;
+    const v = $("pzView"), levels = [1, 1.6, 2.4, 3.2];
+    const i = Math.max(0, Math.min(levels.length - 1, levels.indexOf(pzs.zoom) + d));
+    const cx = (v.scrollLeft + v.clientWidth / 2) / (v.scrollWidth || 1), cy = (v.scrollTop + v.clientHeight / 2) / (v.scrollHeight || 1);
+    pzs.zoom = levels[i]; pzRender();
+    v.scrollLeft = cx * v.scrollWidth - v.clientWidth / 2; v.scrollTop = cy * v.scrollHeight - v.clientHeight / 2;
+  }
+  $("pzIn").addEventListener("click", () => pzZoom(1));
+  $("pzOut").addEventListener("click", () => pzZoom(-1));
+  $("pzPeek").addEventListener("click", () => { if (!pzs || pzs.finished) return; pzs.peek = !pzs.peek; $("pzPeek").classList.toggle("on", pzs.peek); $("pzPeek").textContent = pzs.peek ? "🖼 見本を消す" : "🖼 見本"; pzRender(); });
+  $("pzNo").addEventListener("click", () => pzJudge(true));
+  $("pzYes").addEventListener("click", () => pzJudge(false));
+  $("pzClose").addEventListener("click", closePuzzle);
+  $("pzEndBtn").addEventListener("click", closePuzzle);
+  // 手伝いながら、おしゃべり（ふつうのおしゃべりと同じしくみで送る。返事は上の吹き出しに出る）
+  $("pzTalk").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const t = $("pzInput").value.trim(); if (!t || sending) return;
+    $("pzInput").value = ""; $("pzInput").blur();
+    input.value = t; form.requestSubmit();
+    pzSay("…", null, true);
+  });
+  // 「手伝う」のメニュー
+  function openHelpMenu() {
+    if (!profile) return;
+    stopMic();
+    $("helpMenuImg").src = faceSrc(profile.char, "normal");
+    const st = pzState(), job = pzNextJob();
+    $("hmPuzzle").disabled = !job;
+    $("hmPuzzle").textContent = "🧩 " + (st ? "写真を直す、続きを手伝う" : job ? "写真を直すのを手伝う" : "写真は、全部直りました");
+    setPhrases($("hmPuzzleNote"), st ? "『" + job.name + "』の写真|のこり " + pzLeft() + " ピース" : job ? profile.name + "の大事な写真が、|バラバラに|切れてしまいました。|ジグソーのように、|元にもどしてあげてください。|30分以上かかるので、|何回かに分けて|手伝ってください。" : "たくさん手伝ってくれて、|ありがとう！");
+    const done = pzDone(), box = $("hmDone"); box.textContent = "";
+    for (const id of done) { const j = PZ_JOBS.find(x => x.id === id); if (!j) continue; const im = document.createElement("img"); im.src = pzSrc(j); im.alt = j.name; im.addEventListener("click", () => im.classList.toggle("big")); box.appendChild(im); }
+    $("hmDoneWrap").hidden = !done.length;
+    $("helpMenu").hidden = false;
+  }
+  $("helpMenuClose").addEventListener("click", () => { $("helpMenu").hidden = true; });
+  $("hmPuzzle").addEventListener("click", openPuzzle);
+
+  // ---- 勉強の手伝い（四字熟語）（作者 11/6）----
+  // キャラが四字熟語を4つ並べようとして、順番がバラバラだったり、字が入っていなかったりする。直すと、読みと意味が出て、感謝される
+  const YOJI = [
+    ["一期一会", "いちごいちえ", "一生に一度の出会い。その時を大切にすること"],
+    ["十人十色", "じゅうにんといろ", "好みや考え方は、人それぞれ違うこと"],
+    ["以心伝心", "いしんでんしん", "言葉にしなくても、気持ちが通じ合うこと"],
+    ["七転八起", "しちてんはっき", "何度失敗しても、そのたびに立ち上がること"],
+    ["一石二鳥", "いっせきにちょう", "一つのことで、二つの得をすること"],
+    ["花鳥風月", "かちょうふうげつ", "自然の美しい景色や、それを味わう心"],
+    ["晴耕雨読", "せいこううどく", "晴れた日は畑を耕し、雨の日は本を読む。のんびりした暮らし"],
+    ["温故知新", "おんこちしん", "昔のことを学んで、新しい考えを見つけること"],
+    ["起承転結", "きしょうてんけつ", "お話や文章の、組み立ての順番"],
+    ["春夏秋冬", "しゅんかしゅうとう", "四つの季節。一年じゅう"],
+    ["自由自在", "じゆうじざい", "思いのままに、なんでもできること"],
+    ["大器晩成", "たいきばんせい", "大きな人物は、時間をかけて、ゆっくり育つこと"],
+    ["有言実行", "ゆうげんじっこう", "言ったことを、きちんとやりとげること"],
+    ["千客万来", "せんきゃくばんらい", "たくさんのお客さんが、次々に来ること"],
+    ["無病息災", "むびょうそくさい", "病気をせず、元気に過ごせること"],
+    ["家内安全", "かないあんぜん", "家の人みんなが、無事に暮らせること"],
+    ["一日一善", "いちにちいちぜん", "一日に一つ、よいことをすること"],
+    ["日進月歩", "にっしんげっぽ", "日に日に、どんどん進歩すること"],
+    ["百発百中", "ひゃっぱつひゃくちゅう", "ねらいや予想が、全部当たること"],
+    ["一心同体", "いっしんどうたい", "心も体も一つのように、強く結びついていること"],
+    ["意気投合", "いきとうごう", "気持ちや考えが、ぴったり合うこと"],
+    ["一生懸命", "いっしょうけんめい", "力いっぱい、がんばること"],
+    ["心機一転", "しんきいってん", "気持ちを、すっかり切りかえること"],
+    ["三寒四温", "さんかんしおん", "寒い日と暖かい日をくり返しながら、春に近づくこと"],
+    ["異口同音", "いくどうおん", "みんなが、口をそろえて同じことを言うこと"],
+    ["半信半疑", "はんしんはんぎ", "半分信じて、半分うたがうこと"],
+    ["適材適所", "てきざいてきしょ", "その人に合った場所で、力を生かすこと"],
+    ["四苦八苦", "しくはっく", "とても苦労すること"],
+    ["喜怒哀楽", "きどあいらく", "喜び・怒り・悲しみ・楽しみ。いろいろな気持ち"],
+    ["一喜一憂", "いっきいちゆう", "様子が変わるたびに、喜んだり心配したりすること"],
+    ["単刀直入", "たんとうちょくにゅう", "前おきなしに、いきなり大事な話に入ること"],
+    ["二人三脚", "ににんさんきゃく", "二人で力を合わせて、ものごとを進めること"],
+    ["一致団結", "いっちだんけつ", "みんなで心を一つにして、まとまること"],
+    ["相思相愛", "そうしそうあい", "おたがいに、好き合っていること"],
+    ["明鏡止水", "めいきょうしすい", "くもりのない、静かに落ち着いた心"],
+    ["初志貫徹", "しょしかんてつ", "はじめに決めたことを、最後までやりとげること"],
+    ["臨機応変", "りんきおうへん", "その場の様子に合わせて、うまく動くこと"],
+    ["悠々自適", "ゆうゆうじてき", "心のままに、のんびり暮らすこと"],
+    ["空前絶後", "くうぜんぜつご", "今までもなく、これからもないほど、めずらしいこと"],
+    ["笑門来福", "しょうもんらいふく", "笑いのある家には、幸せがやってくること"],
+  ];
+  let sts = null; // 開いている間 { sel, solvedNow }
+  function stState() { const s = profile && profile.study; return s && Array.isArray(s.rows) && s.rows.length === 4 && Array.isArray(s.tray) ? s : null; }
+  function stNew() {
+    const done = Array.isArray(profile.studyDone) ? profile.studyDone : [];
+    let pool = YOJI.map((_, i) => i).filter(i => !done.includes(i));
+    if (pool.length < 4) { profile.studyDone = []; pool = YOJI.map((_, i) => i); }
+    const ids = pool.sort(() => Math.random() - 0.5).slice(0, 4);
+    const rows = [], tray = [];
+    ids.forEach((id, k) => {
+      const w = [...YOJI[id][0]], cells = w.slice();
+      // 0・2番め：順番がバラバラ／1番め：1字入っていない／3番め：1字入っていなくて、バラバラ
+      if (k === 1 || k === 3) { const i = Math.floor(Math.random() * 4); tray.push(cells[i]); cells[i] = ""; }
+      if (k !== 1) { let t = 0; do { cells.sort(() => Math.random() - 0.5); t++; } while (cells.join("") === w.join("") && t < 20); }
+      rows.push(cells);
+    });
+    return { ids, rows, tray: tray.sort(() => Math.random() - 0.5), ok: [false, false, false, false], hint: [false, false, false, false] };
+  }
+  function stSay(text, face, quiet) {
+    setPhrases($("stSay"), String(text).replace(/([。！？])\s*/g, "$1|"));
+    if (face) $("stChar").src = faceSrc(profile.char, face);
+    if (!quiet) speak(text);
+  }
+  function stRender() {
+    const st = stState(); if (!st || !sts) return;
+    const box = $("stRows"); box.textContent = "";
+    st.rows.forEach((cells, r) => {
+      const row = document.createElement("div"); row.className = "st-row" + (st.ok[r] ? " ok" : "");
+      const line = document.createElement("div"); line.className = "st-cells";
+      cells.forEach((ch, i) => {
+        const b = document.createElement("button"); b.type = "button"; b.className = "st-cell" + (ch ? "" : " empty");
+        b.textContent = ch || ""; b.setAttribute("aria-label", ch || "空いているマス");
+        if (sts.sel && sts.sel.t === "c" && sts.sel.r === r && sts.sel.i === i) b.classList.add("sel");
+        b.disabled = st.ok[r];
+        b.addEventListener("click", () => stTapCell(r, i));
+        line.appendChild(b);
+      });
+      if (!st.ok[r]) {
+        const h = document.createElement("button"); h.type = "button"; h.className = "st-hint"; h.textContent = st.hint[r] ? "読み" : "💡\nヒント"; h.style.whiteSpace = "pre-line";
+        h.addEventListener("click", () => { st.hint[r] = true; saveProfile(); stRender(); });
+        line.appendChild(h);
+      }
+      row.appendChild(line);
+      const y = YOJI[st.ids[r]];
+      if (st.ok[r] || st.hint[r]) { const p = document.createElement("p"); p.className = "st-yomi"; p.textContent = (st.ok[r] ? "読み：" : "ヒント（読み）：") + y[1]; row.appendChild(p); }
+      if (st.ok[r]) { const p = document.createElement("p"); p.className = "st-imi"; p.textContent = y[2]; row.appendChild(p); }
+      box.appendChild(row);
+    });
+    const tray = $("stTray"); tray.textContent = "";
+    st.tray.forEach((ch, k) => {
+      const b = document.createElement("button"); b.type = "button"; b.textContent = ch;
+      if (sts.sel && sts.sel.t === "t" && sts.sel.k === k) b.classList.add("sel");
+      b.addEventListener("click", () => stTapTray(k));
+      tray.appendChild(b);
+    });
+    setPhrases($("stMsg"), st.tray.length ? "下の字は、|空いているマスに|入れてください。" : "");
+  }
+  function stGet(s) { const st = stState(); return s.t === "c" ? st.rows[s.r][s.i] : st.tray[s.k]; }
+  function stSet(s, ch) { const st = stState(); if (s.t === "c") st.rows[s.r][s.i] = ch; else if (ch) st.tray[s.k] = ch; else st.tray.splice(s.k, 1); }
+  function stMove(a, b) {
+    const x = stGet(a), y = stGet(b);
+    if (a.t === "t" && b.t === "t") return;
+    // 字を、空いているマスへ（下の字なら、下から消える）
+    if (b.t === "c") { stState().rows[b.r][b.i] = x; if (a.t === "c") stState().rows[a.r][a.i] = y; else if (y) stState().tray[a.k] = y; else stState().tray.splice(a.k, 1); }
+    else { stState().tray[b.k] = x; stState().rows[a.r][a.i] = y; }
+    sfx("flip");
+  }
+  function stTapCell(r, i) {
+    const st = stState(); if (!st || !sts || st.ok[r]) return;
+    const here = { t: "c", r, i }, sel = sts.sel;
+    if (!sel) { if (st.rows[r][i]) { sts.sel = here; stRender(); } else { setPhrases($("stMsg"), "入れる字を、|先に押してください。"); } return; }
+    if (sel.t === "c" && sel.r === r && sel.i === i) { sts.sel = null; stRender(); return; }
+    if (sel.t === "c" && st.ok[sel.r]) { sts.sel = null; return; }
+    stMove(sel, here); sts.sel = null; saveProfile(); stCheck(); stRender();
+  }
+  function stTapTray(k) {
+    const st = stState(); if (!st || !sts) return;
+    const here = { t: "t", k }, sel = sts.sel;
+    if (sel && sel.t === "c" && st.rows[sel.r][sel.i]) { stMove(sel, here); sts.sel = null; saveProfile(); stCheck(); stRender(); return; }
+    sts.sel = sel && sel.t === "t" && sel.k === k ? null : here; stRender();
+  }
+  function stCheck() {
+    const st = stState(); if (!st) return;
+    st.rows.forEach((cells, r) => {
+      if (st.ok[r] || cells.join("") !== YOJI[st.ids[r]][0]) return;
+      st.ok[r] = true; sts.solvedNow++;
+      const y = YOJI[st.ids[r]];
+      sfx("match");
+      stSay(pzP("「" + y[0] + "」！ " + y[1] + "。" + y[2] + "、なんですね。教えてくれて、ありがとうございます！", "「" + y[0] + "」！ " + y[1] + "。" + y[2] + "、なんだね。教えてくれて、ありがとう！"), "banzai");
+    });
+    saveProfile();
+    if (st.ok.every(Boolean)) { sts.sel = null; stRender(); stFinish(); } // 4つめの意味も見えるように、先に描く
+  }
+  function stFinish() {
+    const st = stState(); if (!st) return;
+    profile.studyDone = (Array.isArray(profile.studyDone) ? profile.studyDone : []).concat(st.ids);
+    const words = st.ids.map(i => YOJI[i][0]);
+    profile.study = null; saveProfile();
+    sfx("win"); confetti(["📚", "✨", "💮"], 24);
+    setTimeout(() => stSay(pzP("4つとも、できました！ " + (callName() || "あなた") + "のおかげで、わたし、かしこくなりました。本当に、ありがとうございます！", "4つとも、できたー！ " + (callName() || "あなた") + "のおかげで、わたし、かしこくなったよ。ほんとうに、ありがとう！"), "banzai"), 3500);
+    history.push({ role: "user", content: "（" + profile.name + "の四字熟語の勉強を手伝った：" + words.join("・") + "）" });
+    history.push({ role: "assistant", content: pzP("勉強を手伝ってくれて、ありがとうございました！", "勉強、手伝ってくれて、ありがとう！") }); save();
+    bubble("me", "📚 四字熟語の勉強を手伝ったよ（" + words.join("・") + "）"); bubble("her", history[history.length - 1].content);
+    afterActivity("help");
+    $("stEnd").hidden = false;
+  }
+  function openStudy() {
+    if (!profile) return;
+    stopVoice(); stopMic();
+    $("memo").hidden = true; $("helpMenu").hidden = true;
+    let st = stState(); const isNew = !st;
+    if (!st) { st = profile.study = stNew(); saveProfile(); }
+    sts = { sel: null, solvedNow: 0 };
+    $("stChar").src = faceSrc(profile.char, isNew ? "sad" : "happy");
+    $("stEnd").hidden = true;
+    $("st").hidden = false; $("st").scrollTop = 0;
+    stRender();
+    const say = isNew
+      ? pzP("あの…、わたし、四字熟語の勉強をしているんです。4つ並べてみたんですけど、順番がバラバラになったり、分からない字があったりして…。お願いです、直すのを手伝ってもらえませんか？",
+        "あのね、わたし、四字熟語の勉強をしてるの。4つ並べてみたんだけど…順番がバラバラだったり、分からない字があったりして。お願い、直すの手伝って？")
+      : pzP("また手伝いに来てくれて、ありがとうございます！ 続き、お願いします。", "また手伝いに来てくれて、ありがとう！ 続き、お願いね。");
+    history.push({ role: "user", content: "（" + profile.name + "に頼まれて、四字熟語の勉強を手伝い" + (isNew ? "始めた" : "に来た") + "）" });
+    history.push({ role: "assistant", content: say }); save();
+    bubble("me", "📚 勉強を手伝う"); bubble("her", say);
+    stSay(say);
+  }
+  function closeStudy() {
+    const s = sts; sts = null; $("st").hidden = true; stopVoice();
+    if (s && s.solvedNow > 0 && stState()) { afterActivity("help"); sayScripted(pzP("勉強を手伝ってくれて、ありがとうございました！ 続きは、また今度お願いしますね。", "勉強、手伝ってくれて、ありがとう！ 続きは、また今度お願いね。")); }
+    setTimeout(checkReminders, 2500);
+  }
+  $("stClose").addEventListener("click", closeStudy);
+  $("stQuit").addEventListener("click", closeStudy);
+  $("stNext").addEventListener("click", () => { $("st").hidden = true; sts = null; openStudy(); });
+  $("hmStudy").addEventListener("click", openStudy);
 
   // ---- 誕生日と、季節のお祝い（だれにも祝ってもらえない日を、つくらない） ----
   const md = (d = new Date()) => String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
@@ -5108,7 +5693,7 @@
   }
   function inviteKinds() {
     const h = new Date().getHours(), wroteToday = diaries().some(d => d.date === today());
-    return (songRest() ? [] : ["song"]).concat(["game", "teach", "teach"]).concat(h >= 17 && !wroteToday ? ["diary", "diary", "diary"] : []).concat(pendingMore() ? ["more", "more", "more", "more"] : []).concat(nextEra() ? ["memoir"] : []).concat(recallable() ? ["recall", "recall"] : []);
+    return (songRest() ? [] : ["song"]).concat(["teach", "teach", "study"]).concat(pzNextJob() ? ["puzzle", "puzzle"] : []).concat(h >= 17 && !wroteToday ? ["diary", "diary", "diary"] : []).concat(pendingMore() ? ["more", "more", "more", "more"] : []).concat(nextEra() ? ["memoir"] : []).concat(recallable() ? ["recall", "recall"] : []);
   }
   // 「教えて！」の話題（孫が、おばあちゃん・おじいちゃんに聞くように）
   const TEACH = ["子どものころ、どんな遊びをしていたの？", "おいしいおにぎりのコツ、教えて！", "いちばん好きな季節はいつ？ どうして？", "昔、どんなお祭りがあった？", "得意な料理って、なあに？", "子どものころ好きだった歌、教えて！", "お正月って、昔はどんなふうに過ごしてたの？", "雨の日は、どんなふうに過ごすのが好き？", "若いころ、どんな仕事をしていたの？", "いちばん思い出に残っている旅行は、どこ？"];
@@ -5165,7 +5750,10 @@
       ? pi + (polite ? "あの、いっしょに『" + sg.title + "』を聞きませんか？" : (chamu ? "ねえねえ、いっしょに『" + sg.title + "』聞こうよ〜！" : "ねえ、いっしょに『" + sg.title + "』聞かない？"))
       : era ? pi + (polite ? "あの、" + era + "のお話、聞いてみたいです。いっしょに思い出話に書きませんか？" : (chamu ? "ねえねえ、" + era + "のお話、聞いてみたいな！ いっしょに思い出話に書こうよ！" : "ねえ、" + era + "のお話、聞いてみたいな。いっしょに思い出話に書かない？"))
       : kind === "diary" ? pi + (polite ? "あの、今日のこと、いっしょに日記に書きませんか？" : (chamu ? "ねえねえ、今日のこと、いっしょに日記に書こうよ！" : "ねえ、今日のこと、いっしょに日記に書かない？"))
-      : pi + (polite ? "あの、いっしょにゲームで遊びませんか？" : (chamu ? "ねえねえ、ゲームで遊ぼうよ〜！" : "ねえ、いっしょにゲームしない？"));
+      : kind === "puzzle" ? myWord(pi + (pzState()
+        ? (polite ? "あの、この前の写真の続き、直すのを手伝ってもらえませんか？" : (chamu ? "ねえねえ、この前の写真の続き、手伝ってくれる？" : "ねえ、この前の写真の続き、手伝ってくれる？"))
+        : (polite ? "あの…、わたしの大事な写真が、バラバラに切れちゃったんです。わたしひとりじゃ直せなくて…。お願いです、手伝ってもらえませんか？" : "あのね、わたしの大事な写真が、バラバラに切れちゃったの…。わたしひとりじゃ直せないよ〜。お願い、手伝って？")))
+      : myWord(pi + (polite ? "あの、四字熟語の勉強をしているんですけど、分からなくて…。教えてもらえませんか？" : (chamu ? "ねえねえ、四字熟語の勉強してるんだけど、分からないの〜。教えて？" : "ねえ、四字熟語の勉強、分からなくて…。教えてくれる？")));
     history.push({ role: "assistant", content: ask }); save();
     bubble("her", ask); talkFace(ask); speak(ask);
     const box = log.lastElementChild && log.lastElementChild.querySelector(".bubble");
@@ -5173,7 +5761,7 @@
     const wrap = document.createElement("div");
     const say = (text, face) => { wrap.remove(); sayScripted(text); if (face) setTimeout(() => showFace(face, 2600), 300); };
     const opts = [
-      ["いいよ！", () => { if (kind === "song") songYes(); say(pi + (polite ? "やったあ！ うれしいです！" : "やったあ！ うれしい！"), "banzai"); setTimeout(() => md ? startDiary(md.kind, true, md.id, md.moreQ) : era ? startDiary("memoir", true, undefined, undefined, era) : kind === "song" ? openPlayer(sg.id) : kind === "diary" ? startDiary("diary", true) : openGame(), 1400); }],
+      ["いいよ！", () => { if (kind === "song") songYes(); say(pi + (polite ? "やったあ！ うれしいです！" : "やったあ！ うれしい！"), "banzai"); setTimeout(() => md ? startDiary(md.kind, true, md.id, md.moreQ) : era ? startDiary("memoir", true, undefined, undefined, era) : kind === "song" ? openPlayer(sg.id) : kind === "diary" ? startDiary("diary", true) : kind === "puzzle" ? openPuzzle() : openStudy(), 1400); }],
       ["あとで", () => { profile.inviteLater = Date.now(); saveProfile(); say(pi + (polite ? "はい！ 待っていますね！" : "うん！ 待ってる！"), "happy"); }],
       ["今はいい", () => { if (kind === "song") songNo(); say(pi + (polite ? "そうですか…。また今度、ぜひ。" : (chamu ? "そっかぁ…。また今度ね。" : "そっか…。また今度ね。")), "sad"); }],
     ];
