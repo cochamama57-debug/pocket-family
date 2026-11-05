@@ -209,7 +209,10 @@
   /* 日記帳を本として読む（よこにめくる） */
   .sheet.book { display: flex; flex-direction: column; overflow: hidden; padding-left: 0; padding-right: 0; background: #ece0ca; }
   .book-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; max-width: 600px; margin: 0 auto 8px; padding: 0 16px; box-sizing: border-box; }
-  .book-pg { font-size: 17px; color: var(--sub); }
+  .book-pg { font-size: 17px; color: var(--sub); flex: 1; min-width: 0; }
+  .sheet .book-save { padding: 0 12px; font-size: 16px; }
+  .book-save:disabled { opacity: .5; }
+  @media (max-width: 360px) { .book-pg { font-size: 15px; } .sheet .book-save { font-size: 15px; padding: 0 10px; } }
   .book-pages { flex: 1; min-height: 0; display: flex; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
   .book-pages::-webkit-scrollbar { display: none; }
   .bpage { flex: 0 0 100%; scroll-snap-align: center; scroll-snap-stop: always; box-sizing: border-box; padding: 4px 16px; display: flex; justify-content: center; }
@@ -843,6 +846,7 @@
 <div class="sheet book" id="book" hidden role="dialog" aria-label="日記帳">
   <div class="book-top">
     <span class="book-pg" id="bookPg" aria-live="polite"></span>
+    <button type="button" class="close-btn book-save" id="bookSave">保存（PDF）</button>
     <button type="button" class="close-btn" id="bookClose">閉じる</button>
   </div>
   <div class="book-pages" id="bookPages"></div>
@@ -3999,6 +4003,153 @@
   $("bookClose").addEventListener("click", () => { $("book").hidden = true; });
   window.addEventListener("resize", () => { if (!$("book").hidden) { const i = bookIndex(); requestAnimationFrame(() => { $("bookPages").scrollLeft = i * $("bookPages").clientWidth; bookUI(); }); } });
   $("bookOpen").addEventListener("click", openBook);
+
+  // ---- 日記帳を、本の形のPDFにする（1ページずつ絵にして、PDFにまとめる。外の部品は使わない） ----
+  const PW = 1050, PH = 1485; // A5のたて横（絵の大きさ）
+  const BOOK_FONT = '"Hiragino Mincho ProN", "Yu Mincho", "Noto Serif CJK JP", "Noto Serif JP", serif';
+  const NO_HEAD = "、。，．・：；？！ー…‥」』）〕］｝〉》ぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮヵヶ々";
+  function wrapText(ctx, text, maxW) {
+    const out = [];
+    for (const para of String(text || "").split("\n")) {
+      let line = "";
+      for (const ch of Array.from(para)) {
+        if (line && ctx.measureText(line + ch).width > maxW && !NO_HEAD.includes(ch)) { out.push(line); line = ch; }
+        else line += ch;
+      }
+      out.push(line);
+    }
+    return out;
+  }
+  const loadImg = (src) => new Promise((ok) => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => ok(null); im.src = src; });
+  function svgImage(dr) {
+    try {
+      const svg = drawingSVG(dr); svg.setAttribute("width", "800"); svg.setAttribute("height", "600"); svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+      return loadImg("data:image/svg+xml;charset=utf-8," + encodeURIComponent(new XMLSerializer().serializeToString(svg)));
+    } catch { return Promise.resolve(null); }
+  }
+  function pdfBytes(pages) { // pages: [{ jpg: Uint8Array, w, h }]
+    const enc = new TextEncoder(), parts = [], offs = []; let size = 0;
+    const put = (x) => { const b = typeof x === "string" ? enc.encode(x) : x; parts.push(b); size += b.length; };
+    const obj = (n, body) => { offs[n] = size; put(n + " 0 obj\n"); body(); put("\nendobj\n"); };
+    put("%PDF-1.4\n%\xff\xff\xff\xff\n");
+    const n = pages.length, kids = pages.map((_, i) => (3 + i * 3) + " 0 R").join(" ");
+    obj(1, () => put("<< /Type /Catalog /Pages 2 0 R >>"));
+    obj(2, () => put("<< /Type /Pages /Kids [" + kids + "] /Count " + n + " >>"));
+    pages.forEach((pg, i) => {
+      const po = 3 + i * 3, co = po + 1, io = po + 2, W = 420, H = 595, cs = "q " + W + " 0 0 " + H + " 0 0 cm /Im0 Do Q";
+      obj(po, () => put("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + W + " " + H + "] /Resources << /XObject << /Im0 " + io + " 0 R >> >> /Contents " + co + " 0 R >>"));
+      obj(co, () => { put("<< /Length " + cs.length + " >>\nstream\n" + cs + "\nendstream"); });
+      obj(io, () => { put("<< /Type /XObject /Subtype /Image /Width " + pg.w + " /Height " + pg.h + " /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length " + pg.jpg.length + " >>\nstream\n"); put(pg.jpg); put("\nendstream"); });
+    });
+    const xref = size, total = 3 + n * 3;
+    let x = "xref\n0 " + total + "\n0000000000 65535 f \n";
+    for (let i = 1; i < total; i++) x += String(offs[i]).padStart(10, "0") + " 00000 n \n";
+    put(x + "trailer\n<< /Size " + total + " /Root 1 0 R >>\nstartxref\n" + xref + "\n%%EOF");
+    return new Blob(parts, { type: "application/pdf" });
+  }
+  async function makeBookPdf() {
+    const { memo, days } = bookEntries(), order = memo.concat(days);
+    const cv = document.createElement("canvas"); cv.width = PW; cv.height = PH;
+    const ctx = cv.getContext("2d"), pages = [];
+    const M = 96, TW = PW - M * 2;
+    const font = (px, bold) => { ctx.font = (bold ? "700 " : "") + px + "px " + BOOK_FONT; };
+    const center = (t, y) => { ctx.fillText(t, (PW - ctx.measureText(t).width) / 2, y); };
+    const paper = () => { ctx.fillStyle = "#fffdf7"; ctx.fillRect(0, 0, PW, PH); ctx.fillStyle = "#3a2e24"; };
+    const finish = async (num) => {
+      if (num) { font(24); ctx.fillStyle = "#a89580"; center("― " + num + " ―", PH - 60); ctx.fillStyle = "#3a2e24"; }
+      const blob = await new Promise((ok) => cv.toBlob(ok, "image/jpeg", 0.86));
+      pages.push({ jpg: new Uint8Array(await blob.arrayBuffer()), w: PW, h: PH });
+    };
+    ctx.textBaseline = "top";
+    // 表紙
+    const g = ctx.createLinearGradient(0, 0, 0, PH); g.addColorStop(0, "#f7ddb0"); g.addColorStop(1, "#eec07c"); ctx.fillStyle = g; ctx.fillRect(0, 0, PW, PH);
+    ctx.fillStyle = "#3a2e24"; font(76, true);
+    const title = bookOwner(), tl = ctx.measureText(title).width > TW ? [title.replace("の日記帳", "の"), "日記帳"] : [title];
+    tl.forEach((t, i) => center(t, 300 + i * 104));
+    const ch = await loadImg(CHARS[profile.char].img); if (ch) ctx.drawImage(ch, (PW - 380) / 2, 560, 380, 380);
+    font(40); center(profile.name + "といっしょに", 1010);
+    const first = order.map(d => d.date).sort()[0] || today();
+    font(32); ctx.fillStyle = "#6e5638"; center(jpFullDate(first).replace(/（.）/, "") + "から", 1100);
+    const cnt = [days.length ? "日記 " + days.length : "", memo.length ? "思い出話 " + memo.length : ""].filter(Boolean).join("・"); if (cnt) center(cnt, 1160);
+    font(24); center("AIポケットファミリー", PH - 90);
+    await finish(0);
+    // もくじ（1ページ28行まで）
+    const tocRows = []; let sec = null, pageNo = 3;
+    const entryPages = []; // 本文のページ数を先に数える
+    font(34);
+    for (const d of order) {
+      const s2 = d.kind === "memoir" ? "思い出話・" + eraOf(d) : "毎日の日記";
+      if (s2 !== sec) { sec = s2; tocRows.push({ sec: s2 }); }
+      tocRows.push({ d, page: 0 });
+    }
+    const TOC_PER = 26, tocPages = Math.max(1, Math.ceil(tocRows.length / TOC_PER));
+    // 本文のページ割り
+    let p = 2 + tocPages;
+    const layouts = order.map((d) => {
+      font(34); const lines = wrapText(ctx, d.body || "", TW);
+      return { d, lines };
+    });
+    // 1ページめ：見出し・絵・いいことの分だけ、本文が少ない
+    for (const L of layouts) {
+      const head = 330 + (L.d.drawing && Array.isArray(L.d.drawing.shapes) ? TW * 0.75 + 30 : 0) + (L.d.good ? 150 : 0);
+      const per1 = Math.max(4, Math.floor((PH - 160 - head) / 64)), perN = Math.floor((PH - 160 - 160) / 64);
+      L.first = p + 1; L.per1 = per1; L.perN = perN;
+      p += 1 + Math.max(0, Math.ceil((L.lines.length - per1) / perN));
+    }
+    tocRows.forEach((r) => { if (r.d) r.page = layouts.find(L => L.d === r.d).first; });
+    for (let tp = 0; tp < tocPages; tp++) {
+      paper(); font(52, true); if (tp === 0) center("もくじ", 110);
+      let y = tp === 0 ? 220 : 120;
+      for (const r of tocRows.slice(tp * TOC_PER, (tp + 1) * TOC_PER)) {
+        if (r.sec) { font(34, true); ctx.fillStyle = "#8a5a20"; ctx.fillText(r.sec, M, y + 12); ctx.fillStyle = "#3a2e24"; y += 60; continue; }
+        const dt = new Date(r.d.date + "T00:00:00");
+        font(28); ctx.fillStyle = "#9a8670"; ctx.fillText((dt.getMonth() + 1) + "月" + dt.getDate() + "日", M, y + 6);
+        ctx.fillStyle = "#3a2e24"; font(34);
+        let t = r.d.title || ""; while (t.length > 1 && ctx.measureText(t).width > TW - 260) t = t.slice(0, -1);
+        if (t !== (r.d.title || "")) t = t.slice(0, -1) + "…";
+        ctx.fillText(t, M + 160, y);
+        font(28); ctx.fillStyle = "#9a8670"; const pn = String(r.page); ctx.fillText(pn, PW - M - ctx.measureText(pn).width, y + 6); ctx.fillStyle = "#3a2e24";
+        y += 50;
+      }
+      await finish(2 + tp);
+    }
+    // 本文
+    for (const L of layouts) {
+      const d = L.d; let at = 0, num = L.first, firstPage = true;
+      do {
+        paper(); let y = 110;
+        font(26); ctx.fillStyle = "#9a8670"; ctx.fillText((d.kind === "memoir" ? "思い出話・" + eraOf(d) : "毎日の日記") + (firstPage ? "" : "（つづき）"), M, y); y += 46;
+        if (firstPage) {
+          font(30); ctx.fillStyle = "#8a7660"; ctx.fillText(jpFullDate(d.date), M, y); y += 64; ctx.fillStyle = "#3a2e24";
+          font(46, true); for (const ln of wrapText(ctx, d.title || "", TW)) { ctx.fillText(ln, M, y); y += 64; } y += 20;
+          if (d.drawing && Array.isArray(d.drawing.shapes)) { const im = await svgImage(d.drawing); if (im) { ctx.fillStyle = "#fff"; ctx.fillRect(M, y, TW, TW * 0.75); ctx.drawImage(im, M, y, TW, TW * 0.75); } y += TW * 0.75 + 30; ctx.fillStyle = "#3a2e24"; }
+          if (d.good) { font(30); const gl = wrapText(ctx, "🌼 " + (d.by || profile.name) + "が見つけた、いいこと：" + d.good, TW - 40).slice(0, 3); ctx.fillStyle = "#fff6d8"; ctx.fillRect(M, y, TW, gl.length * 46 + 30); ctx.fillStyle = "#5d4a12"; gl.forEach((ln, i) => ctx.fillText(ln, M + 20, y + 15 + i * 46)); y += gl.length * 46 + 60; ctx.fillStyle = "#3a2e24"; }
+        } else y += 40;
+        ctx.fillStyle = "#3a2e24"; font(34);
+        const per = firstPage ? L.per1 : L.perN;
+        for (const ln of L.lines.slice(at, at + per)) { ctx.fillText(ln, M, y); y += 64; }
+        at += per; await finish(num); num++; firstPage = false;
+      } while (at < L.lines.length);
+    }
+    // おわり
+    paper(); const ei = await loadImg(CHARS[profile.char].img); if (ei) ctx.drawImage(ei, (PW - 260) / 2, 470, 260, 260);
+    font(40); center("このつづきも、", 800); center("いっしょに書いていこうね。", 864);
+    await finish(0);
+    return pdfBytes(pages);
+  }
+  $("bookSave").addEventListener("click", async () => {
+    const b = $("bookSave"); if (b.disabled) return;
+    b.disabled = true; const label = b.textContent; b.textContent = "作っています…";
+    try {
+      const blob = await makeBookPdf();
+      const name = bookOwner() + "_" + today() + ".pdf", file = new File([blob], name, { type: "application/pdf" });
+      let done = false;
+      try { if ((isIOS || isAndroid) && navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: bookOwner() }); done = true; } }
+      catch (e) { if (e && e.name === "AbortError") done = true; }
+      if (!done) { const a = document.createElement("a"); a.href = URL.createObjectURL(file); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500); }
+    } catch { addNote("本のPDFを作れませんでした。日記タブの「全部まとめて保存」で、文字だけ保存できます。"); }
+    b.disabled = false; b.textContent = label;
+  });
   $("diaryStart").addEventListener("click", () => startDiary("diary"));
   $("memoirStart").addEventListener("click", () => startDiary("memoir"));
   $("diaryAll").addEventListener("click", () => shareDiary(diaries(), "日記帳_" + today()));
