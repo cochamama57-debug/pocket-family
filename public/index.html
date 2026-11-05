@@ -4665,6 +4665,12 @@
     const t = today(), list = diaries().filter(d => d.moreQ && !d.moreAsked && d.moreBy === profile.char && d.date < t && (Date.now() - new Date(d.date).getTime()) < 15 * 86400000);
     return list.length ? list[list.length - 1] : null;
   }
+  // 前の日記の「いいこと」を、あとからもう一度いっしょに喜ぶ（2〜7日前の日記。1つにつき1回だけ。このスマホの中だけで決める）
+  function recallable() {
+    const now = Date.now();
+    const list = diaries().filter(d => d.good && !d.recalled && d.kind !== "memoir" && now - new Date(d.date + "T00:00:00").getTime() >= 2 * 86400000 && now - new Date(d.date + "T00:00:00").getTime() < 8 * 86400000);
+    return list.length ? list[list.length - 1] : null;
+  }
   // まだ書いていない「ころ」（思い出話の誘い。1週間に1回まで）
   function nextEra() {
     if (Date.now() - (Number(profile.memoirAsked) || 0) < 7 * 86400000) return null;
@@ -4673,7 +4679,7 @@
   }
   function inviteKinds() {
     const h = new Date().getHours(), wroteToday = diaries().some(d => d.date === today());
-    return ["song", "game", "teach", "teach"].concat(h >= 17 && !wroteToday ? ["diary", "diary", "diary"] : []).concat(pendingMore() ? ["more", "more", "more", "more"] : []).concat(nextEra() ? ["memoir"] : []);
+    return ["song", "game", "teach", "teach"].concat(h >= 17 && !wroteToday ? ["diary", "diary", "diary"] : []).concat(pendingMore() ? ["more", "more", "more", "more"] : []).concat(nextEra() ? ["memoir"] : []).concat(recallable() ? ["recall", "recall"] : []);
   }
   // 「教えて！」の話題（孫が、おばあちゃん・おじいちゃんに聞くように）
   const TEACH = ["子どものころ、どんな遊びをしていたの？", "おいしいおにぎりのコツ、教えて！", "いちばん好きな季節はいつ？ どうして？", "昔、どんなお祭りがあった？", "得意な料理って、なあに？", "子どものころ好きだった歌、教えて！", "お正月って、昔はどんなふうに過ごしてたの？", "雨の日は、どんなふうに過ごすのが好き？", "若いころ、どんな仕事をしていたの？", "いちばん思い出に残っている旅行は、どこ？"];
@@ -4698,6 +4704,13 @@
     profile.invite.n++; profile.invite.at = Date.now(); profile.inviteLater = 0;
     saveProfile();
     const polite = stageOf(points()) === 0, chamu = profile.char === "chamu", pi = chamu ? "" : "ピピッ。";
+    if (kind === "recall") {
+      const d = recallable(); if (!d) return;
+      d.recalled = today(); saveDiaries();
+      sayScripted(pi + (polite ? "あの、この前の日記の「" + d.good + "」を思い出して、わたしまで、うれしくなりました。" : (chamu ? "ねえねえ、この前の日記の「" + d.good + "」、思い出したら、わたしまでうれしくなっちゃった。えへへ。" : "ねえ、この前の日記の「" + d.good + "」、思い出したら、わたしまでうれしくなっちゃった。")));
+      setTimeout(() => showFace("happy", 2600), 300);
+      return;
+    }
     if (kind === "teach") {
       // 「教えて！」は、ボタンなし。答えは、ふつうのおしゃべりで
       const used = Array.isArray(profile.teachUsed) ? profile.teachUsed : [];
