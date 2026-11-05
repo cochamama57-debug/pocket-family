@@ -425,6 +425,7 @@
   @media (max-width: 360px) { .tabs { gap: 4px; } .tab { font-size: 15px; padding: 0 2px; } }
   .tab.on { background: var(--mic); border-color: var(--mic); color: #fff; }
   .hint-s { font-size: 15px; color: var(--sub); margin: 0 0 8px; }
+  .med-how { padding-left: 1.5em; } .sheet .med-how li { background: none; border: 0; border-radius: 0; padding: 0; margin: 0 0 6px; font-size: inherit; } .med-how b { font-weight: inherit; }
   .remind-btn { display: inline-block; margin: 8px 8px 0 0; font-size: 19px; font-weight: 700; color: #fff; background: var(--mic); border: 0; border-radius: 999px; min-height: 48px; padding: 0 18px; }
   .remind-btn.done { background: #bbb; }
   .pet-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -775,7 +776,9 @@
         <button type="submit" class="add">＋ 予定を登録する</button>
       </form>
       <h3>お薬の時間のお知らせ</h3>
-      <p class="hint-s"><span class="nb">アプリを開いているとき</span><span class="nb">（または、</span><span class="nb">時間を過ぎてから</span><span class="nb">開いたとき）に、</span><span class="nb">やさしい音で</span><span class="nb">お知らせします。</span><span class="nb">アプリを</span><span class="nb">閉じているときは</span><span class="nb">鳴りません。</span><span class="nb">お薬についての</span><span class="nb">助言はしません。</span><span class="nb">飲んだら</span><span class="nb">「飲んだよ」と</span><span class="nb">話しかけてください。</span><span class="nb">あとで</span><span class="nb">「お薬飲んだっけ？」と</span><span class="nb">聞くと、</span><span class="nb">時刻を答えます。</span></p>
+      <p class="hint-s"><span class="nb">アプリを</span><span class="nb">閉じていると、</span><span class="nb">お知らせの音は</span><span class="nb">鳴りません。</span><span class="nb">そこで、</span><span class="nb">こう使うのが</span><span class="nb">おすすめです。</span></p>
+      <ol class="hint-s med-how"><li><span class="nb">「📅 カレンダーに</span><span class="nb">入れる」を押すと、</span><span class="nb">アプリを</span><span class="nb">閉じていても、</span><span class="nb">スマホが</span><span class="nb">お薬の時間を</span><span class="nb">知らせてくれます。</span></li><li><span class="nb">飲んだら、</span><span class="nb"><b class="med-nm">ちゃむ</b>に</span><span class="nb">「飲んだよ」と</span><span class="nb">話しかけてください。</span></li><li><span class="nb">あとで</span><span class="nb">「お薬飲んだっけ？」と</span><span class="nb">聞くと、</span><span class="nb">飲んだ時刻を</span><span class="nb">答えます。</span><span class="nb">飲み忘れや、</span><span class="nb">二度飲みを</span><span class="nb">防げます。</span></li></ol>
+      <p class="hint-s"><span class="nb">※お薬についての</span><span class="nb">助言はしません。</span></p>
       <ul id="medList"></ul>
       <form class="pet-form" id="medForm" autocomplete="off">
         <label>時間<input type="time" id="medTime" required></label>
@@ -1161,6 +1164,7 @@
   }
 
   // ---- 表示 ----
+  const voiceAlt = new Map(); // 画面の文 → 声で読む文
   function bubble(cls, text, imgUrl, msg) {
     const row = document.createElement("div");
     row.className = "msg " + cls;
@@ -1383,6 +1387,7 @@
   function render() {
     log.textContent = "";
     for (const m of history) {
+      if (m.say) voiceAlt.set(shown(m), m.say);
       bubble(m.role === "user" ? "me" : "her", shown(m), undefined, m.role === "assistant" ? m : undefined);
       if (m.song) songInvite(m.song);
       if (m.remind) remindBubble(m);
@@ -2560,6 +2565,7 @@
   // pre：先に作り始めた声（あれば、それを使う）。firstOnly のときは、pre は最初のひと区切りの声
   async function speak(text, force, pre, firstOnly) {
     if (!profile || !text || (!force && !voiceOn())) return;
+    if (!pre && voiceAlt.has(text)) text = voiceAlt.get(text); // お薬の文は、名前を抜いた文で話す
     if (!$("player").hidden) return; // 曲を流しているときは話さない
     if (!$("game").hidden && !gameVoice) return; // ゲーム中は、ゲームの外の話を声に出さない
     stopVoice();
@@ -2682,9 +2688,12 @@
   }
   // ---- お薬：「飲んだよ」を覚えて、「飲んだっけ？」に答える（自己申告。AIにもサーバーにも送らない）----
   const jpTime = (hm) => { const [h, m] = hm.split(":").map(Number); return h + "時" + (m ? m + "分" : ""); };
-  function sayMed(text) {
+  // say＝声で読む文（お薬の名前を入れない。お薬のことは声のサービスに送らず、キャラの声のまま話すため）
+  function sayMed(text, say) {
     text = myWord(text);
-    history.push({ role: "assistant", content: text, med: 1 });
+    const m = { role: "assistant", content: text, med: 1 };
+    if (say) { m.say = myWord(say); voiceAlt.set(text, m.say); }
+    history.push(m);
     save(); bubble("her", text); talkFace(text); speak(text);
   }
   function medTaken(md) {
@@ -2693,7 +2702,8 @@
     if (!st.medsSaid.includes(md.id)) st.medsSaid.push(md.id);
     st.medsAt[md.id] = at; saveProfile();
     const name = md.label || "お薬";
-    sayMed(polite ? "はい、" + name + "は" + jpTime(at) + "ですね。覚えておきますね。" : "うん、" + name + "は" + jpTime(at) + "だね。覚えておくね。");
+    sayMed(polite ? "はい、" + name + "は" + jpTime(at) + "ですね。覚えておきますね。" : "うん、" + name + "は" + jpTime(at) + "だね。覚えておくね。",
+      polite ? "はい、" + jpTime(at) + "ですね。覚えておきますね。" : "うん、" + jpTime(at) + "だね。覚えておくね。");
     setTimeout(() => showFace("happy", 1800), 1200);
     if (!$("tabPlan").hidden) renderPlanTab();
   }
@@ -2723,21 +2733,24 @@
       const recent = last && now - minutes(st.medsAt[last.id]) < 60; // さっき聞いたばかり（同じお薬の二度めの申告かもしれない）
       if (!md) md = list.filter(x => !st.medsAt[x.id] && minutes(x.time) <= now + (recent ? 0 : 30)).sort((a, b) => Math.abs(minutes(a.time) - now) - Math.abs(minutes(b.time) - now))[0];
       if (md) return medTaken(md);
-      if (last) return sayMed((last.label || "お薬") + "は、" + jpTime(st.medsAt[last.id]) + (polite ? "に「飲んだ」と聞いていますよ。" : "に「飲んだよ」って聞いているよ。"));
-      return sayMed(polite ? "今日のお薬の時間は、まだ先ですよ。" : "今日のお薬の時間は、まだ先だよ。");
+      if (last) return sayMed((last.label || "お薬") + "は、" + jpTime(st.medsAt[last.id]) + (polite ? "に「飲んだ」と聞いていますよ。" : "に「飲んだよ」って聞いているよ。"),
+        jpTime(st.medsAt[last.id]) + (polite ? "に「飲んだ」と聞いていますよ。" : "に「飲んだよ」って聞いているよ。"));
+      return sayMed(polite ? "今日のお薬の時間は、まだ先ですよ。" : "今日のお薬の時間は、まだ先だよ。", polite ? "今日は、まだ時間が先ですよ。" : "今日は、まだ時間が先だよ。");
     }
-    const lines = [];
+    const lines = [], says = [];
     for (const x of list) {
       const name = x.label || "お薬";
-      if (st.medsAt[x.id]) lines.push(name + "は、" + jpTime(st.medsAt[x.id]) + (polite ? "に飲みましたよ。" : "に飲んだよ〜。"));
-      else if (minutes(x.time) <= now) lines.push(name + (polite ? "は、まだ「飲んだ」を聞いていません。" : "は、まだ「飲んだよ」を聞いていないよ。"));
+      if (st.medsAt[x.id]) { lines.push(name + "は、" + jpTime(st.medsAt[x.id]) + (polite ? "に飲みましたよ。" : "に飲んだよ〜。")); says.push(jpTime(st.medsAt[x.id]) + (polite ? "に飲みましたよ。" : "に飲んだよ〜。")); }
+      else if (minutes(x.time) <= now) { lines.push(name + (polite ? "は、まだ「飲んだ」を聞いていません。" : "は、まだ「飲んだよ」を聞いていないよ。")); says.push(jpTime(x.time) + (polite ? "の分は、まだ「飲んだ」を聞いていません。" : "の分は、まだ「飲んだよ」を聞いていないよ。")); }
     }
-    if (!lines.length) return sayMed(polite ? "今日のお薬の時間は、まだ先ですよ。" : "今日のお薬の時間は、まだ先だよ。");
+    if (!lines.length) return sayMed(polite ? "今日のお薬の時間は、まだ先ですよ。" : "今日のお薬の時間は、まだ先だよ。", polite ? "今日は、まだ時間が先ですよ。" : "今日は、まだ時間が先だよ。");
     const allDone = list.filter(x => minutes(x.time) <= now || st.medsAt[x.id]).every(x => st.medsAt[x.id]);
-    sayMed(lines.join("") + (allDone ? (polite ? "心配しないでくださいね♡" : "心配しないで♡") : ""));
+    const tail = allDone ? (polite ? "心配しないでくださいね♡" : "心配しないで♡") : "";
+    sayMed(lines.join("") + tail, says.join("") + tail);
   }
-  function sayRemind(text, remind) {
-    history.push({ role: "assistant", content: text, remind, med: remind && remind.type === "med" ? 1 : undefined });
+  function sayRemind(text, remind, say) {
+    if (say) voiceAlt.set(text, say);
+    history.push({ role: "assistant", content: text, remind, med: remind && remind.type === "med" ? 1 : undefined, say: say || undefined });
     save();
     bubble("her", text);
     talkFace(text);
@@ -2753,7 +2766,8 @@
         st.medsSaid.push(md.id);
         saveProfile();
         const polite = stageOf(points()) === 0;
-        sayRemind(md.time + "、" + (md.label || "お薬") + (polite ? "の時間です。飲んだら、教えてくださいね。" : "の時間だよ。飲んだら、教えてね。"), { type: "med", id: md.id, date: t });
+        sayRemind(md.time + "、" + (md.label || "お薬") + (polite ? "の時間です。飲んだら、教えてくださいね。" : "の時間だよ。飲んだら、教えてね。"), { type: "med", id: md.id, date: t },
+          jpTime(md.time) + (polite ? "になりました。飲んだら、教えてくださいね。" : "になったよ。飲んだら、教えてね。"));
         chime();
       }
     }
@@ -2782,6 +2796,7 @@
   document.addEventListener("visibilitychange", () => { if (!document.hidden) checkReminders(); });
 
   function renderPlanTab() {
+    document.querySelectorAll(".med-nm").forEach(e => { e.textContent = profile?.name || "AIファミリー"; });
     const pl = $("planList"); pl.textContent = "";
     const t = today();
     const list = plans().filter(x => x.date >= t);
@@ -3870,14 +3885,26 @@
       if (saved && bx) { const w = document.createElement("div"); const b = document.createElement("button"); b.type = "button"; b.className = "song-btn"; b.style.background = "#b8501f"; b.textContent = "📖 本で読む"; b.addEventListener("click", () => openBook(saved.id)); w.appendChild(b); bx.appendChild(w); } }
     showFace(hard ? "serious" : "happy", 2200);
     // 今日のいいこと（つらい日は、寄り添うひとこと）。そのあと、必要なら曲にそっと誘う
-    setTimeout(() => {
+    afterVoice(() => {
       if (!profile || inActivity()) return;
       if (draft.note) { sayScripted(draft.note); showFace(hard ? "sad" : "happy", 2600); }
       // ときどき（2日に1回くらい）、日記に絵を描いてもいいか聞く。描かないときは、必要なら曲にそっと誘う
       const entry = cont || list[list.length - 1];
       const drawOk = !hard && entry && !entry.drawing && Date.now() - (Number(profile.lastDiaryDraw) || 0) > 2 * 86400000;
-      setTimeout(() => drawOk ? askDiaryDrawing(entry.id) : careSong(hard), draft.note ? 3500 : 0);
+      const next = () => drawOk ? askDiaryDrawing(entry.id) : careSong(hard);
+      if (draft.note) afterVoice(next, 3000); else next();
     }, 2600);
+  }
+  // 声が話し終わってから、少し間をおいて次へ（声の途中で次の吹き出しを出すと、声が切れてしまうため）
+  // 声を使っていないときも、最低 minMs は待つ（読む時間）。長くても30秒で次へ
+  function afterVoice(fn, minMs) {
+    const t0 = Date.now(); let quiet = 0;
+    const tick = () => {
+      if (voiceBusy()) quiet = 0; else quiet += 250;
+      if ((Date.now() - t0 >= minMs && quiet >= 1000) || Date.now() - t0 > 30000) return fn();
+      setTimeout(tick, 250);
+    };
+    setTimeout(tick, 400); // 声を作り始めるのを待つ
   }
   // 日記のあとの曲：つらい日は寄り添いの曲、夜はおやすみの曲（あれば）。断ってもよい
   function careSong(hard) {
