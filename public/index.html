@@ -3916,7 +3916,7 @@
     const text = diaryFileText(list);
     const file = new File([text], name + ".txt", { type: "text/plain" });
     try {
-      if ((isIOS || isAndroid) && navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); return; }
+      if ((isIOS || isAndroid) && navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file] }); return; }
       if ((isIOS || isAndroid) && navigator.share) { await navigator.share({ title: name, text }); return; }
     } catch (e) { if (e && e.name === "AbortError") return; }
     try {
@@ -3983,7 +3983,7 @@
     const im = el("img"); im.src = CHARS[profile.char].img; im.alt = ""; cv.appendChild(im);
     const cs = el("p", "cs"); setPhrases(cs, profile.name + "と|いっしょに"); cv.appendChild(cs);
     cv.appendChild(el("p", "cc", jpFullDate(first).replace(/（.）/, "") + "から"));
-    const cnt = [days.length ? "日記 " + days.length : "", memo.length ? "思い出話 " + memo.length : ""].filter(Boolean).join("・");
+    const cnt = [days.length ? "日記 " + days.length + "つ" : "", memo.length ? "思い出話 " + memo.length + "つ" : ""].filter(Boolean).join("・");
     if (cnt) cv.appendChild(el("p", "cc", cnt));
     // もくじ
     const tc = page(); tc.appendChild(el("h3", "toc-h", "もくじ"));
@@ -4106,7 +4106,7 @@
     font(40); center(profile.name + "といっしょに", 1010);
     const first = order.map(d => d.date).sort()[0] || today();
     font(32); ctx.fillStyle = "#6e5638"; center(jpFullDate(first).replace(/（.）/, "") + "から", 1100);
-    const cnt = [days.length ? "日記 " + days.length : "", memo.length ? "思い出話 " + memo.length : ""].filter(Boolean).join("・"); if (cnt) center(cnt, 1160);
+    const cnt = [days.length ? "日記 " + days.length + "つ" : "", memo.length ? "思い出話 " + memo.length + "つ" : ""].filter(Boolean).join("・"); if (cnt) center(cnt, 1160);
     font(24); center("AIポケットファミリー", PH - 90);
     await finish(0);
     // もくじ（1ページ28行まで）
@@ -4183,7 +4183,7 @@
   function deliverBook(file) {
     const mobile = isIOS || isAndroid;
     if (mobile && navigator.canShare && navigator.canShare({ files: [file] })) {
-      navigator.share({ files: [file], title: bookOwner() }).catch((e) => { if (!e || e.name !== "AbortError") addNote("保存の画面を開けませんでした。もう一度「保存（PDF）」を押してください。"); });
+      navigator.share({ files: [file] }).catch((e) => { if (!e || e.name !== "AbortError") addNote("保存の画面を開けませんでした。もう一度「保存（PDF）」を押してください。"); });
       return;
     }
     const a = document.createElement("a"); a.href = URL.createObjectURL(file); a.download = file.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
