@@ -156,6 +156,7 @@
   .tour-pic.chars img { width: 120px; height: 120px; object-fit: contain; }
   .tour-page h2 { font-size: 28px; margin: 4px 0 12px; }
   .tour-page p { font-size: 20px; line-height: 1.75; margin: 0; text-align: left; }
+  @media (max-height: 760px) { .tour-pic { width: 84px; height: 84px; font-size: 44px; margin-bottom: 8px; } .tour-page h2 { font-size: 24px; margin: 2px 0 8px; } .tour-page p { font-size: 18px; line-height: 1.65; } }
   .tour-demo { width: 100%; margin: 0 0 14px; pointer-events: none; }
   .tour-nav { display: flex; gap: 10px; }
   .tour-nav button { flex: 1; min-height: 60px; font: inherit; font-size: 21px; font-weight: 700; border-radius: 16px; }
@@ -510,6 +511,10 @@
   .guide .links { display: block; }
   .guide .close { flex: none; align-self: flex-start; font-size: 14px; line-height: 1.2; color: var(--sub); background: #fff; border: 1px solid var(--line); border-radius: 10px; min-width: 52px; min-height: 52px; padding: 4px; }
   .kbd { flex: none; width: 64px; }
+  .guide.diary-guide { align-items: flex-start; font-size: 17px; line-height: 1.55; max-height: 46vh; overflow-y: auto; }
+  .guide.diary-guide .dg-h { display: block; color: var(--ink); font-size: 18px; margin-bottom: 2px; }
+  .guide.diary-guide ol { margin: 4px 0 6px; padding-left: 1.4em; }
+  .guide.diary-guide li { margin-bottom: 4px; }
   .kbd svg { width: 100%; height: auto; display: block; }
   .kbd .hot { animation: hot 1s ease-in-out infinite; }
   @keyframes hot { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
@@ -622,7 +627,7 @@
       <div id="guideText"></div>
       <button class="close" type="button" id="guideClose" aria-label="案内を閉じる">✕<br>閉じる</button>
     </div>
-    <div class="diary-bar" id="diaryBar" hidden><span id="diaryBarText">📝 日記を書いています</span><button type="button" class="go" id="diaryMake">まとめる</button><button type="button" id="diaryBook" aria-label="日記帳の本を読む" hidden>📖 本</button><button type="button" id="diaryQuit">やめる</button></div>
+    <div class="diary-bar" id="diaryBar" hidden><span id="diaryBarText">📝 日記を書いています</span><button type="button" class="go" id="diaryMake">まとめる</button><button type="button" id="diaryBook" aria-label="日記帳の本を読む" hidden>📖 本</button><button type="button" id="diaryQuit">おしゃべりに戻る</button></div>
     <button type="submit" class="skip" id="skip" hidden formnovalidate>答えずに次へ</button>
     <div class="tools">
       <button class="tool mic" id="mic" type="button"><span class="ico" aria-hidden="true"><svg class="micsvg" viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="2.5" width="7" height="12" rx="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 11.5a7 7 0 0 0 14 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="18.5" x2="12" y2="21.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="8" y1="21.5" x2="16" y2="21.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><span id="micLabel">話す</span></button>
@@ -1514,6 +1519,7 @@
   const GUIDE_OFF_KEY = "pf.guide.off";
   function guideOff() { try { return localStorage.getItem(GUIDE_OFF_KEY) === "1"; } catch { return false; } }
   function showGuide() {
+    guide.querySelector(".kbd").hidden = false; guide.classList.remove("diary-guide");
     const where = isAndroid ? "右上" : "右下";
     if (isAndroid) kbdMic.setAttribute("transform", "translate(0,-55)"); // Androidのキーボードは右上にマイクが多い
     else kbdMic.removeAttribute("transform"); // iPhoneは右下
@@ -1533,8 +1539,25 @@
   function hideGuide() { guide.hidden = true; }
   guideClose.addEventListener("click", () => { hideGuide(); input.focus(); });
   // ナビボタン：いつでもナビを出す（「次から出さない」にしていても）
+  function showDiaryGuide() {
+    const memoir = profile.diaryMode.kind === "memoir", nm = profile.name, where = isAndroid ? "右上" : "右下";
+    const L = (t) => t.split("|").map((x) => '<span class="nb">' + x + "</span>").join("");
+    guide.querySelector(".kbd").hidden = true;
+    guide.classList.add("diary-guide");
+    guideText.innerHTML = '<b class="dg-h">' + (memoir ? "📜 思い出話の書き方" : "📝 日記の書き方") + "</b>"
+      + "<ol>"
+      + "<li>" + L((memoir ? "昔のことを、|" : "今日あったことを、|") + "話すか書いて、|「送る」を|押してください。|" + nm + "が聞きながら、|続きをうながします。") + "</li>"
+      + "<li>" + L("話し終わったら、|<b>「まとめる」</b>を|押すと、|" + nm + "が|あなたの言葉で|" + (memoir ? "思い出話に" : "日記に") + "|まとめます。") + "</li>"
+      + "<li>" + L("下書きを見て、|<b>「これで保存」</b>を|押してください。|直したいときは|「直してほしい」、|話し足りないときは|「もう少し話す」を|押してください。") + "</li>"
+      + "<li>" + L("保存すると、|日記帳の本に入ります。|<b>「📖 本」</b>で、|いつでも読めます。") + "</li>"
+      + "<li>" + L("書くのをやめて|おしゃべりに戻るときは、|<b>「おしゃべりに戻る」</b>を|押してください。") + "</li>"
+      + "</ol>"
+      + '<span class="tip">' + L("🎤 声で話すときは、|キーボードの|" + where + "の|マイクを押して、|ゆっくり話してください。") + "</span>";
+    guide.hidden = false;
+  }
   $("micHelp").addEventListener("click", () => {
     stopMic();
+    if (profile && profile.diaryMode) { showDiaryGuide(); setTimeout(() => { log.scrollTop = log.scrollHeight; }, 300); return; }
     input.focus();
     showGuide();
     setTimeout(() => { log.scrollTop = log.scrollHeight; }, 300);
@@ -3422,11 +3445,11 @@
     { pic: helpDemo, h: "助けて",
       p: ["困ったときは、", "上の赤い「助けて」を", "長押ししてくださいね。", "8秒たつと、", "登録した連絡先に", "LINEでお知らせします。", "間違えて押したときは、", "「いらない」を押せば", "止められます。", "連絡先", "（友人や家族など、", "連絡を受け取って", "くれる人）は、", "「📖 ノート」から", "登録できます。"] },
     { pic: '<div class="tour-pic">📔</div>', h: "日記",
-      p: ["「📖 ノート」の", "「日記」で、", "「今日の日記を書く」を", "押してください。", "AIファミリーに", "今日のことを", "話すだけで、", "あなたの言葉で", "日記に", "まとめてくれます。", "昔の思い出は", "「思い出話を書く」から", "書きとめられます。", "「これで保存」を押すと、", "日記帳の本に", "入ります。", "本は、", "PDFで", "保存もできます。"] },
+      p: ["「📖 ノート」の", "「日記」で、", "「今日の日記を書く」を", "押してください。", "今日のことを", "話すだけで、", "AIファミリーが", "あなたの言葉で", "日記に", "まとめます。", "昔の思い出は、", "「思い出話を書く」から、", "子どものころ・", "仕事・家族などに", "分けて", "書きとめられます。", "「これで保存」を押すと、", "日記帳の本に", "入ります。", "おしゃべりに", "戻るときは、", "「おしゃべりに戻る」を", "押してください。"] },
     { pic: '<div class="tour-pic">🎵</div>', h: "歌う",
       p: ["上の「🎵 歌う」から、", "いっしょに歌えます。", "歌詞が大きく出て、", "曲に合わせて", "AIファミリーが踊ります。", "歌えたら「歌えた！」を", "ぜひ押してくださいね。", "AIファミリーが", "よろこびます。"] },
     { pic: '<div class="tour-pic">📖</div>', h: "ノート",
-      p: ["「📖 ノート」には、", "ポケファミとの", "思い出・日記・", "予定とお薬・", "ペット・連絡先が", "あります。", "予定やお薬の時間を", "入力すると、", "やさしい音で", "お知らせします。"] },
+      p: ["「📖 ノート」には、", "4つのページが", "あります。", "「思い出」では、", "AIファミリーが", "覚えていることを", "見たり、", "名前や", "呼び名の読み方を", "変えたりできます。", "「日記」では、", "日記帳を", "本として読んだり、", "PDFで", "保存したりできます。", "「予定・お薬」は、", "時間になると、", "やさしい音で", "お知らせします。", "「連絡先・ペット」は、", "「助けて」のときに", "使います。"] },
   ];
   let tourAt = 0, tourFrom = "title";
   function drawTour() {
