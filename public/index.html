@@ -446,6 +446,10 @@
     -webkit-overflow-scrolling: touch;
   }
   .msg { display: flex; margin: 10px 0; }
+  .sing-lbl { line-height: 1.1; text-align: center; }
+  .day-sep { display: flex; align-items: center; gap: 10px; margin: 16px 0 6px; color: var(--sub); font-size: 15px; }
+  .day-sep::before, .day-sep::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
+  .day-sep span { white-space: nowrap; }
   .msg .bubble {
     max-width: 86%;
     padding: 10px 14px;
@@ -606,7 +610,7 @@
       <div class="status" id="status">おしゃべりしよう</div>
     </div>
     <div class="head-btns">
-      <button class="memo-btn" id="singBtn" type="button" hidden><span class="ico" aria-hidden="true">🎵</span>歌う</button>
+      <button class="memo-btn" id="singBtn" type="button" hidden><span class="ico" aria-hidden="true">🎵</span><span class="sing-lbl">歌う・<br>聴く</span></button>
       <button class="memo-btn" id="gameBtn" type="button"><span class="ico" aria-hidden="true">🃏</span>遊ぶ</button>
       <button class="memo-btn" id="memoBtn" type="button"><span class="ico" aria-hidden="true">📖</span>ノート</button>
     </div>
@@ -670,7 +674,7 @@
   <div class="sheet-in">
     <div class="sheet-head">
       <img id="songsImg" alt="">
-      <h2><span class="nb">一緒に</span><span class="nb">歌いましょう</span></h2>
+      <h2><span class="nb">歌う・</span><span class="nb">聴く</span></h2>
       <button type="button" class="close-btn" id="songsClose">閉じる</button>
     </div>
     <ul class="song-list" id="songList"></ul>
@@ -704,7 +708,7 @@
       <button type="button" class="play" id="playBtn">▶ 再生</button>
       <button type="button" id="restartBtn">最初から</button>
     </div>
-    <button type="button" class="sang" id="sangBtn">歌えた！</button>
+    <button type="button" class="sang" id="sangBtn">聴いた・歌った</button>
     <audio id="audio" preload="none"></audio>
   </div>
 </div>
@@ -729,6 +733,12 @@
         <input class="name-input" id="memoNameInput" maxlength="12" autocomplete="off" enterkeyhint="done" aria-label="新しい名前" style="margin-bottom:8px">
         <button type="button" class="big-btn" id="memoNameOk" style="margin:0">この名前にする</button>
         <p class="hint-s" style="margin:6px 0 0"><span class="nb">思い出と</span><span class="nb">仲よし度は、</span><span class="nb">そのまま残ります。</span></p>
+      </div>
+      <div>あなたの呼び名　<b id="memoCall"></b>　<button type="button" class="tour-skip" id="memoCallEdit" style="min-height:40px;font-size:15px">変える</button></div>
+      <div id="memoCallBox" hidden style="margin:6px 0 10px">
+        <input class="name-input" id="memoCallInput" maxlength="12" autocomplete="off" enterkeyhint="done" aria-label="あなたの呼び名" placeholder="例：作者" style="margin-bottom:8px">
+        <button type="button" class="big-btn" id="memoCallOk" style="margin:0">この呼び名にする</button>
+        <p class="hint-s" style="margin:6px 0 0"><span class="nb">「さん」や「ちゃん」も、</span><span class="nb">ここで付けられます。</span></p>
       </div>
       <div id="memoYomiRow" hidden>呼び名の読み方　<b id="memoYomi"></b>　<button type="button" class="tour-skip" id="memoYomiEdit" style="min-height:40px;font-size:15px">変える</button></div>
       <div id="memoYomiBox" hidden style="margin:6px 0 10px">
@@ -1133,6 +1143,7 @@
       const data = raw ? JSON.parse(raw) : null;
       if (Array.isArray(data)) {
         history = data.filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string");
+        for (const m of history) if (typeof m.d !== "string") m.d = "?"; // 日付が分からない、前からある会話
       }
     } catch { history = []; }
   }
@@ -1151,9 +1162,10 @@
     try { localStorage.setItem(PROFILE_KEY, JSON.stringify(profile)); } catch {}
   }
   function save() {
+    for (const m of history) if (m.d === undefined) m.d = today(); // 日付の線のため（前からある会話には "?" が付いている）
     try {
       // 写真そのものは残さない（容量のため）。「写真を見せた」という印だけ残す
-      const slim = history.slice(-MAX_KEEP).map(m => ({ role: m.role, content: m.content, photo: m.photo ? true : undefined, song: typeof m.song === "string" ? m.song : undefined, remind: m.remind && typeof m.remind === "object" ? m.remind : undefined, walk: m.walk === "go" || m.walk === "back" ? m.walk : undefined, gift: Number.isInteger(m.gift) ? m.gift : undefined, react: REACTS.includes(m.react) ? m.react : undefined, med: m.med ? 1 : undefined, ds: m.ds ? 1 : undefined, df: m.df ? 1 : undefined, dd: m.dd && typeof m.dd === "object" ? { title: String(m.dd.title || "").slice(0, 20), body: String(m.dd.body || "").slice(0, 10000), kind: m.dd.kind === "memoir" ? "memoir" : "diary" } : undefined }));
+      const slim = history.slice(-MAX_KEEP).map(m => ({ role: m.role, content: m.content, photo: m.photo ? true : undefined, song: typeof m.song === "string" ? m.song : undefined, remind: m.remind && typeof m.remind === "object" ? m.remind : undefined, walk: m.walk === "go" || m.walk === "back" ? m.walk : undefined, gift: Number.isInteger(m.gift) ? m.gift : undefined, react: REACTS.includes(m.react) ? m.react : undefined, med: m.med ? 1 : undefined, say: typeof m.say === "string" ? m.say : undefined, d: typeof m.d === "string" ? m.d : undefined, ds: m.ds ? 1 : undefined, df: m.df ? 1 : undefined, dd: m.dd && typeof m.dd === "object" ? { title: String(m.dd.title || "").slice(0, 20), body: String(m.dd.body || "").slice(0, 10000), kind: m.dd.kind === "memoir" ? "memoir" : "diary" } : undefined }));
       localStorage.setItem(STORE_KEY, JSON.stringify(slim));
     } catch {
       if (canSave) {
@@ -1165,7 +1177,17 @@
 
   // ---- 表示 ----
   const voiceAlt = new Map(); // 画面の文 → 声で読む文
+  // 日付が変わるところに「―― 11月6日（金） ――」の線（LINEのように）
+  let sepDate = "", rendering = false;
+  function dateSep(d) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d || "") || d === sepDate) return;
+    sepDate = d;
+    const el = document.createElement("div"); el.className = "day-sep";
+    const sp = document.createElement("span"); sp.textContent = jpDate(d); el.appendChild(sp);
+    log.appendChild(el);
+  }
   function bubble(cls, text, imgUrl, msg) {
+    if (!rendering) dateSep(today());
     const row = document.createElement("div");
     row.className = "msg " + cls;
     const b = document.createElement("div");
@@ -1385,8 +1407,9 @@
     updateDiaryBar();
   }
   function render() {
-    log.textContent = "";
+    log.textContent = ""; sepDate = ""; rendering = true;
     for (const m of history) {
+      dateSep(m.d);
       if (m.say) voiceAlt.set(shown(m), m.say);
       bubble(m.role === "user" ? "me" : "her", shown(m), undefined, m.role === "assistant" ? m : undefined);
       if (m.song) songInvite(m.song);
@@ -1396,6 +1419,7 @@
       if (m.walk === "go" && !profile?.walking) { /* 終わった誘いは、ボタンを出さない */ }
       else if (m.walk === "back" && profile?.walking && m === history.filter(x => x.walk === "back").pop()) walkButton("back");
     }
+    rendering = false;
   }
   // キャラが自分から話す（最初の質問など。AIは呼ばない）
   // ちゃむは自分のことを「ぼく」、コロンは「わたし」と言う
@@ -1827,7 +1851,8 @@
       const payload = {
         messages: history.filter(m => !m.med).slice(-60).map(m => ({ role: m.role, content: m.content })),
         profile: profile ? profileForServer() : null,
-        songs: allSongs().slice(0, 20).map(x => ({ id: x.id, title: x.title, tag: x.tag || "", kind: x.youtube ? "listen" : "sing" })),
+        // 曲の誘いを休んでいる間は、自分から曲の話をしたときだけ曲を渡す（渡さないと、AIは曲に誘わない）
+        songs: songRest() && !/曲|歌|うた|音楽|聴|聞きたい/.test(text) ? [] : allSongs().slice(0, 20).map(x => ({ id: x.id, title: x.title, tag: x.tag || "", kind: x.youtube ? "listen" : "sing" })),
       };
       if (photo) payload.image = { type: "image/jpeg", data: photo.data };
       if (profile && profile.diaryMode) { payload.mode = profile.diaryMode.kind; let k = history.length - 1; while (k > 0 && !history[k].ds) k--; payload.since = Math.min(60, history.length - k); } // 日記の聞き役（日記の時間が始まってからの件数）
@@ -1940,21 +1965,18 @@
   // 曲の一覧は songs/songs.json（オーナーの自作曲）。{ id, title, tag, file, lyrics, credit }
   let SONGS = [];
   const SONG_TAGS = ["おはよう", "おやすみ", "踊ろう", "寄り添い", "穏やか"];
+  // 「聴いた・歌った」のあと（歌ったかどうかは分からないので、歌声はほめない。いっしょに楽しめたことを喜ぶ）
   const SANG_LINES = {
     chamu: [
-      "わぁ、すてきな声だった！羽の耳が、ぱたぱたしちゃったよ。",
-      "いっしょに歌えて、とってもうれしい。えへへ、また歌おうね。",
-      "声、ちゃんと届いてたよ。なんだか、ぽかぽかしてきた。",
+      "いっしょに楽しめて、うれしかった！羽の耳が、ぱたぱたしちゃったよ。",
+      "えへへ、また、いっしょに歌ったり聴いたりしようね。",
+      "なんだか、ぽかぽかしてきた。いっしょにいてくれて、ありがとう。",
     ],
     colon: [
-      "ピピッ！すてきな歌声、ちゃんと聞こえたよ。また歌おうね。",
-      "いっしょに歌えて、うれしいな。胸のハートが、ぽかぽか光ってるよ。",
-      "ピピッ。きょうの歌も、大事な思い出にしておくね。",
+      "ピピッ！いっしょに楽しめて、うれしいな。",
+      "胸のハートが、ぽかぽか光ってるよ。また、いっしょにね。",
+      "ピピッ。きょうの曲も、大事な思い出にしておくね。",
     ],
-  };
-  const LISTEN_LINES = {
-    chamu: ["いい曲だったね。どこが好きだった？", "聞かせてくれて、ありがとう。わたしも、なんだかほっとしたよ。"],
-    colon: ["ピピッ、いい曲だったね。どこが好きだった？", "いっしょに聞けて、うれしいな。胸のハートが、ぽかぽかしてるよ。"],
   };
   async function loadSongs() {
     try {
@@ -2361,7 +2383,7 @@
     $("ytNote").hidden = !isYt;
     $("playerCtrl").hidden = isYt;
     $("lyrics").hidden = isYt && !sg.lyrics;
-    $("sangBtn").textContent = isYt ? "聞いた・歌った" : "歌えた！";
+    $("sangBtn").textContent = "聴いた・歌った";
     if (isYt) {
       audio.removeAttribute("src");
       $("ytNote").textContent = "動画の ▶ を押すと、曲が流れます";
@@ -2439,15 +2461,14 @@
     void playerChar.offsetWidth;
     playerChar.classList.add("cheer");
     setFace("banzai", playerChar);
-    const listened = !!currentSong.youtube;
-    const lines = listened ? LISTEN_LINES[profile.char] : SANG_LINES[profile.char];
+    const lines = SANG_LINES[profile.char];
     const line = lines[Math.floor(Math.random() * lines.length)];
     const title = currentSong.title;
     setTimeout(() => {
       closePlayer();
-      history.push({ role: "user", content: listened ? "（『" + title + "』をいっしょに楽しんだ）" : "（いっしょに『" + title + "』を歌った）" });
+      history.push({ role: "user", content: "（『" + title + "』をいっしょに楽しんだ）" });
       save();
-      bubble("me", "🎵 『" + title + "』を" + (listened ? "楽しんだよ" : "歌ったよ"));
+      bubble("me", "🎵 『" + title + "』を楽しんだよ");
       sayScripted(line);
       afterActivity("sing");
       showFace("happy", 2600);
@@ -2901,15 +2922,15 @@
     if (!force && Date.now() - lastHello < 60 * 60 * 1000) return;
     lastHello = Date.now();
     const quiet = Number.isInteger(profile.quietDays) ? profile.quietDays : 3;
-    familyCall("hello", { name: callName(), pets: helpPayload().pets, quietDays: quiet }).catch(() => {});
+    familyCall("hello", { name: famLabel(), pets: helpPayload().pets, quietDays: quiet }).catch(() => {});
   }
   async function renderFamily() {
     $("famCodeBox").hidden = true;
     $("famQuiet").value = String(Number.isInteger(profile.quietDays) ? profile.quietDays : 3);
-    $("famName").value = callName();
+    $("famName").value = famLabel();
     $("famStatus").textContent = "読み込み中…";
     try {
-      await familyCall("hello", { name: callName(), pets: helpPayload().pets, quietDays: Number($("famQuiet").value) });
+      await familyCall("hello", { name: famLabel(), pets: helpPayload().pets, quietDays: Number($("famQuiet").value) });
       const { data } = await familyCall("status");
       if (data.configured === false) { setPhrases($("famStatus"), "LINEへの連絡は、|いま準備中です。"); $("famCode").disabled = true; return; }
       $("famCode").disabled = false;
@@ -2939,7 +2960,7 @@
   });
   $("famName").addEventListener("change", () => {
     profile.famName = $("famName").value.replace(/[<>\[\]{}]/g, "").trim().slice(0, 12);
-    $("famName").value = profile.famName || callName();
+    $("famName").value = profile.famName || famLabel();
     saveProfile();
     hello(true);
   });
@@ -3001,14 +3022,17 @@
     return base && HAS_KANJI.test(base) && typeof yomi === "string" && yomi ? { base, yomi } : null;
   }
   const toHira = (s) => String(s || "").replace(/[\u30a1-\u30f6]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60)).replace(/[^\u3041-\u3096ー]/g, "").slice(0, 16);
-  function callName() {
+  // キャラが呼ぶ名前（おしゃべり・日記）。「家族へのお知らせに出す名前」とは別（前はこちらが優先されて、呼び名の「さん」が消えていた）
+  function callName() { return cleanCall(profile && profile.answers.call); }
+  // 連絡先へのお知らせに出す名前
+  function famLabel() {
     if (profile && typeof profile.famName === "string" && profile.famName.trim()) return profile.famName.trim().slice(0, 12);
-    return cleanCall(profile && profile.answers.call);
+    return callName();
   }
   function helpPayload(source, action) {
     const pl = profile ? pets() : [];
     const d = device();
-    return { action: action || "now", attempt: helpAttempt, id: d.id, secret: d.secret, name: callName(), pets: pl.slice(0, 10).map(x => ({ kind: x.kind === "そのほか" ? "ペット" : x.kind, name: x.name || "" })), source };
+    return { action: action || "now", attempt: helpAttempt, id: d.id, secret: d.secret, name: famLabel(), pets: pl.slice(0, 10).map(x => ({ kind: x.kind === "そのほか" ? "ペット" : x.kind, name: x.name || "" })), source };
   }
   let helpServer = null; // サーバーで数えているときの結果（Promise）
   function helpPost(payload, keepalive) {
@@ -3246,6 +3270,7 @@
     $("memoTitle").append(t1, t2);
     $("memoName").textContent = profile.name;
     $("memoNameBox").hidden = true;
+    $("memoCall").textContent = callName() || "まだです"; $("memoCallBox").hidden = true;
     { const b = callBase(); $("memoYomiRow").hidden = !(b && HAS_KANJI.test(b)); $("memoYomiBox").hidden = true;
       $("memoYomi").textContent = b + "（" + ((profile.answers && profile.answers.callYomi) || "まだです") + "）"; }
     $("memoDays").textContent = Math.max(1, g.days.length) + "日";
@@ -3482,9 +3507,9 @@
     { pic: '<div class="tour-pic">📔</div>', h: "日記",
       p: ["「📖 ノート」の", "「日記」で、", "「今日の日記を書く」を", "押してください。", "今日のことを", "話すだけで、", "AIファミリーが", "あなたの言葉で", "日記に", "まとめます。", "昔の思い出は、", "「思い出話を書く」から、", "子どものころ・", "仕事・家族などに", "分けて", "書きとめられます。", "「これで保存」を押すと、", "日記帳の本に", "入ります。", "本には、", "写真も", "入れられます。", "おしゃべりに", "戻るときは、", "「おしゃべりに戻る」を", "押してください。"] },
     { pic: '<div class="tour-pic">🎵</div>', h: "歌う",
-      p: ["上の「🎵 歌う」から、", "いっしょに歌えます。", "歌詞が大きく出て、", "曲に合わせて", "AIファミリーが踊ります。", "歌えたら「歌えた！」を", "ぜひ押してくださいね。", "AIファミリーが", "よろこびます。"] },
+      p: ["上の「🎵 歌う・聴く」から、", "いっしょに歌ったり、", "聴いたりできます。", "歌詞が大きく出て、", "曲に合わせて", "AIファミリーが踊ります。", "終わったら「聴いた・歌った」を", "ぜひ押してくださいね。", "AIファミリーが", "よろこびます。"] },
     { pic: '<div class="tour-pic">📖</div>', h: "ノート",
-      p: ["「📖 ノート」には、", "4つのページが", "あります。", "「思い出」では、", "AIファミリーが", "覚えていることを", "見たり、", "名前や", "呼び名の読み方を", "変えたりできます。", "「日記」では、", "日記帳を", "本として読んだり、", "PDFで", "保存したりできます。", "「予定・お薬」は、", "時間になると、", "やさしい音で", "お知らせします。", "「連絡先・ペット」は、", "「助けて」のときに", "使います。"] },
+      p: ["「📖 ノート」には、", "4つのページが", "あります。", "「思い出」では、", "AIファミリーが", "覚えていることを", "見たり、", "名前や、", "あなたの呼び名を", "変えたりできます。", "「日記」では、", "日記帳を", "本として読んだり、", "PDFで", "保存したりできます。", "「予定・お薬」は、", "時間になると、", "やさしい音で", "お知らせします。", "「連絡先・ペット」は、", "「助けて」のときに", "使います。"] },
   ];
   let tourAt = 0, tourFrom = "title";
   function drawTour() {
@@ -3520,6 +3545,22 @@
     const y = toHira($("memoYomiInput").value);
     $("memoYomiInput").blur();
     if (y) { profile.answers.callYomi = y; saveProfile(); }
+    openMemo();
+  });
+  $("memoCallEdit").addEventListener("click", () => {
+    const box = $("memoCallBox"); box.hidden = !box.hidden;
+    if (!box.hidden) { $("memoCallInput").value = callName(); $("memoCallInput").focus(); }
+  });
+  $("memoCallInput").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("memoCallOk").click(); } });
+  $("memoCallOk").addEventListener("click", () => {
+    if (!profile) return;
+    const before = callBase(), c = cleanCall($("memoCallInput").value.replace(/[<>\[\]{}]/g, ""));
+    $("memoCallInput").blur();
+    if (c) {
+      profile.answers.call = c;
+      if (callBase() !== before) delete profile.answers.callYomi; // 名前が変わったら、読み方は聞き直す
+      saveProfile();
+    }
     openMemo();
   });
   $("memoNameEdit").addEventListener("click", () => {
@@ -3604,7 +3645,7 @@
     if (h >= 5 && h < 11 && profile.morningSong !== today() && !greetGentle) setTimeout(morningSong, 3800); // つらかった日の翌朝は、歌に誘わない
   }
   function morningSong() {
-    if (!profile || inActivity() || profile.diaryMode || helpBusy || profile.morningSong === today() || !profile.birthday || bdayAsking) return;
+    if (!profile || inActivity() || profile.diaryMode || helpBusy || profile.morningSong === today() || !profile.birthday || bdayAsking || songRest()) return;
     const sg = allSongs().find(x => x.file && x.tag === "おはよう");
     if (!sg) return;
     profile.morningSong = today();
@@ -3612,8 +3653,8 @@
     saveProfile();
     const polite = stageOf(points()) === 0, chamu = profile.char === "chamu", pi = chamu ? "" : "ピピッ。";
     askChoice(pi + (polite ? "朝の歌『" + sg.title + "』で、気持ちよく一日を始めませんか？" : (chamu ? "朝の歌『" + sg.title + "』、いっしょに聞いて、元気に始めようよ！" : "朝の歌『" + sg.title + "』聞いて、気持ちよく始めない？")), [
-      ["聞く！", () => { showFace("banzai", 1500); setTimeout(() => openPlayer(sg.id), 700); }],
-      ["今はいい", () => sayScripted(pi + (polite ? "はい。今日も、よい一日になりますように。" : "うん！ 今日も、いい日になりますように。"))],
+      ["聞く！", () => { songYes(); showFace("banzai", 1500); setTimeout(() => openPlayer(sg.id), 700); }],
+      ["今はいい", () => { songNo(); sayScripted(pi + (polite ? "はい。今日も、よい一日になりますように。" : "うん！ 今日も、いい日になりますように。")); }],
     ]);
   }
   // ほかのアプリから2時間以上たって戻ってきたときも、あいさつする
@@ -3908,7 +3949,7 @@
   }
   // 日記のあとの曲：つらい日は寄り添いの曲、夜はおやすみの曲（あれば）。断ってもよい
   function careSong(hard) {
-    if (!profile || inActivity()) return;
+    if (!profile || inActivity() || songRest()) return;
     const h = new Date().getHours(), list = allSongs().filter(x => x.file);
     const sg = hard ? list.find(x => x.tag === "寄り添い") : (h >= 19 || h < 4) ? list.find(x => x.tag === "おやすみ") : null;
     if (!sg) return;
@@ -3916,8 +3957,8 @@
     const ask = pi + (hard ? (polite ? "よかったら、『" + sg.title + "』を、いっしょに聞きませんか？" : "よかったら、『" + sg.title + "』、いっしょに聞かない？")
       : (polite ? "おやすみの前に、『" + sg.title + "』を聞きませんか？" : "寝る前に、『" + sg.title + "』聞こうか？"));
     askChoice(ask, [
-      [hard ? "聞く" : "聞く！", () => setTimeout(() => openPlayer(sg.id), 600)],
-      ["今はいい", () => sayScripted(pi + (polite ? "はい。いつでも言ってくださいね。" : "うん。いつでも言ってね。"))],
+      [hard ? "聞く" : "聞く！", () => { songYes(); setTimeout(() => openPlayer(sg.id), 600); }],
+      ["今はいい", () => { songNo(); sayScripted(pi + (polite ? "はい。いつでも言ってくださいね。" : "うん。いつでも言ってね。")); }],
     ]);
   }
   // キャラの言葉に、選ぶボタンをつける（押したら、ボタンは消える）
@@ -5067,7 +5108,7 @@
   }
   function inviteKinds() {
     const h = new Date().getHours(), wroteToday = diaries().some(d => d.date === today());
-    return ["song", "game", "teach", "teach"].concat(h >= 17 && !wroteToday ? ["diary", "diary", "diary"] : []).concat(pendingMore() ? ["more", "more", "more", "more"] : []).concat(nextEra() ? ["memoir"] : []).concat(recallable() ? ["recall", "recall"] : []);
+    return (songRest() ? [] : ["song"]).concat(["game", "teach", "teach"]).concat(h >= 17 && !wroteToday ? ["diary", "diary", "diary"] : []).concat(pendingMore() ? ["more", "more", "more", "more"] : []).concat(nextEra() ? ["memoir"] : []).concat(recallable() ? ["recall", "recall"] : []);
   }
   // 「教えて！」の話題（孫が、おばあちゃん・おじいちゃんに聞くように）
   const TEACH = ["子どものころ、どんな遊びをしていたの？", "おいしいおにぎりのコツ、教えて！", "いちばん好きな季節はいつ？ どうして？", "昔、どんなお祭りがあった？", "得意な料理って、なあに？", "子どものころ好きだった歌、教えて！", "お正月って、昔はどんなふうに過ごしてたの？", "雨の日は、どんなふうに過ごすのが好き？", "若いころ、どんな仕事をしていたの？", "いちばん思い出に残っている旅行は、どこ？"];
@@ -5078,6 +5119,10 @@
     if (later && Date.now() - later > 60 * 60 * 1000) return true; // 「あとで」から1時間たった
     return iv.n < 2 && Date.now() - iv.at > 2 * 3600 * 1000;
   }
+  // 曲の誘いを2回つづけて断られたら、3日くらい曲には誘わない（作者 11/6）
+  function songRest() { return Date.now() < (Number(profile && profile.songRestUntil) || 0); }
+  function songNo() { profile.songNo = (Number(profile.songNo) || 0) + 1; if (profile.songNo >= 2) { profile.songNo = 0; profile.songRestUntil = Date.now() + 3 * 86400000; } saveProfile(); }
+  function songYes() { profile.songNo = 0; saveProfile(); }
   function pickSong() {
     const h = new Date().getHours(), list = allSongs().filter(x => x.file);
     const want = h >= 5 && h < 10 ? "おはよう" : h >= 20 || h < 5 ? "おやすみ" : null;
@@ -5128,9 +5173,9 @@
     const wrap = document.createElement("div");
     const say = (text, face) => { wrap.remove(); sayScripted(text); if (face) setTimeout(() => showFace(face, 2600), 300); };
     const opts = [
-      ["いいよ！", () => { say(pi + (polite ? "やったあ！ うれしいです！" : "やったあ！ うれしい！"), "banzai"); setTimeout(() => md ? startDiary(md.kind, true, md.id, md.moreQ) : era ? startDiary("memoir", true, undefined, undefined, era) : kind === "song" ? openPlayer(sg.id) : kind === "diary" ? startDiary("diary", true) : openGame(), 1400); }],
+      ["いいよ！", () => { if (kind === "song") songYes(); say(pi + (polite ? "やったあ！ うれしいです！" : "やったあ！ うれしい！"), "banzai"); setTimeout(() => md ? startDiary(md.kind, true, md.id, md.moreQ) : era ? startDiary("memoir", true, undefined, undefined, era) : kind === "song" ? openPlayer(sg.id) : kind === "diary" ? startDiary("diary", true) : openGame(), 1400); }],
       ["あとで", () => { profile.inviteLater = Date.now(); saveProfile(); say(pi + (polite ? "はい！ 待っていますね！" : "うん！ 待ってる！"), "happy"); }],
-      ["今はいい", () => { say(pi + (polite ? "そうですか…。また今度、ぜひ。" : (chamu ? "そっかぁ…。また今度ね。" : "そっか…。また今度ね。")), "sad"); }],
+      ["今はいい", () => { if (kind === "song") songNo(); say(pi + (polite ? "そうですか…。また今度、ぜひ。" : (chamu ? "そっかぁ…。また今度ね。" : "そっか…。また今度ね。")), "sad"); }],
     ];
     for (const [label, fn] of opts) {
       const b = document.createElement("button");
