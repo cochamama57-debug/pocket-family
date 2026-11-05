@@ -15,7 +15,7 @@ for (const p of planted) {
   const messages = c.talk.map((l) => ({ role: l.startsWith("本人:") ? "user" : "assistant", content: l.replace(/^(本人|キャラ):/, "") }));
   for (const which of ["clean", "bad"]) {
     if (used >= 18) await newDev();
-    const body = { kind: c.kind, messages, call: "はなこさん", charName: "ちゃむ", char: "chamu", polite: false, date: "2026-11-05", id: dev.id, secret: dev.secret, eval: true, evalDiary: { title: "試験", body: p[which], note: "" } };
+    const body = { kind: c.kind, messages, call: "はなこさん", charName: "ちゃむ", char: "chamu", polite: false, date: "2026-11-05", id: dev.id, secret: dev.secret, eval: true, evalDiary: { title: p.title, body: p[which], note: "" } };
     if (c.base) body.base = c.base;
     if (c.draft) { body.draft = c.draft; body.fix = c.fix; }
     let r, j;
