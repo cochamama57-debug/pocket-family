@@ -8,7 +8,7 @@ import { dailyGate } from "../lib/store.js";
 const DEVICE_DAILY = 1000; // 1台あたり1日に読み上げる回数の上限
 
 const MODEL = process.env.PF_VOICE_MODEL || "s2.1-pro-free";
-const RATE_MAX = 30; // 1分に30回まで（同じ接続元。本の読み上げで続けて使うため）
+const RATE_MAX = 40; // 1分に40回まで（同じ接続元。本の読み上げで続けて使うため）
 const MAX_CHARS = 200;
 const PRIVATE = /薬|くすり|クスリ|病院|住所|番地|電話|\d{2,4}-\d{2,4}-\d{3,4}|〒/;
 

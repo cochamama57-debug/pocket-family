@@ -4110,13 +4110,14 @@
   // 最後まで読めたら true。止められたら false
   async function readAloud(text) {
     stopVoice(); const my = voiceSeq; voicePending = my;
-    // 声のお願いの回数を減らすため、2つめからは120字くらいまでまとめる（外に送らない文は、まとめない）
-    const chunks = [];
-    for (const c of voiceChunks(text).flatMap(splitLong)) {
-      const last = chunks[chunks.length - 1];
-      if (chunks.length > 1 && last.length + c.length <= 120 && !PRIVATE_VOICE.test(last) && !PRIVATE_VOICE.test(c)) chunks[chunks.length - 1] = last + c;
-      else chunks.push(c);
+    // 本は1文ずつ読む（短い文もつなげない）。文と文の間に一息、段落の間は少し長く
+    const chunks = [], gaps = [];
+    for (const p of String(text).replace(/\s*\n+\s*/g, "\n").match(/[^。！？!?\n]*[。！？!?\n]+[」』）)]*|[^。！？!?\n]+$/g) || []) {
+      const t = p.trim(); if (!t) continue;
+      const parts = splitLong(t);
+      parts.forEach((c, k) => { chunks.push(c); gaps.push(k < parts.length - 1 ? 300 : /\n/.test(p) ? 1100 : 700); });
     }
+    if (!chunks.length) return true;
     const make = (c) => (PRIVATE_VOICE.test(c) ? Promise.resolve(null) : fetchVoice(c));
     let next = make(chunks[0]);
     const drop = () => { if (next) next.then((u) => u && URL.revokeObjectURL(u)); };
@@ -4128,6 +4129,7 @@
         if (!url) await sayDevice(voiceText(chunks[i]));
         else if (!(await playVoice(url, my))) { drop(); return false; }
         if (my !== voiceSeq) { drop(); return false; }
+        if (i + 1 < chunks.length) { await pause(gaps[i]); if (my !== voiceSeq) { drop(); return false; } }
       }
       return true;
     } catch { drop(); return false; } finally { if (voicePending === my) voicePending = 0; }
