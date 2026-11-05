@@ -1337,6 +1337,37 @@
   // 遊んでいる・曲を聞いている間（キャラは自分から話しかけない）
   function inActivity() { return !$("game").hidden || !$("player").hidden || !$("scene").hidden; }
   let gameVoice = false; // ゲームの中のキャラの声だけは出す
+  // ---- 呼び名に「さん」「ちゃん」を付けるか ----
+  const HONOR = /(さん|ちゃん|さま|様|くん|君|殿|先生|氏)$/;
+  let suffixPending = null;
+  function askSuffix(base, next) {
+    suffixPending = { base, next };
+    sayScripted("「" + base + "」に、\n「さん」や「ちゃん」を付けますか？");
+    const row = log.lastElementChild, box = row && row.querySelector(".bubble");
+    if (!box) return;
+    const wrap = document.createElement("div"); wrap.className = "suffix-choice";
+    for (const [label, suf] of [[base + "さん", "さん"], [base + "ちゃん", "ちゃん"], [base + "|のまま", ""]]) {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "song-btn voice-choice";
+      setPhrases(b, label);
+      b.addEventListener("click", () => chooseSuffix(suf, label.replace("|", " ")));
+      wrap.appendChild(b);
+    }
+    box.appendChild(wrap);
+    log.scrollTop = log.scrollHeight;
+  }
+  function chooseSuffix(suf, said) {
+    const p = suffixPending; if (!p || !profile) return;
+    suffixPending = null;
+    document.querySelectorAll(".suffix-choice").forEach((el) => el.remove());
+    stopVoice();
+    profile.answers.call = p.base + suf;
+    saveProfile();
+    history.push({ role: "user", content: String(said).slice(0, 100) }); save(); bubble("me", said);
+    askPending = true;
+    setTimeout(() => { askPending = false; if (profile && QUESTIONS[p.next]) sayScripted(QUESTIONS[p.next].ask(profile.name)); }, 500);
+  }
+
   function sayScripted(text) {
     text = myWord(text);
     history.push({ role: "assistant", content: text });
@@ -1575,6 +1606,12 @@
     if (!text && !photo) { input.focus(); return; }
     if (!text && photo) text = PHOTO_TEXT;
 
+    // 「さん」「ちゃん」の質問に、ボタンではなく文字で答えたとき
+    if (suffixPending && profile && text !== SKIPPED && !photo) {
+      input.value = ""; autoGrow(); hideGuide();
+      chooseSuffix(/ちゃん/.test(text) ? "ちゃん" : /さん|様|さま/.test(text) && !/(付けない|いらない|なし|そのまま|のまま)/.test(text) ? "さん" : "", text);
+      return;
+    }
     // 最初の会話（質問への答えを、最初の思い出として残す）
     if (profile && profile.step < QUESTIONS.length && askPending) return;
     if (profile && profile.step < QUESTIONS.length && text !== SKIPPED) {
@@ -1605,6 +1642,13 @@
       $("skip").hidden = profile.step >= QUESTIONS.length;
       if (profile.step < QUESTIONS.length && !photo) {
         const next = profile.step;
+        // 呼び名に「さん」「ちゃん」を付けるか、ボタンで聞く（シニア向け。付いていれば聞かない）
+        const base = q.key === "call" && text !== SKIPPED ? cleanCall(text) : "";
+        if (base && !HONOR.test(base)) {
+          askPending = true;
+          setTimeout(() => { askPending = false; askSuffix(base, next); }, 500);
+          return;
+        }
         askPending = true;
         setTimeout(() => { askPending = false; if (profile && QUESTIONS[next]) sayScripted(QUESTIONS[next].ask(profile.name)); }, 500);
         return;
@@ -2811,7 +2855,8 @@
 
   // 家族に送る文章の材料（名前とペットだけ。文章はサーバーで組み立てる。薬や住所は送らない）
   // 「はなこって呼んで」「はなこだよ。」→「はなこ」
-  const cleanCall = (raw) => String(raw || "").replace(/\s+/g, "").replace(/(って|と)?(呼んで|よんで|でいい|がいい|です|だよ|ね|よ|！|!|。)+.*$/, "").slice(0, 12);
+  // 「はなこって呼んでね」→「はなこ」。名前の中の「よ」「ね」（きよみ・よしこ・かよ）は消さない
+  const cleanCall = (raw) => String(raw || "").replace(/\s+/g, "").replace(/(って|と)?(呼んで|よんで|でいい|がいい|です|だよ|でお願い).*$/, "").replace(/[！!。、]+$/, "").slice(0, 12);
   function callName() {
     if (profile && typeof profile.famName === "string" && profile.famName.trim()) return profile.famName.trim().slice(0, 12);
     return cleanCall(profile && profile.answers.call);
