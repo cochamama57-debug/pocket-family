@@ -206,6 +206,7 @@
   .diary-bar > span { flex: 1; min-width: 0; line-height: 1.3; }
   .diary-bar button { flex: none; font: inherit; font-size: 16px; font-weight: 700; min-height: 44px; padding: 2px 10px; border-radius: 12px; border: 2px solid var(--line); background: #fff; color: var(--ink); }
   .diary-bar button.go { background: var(--accent); border-color: var(--accent); color: #fff; }
+  @media (max-width: 440px) { .diary-bar { flex-wrap: wrap; row-gap: 4px; padding: 6px 8px; } .diary-bar > span { flex: 1 1 100%; } .diary-bar button { flex: 1 1 auto; } }
   /* 日記帳を本として読む（よこにめくる） */
   .sheet.book { display: flex; flex-direction: column; overflow: hidden; padding-left: 0; padding-right: 0; background: #ece0ca; }
   .book-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; max-width: 600px; margin: 0 auto 8px; padding: 0 16px; box-sizing: border-box; }
@@ -621,7 +622,7 @@
       <div id="guideText"></div>
       <button class="close" type="button" id="guideClose" aria-label="案内を閉じる">✕<br>閉じる</button>
     </div>
-    <div class="diary-bar" id="diaryBar" hidden><span id="diaryBarText">📝 日記を書いています</span><button type="button" class="go" id="diaryMake">まとめる</button><button type="button" id="diaryQuit">やめる</button></div>
+    <div class="diary-bar" id="diaryBar" hidden><span id="diaryBarText">📝 日記を書いています</span><button type="button" class="go" id="diaryMake">まとめる</button><button type="button" id="diaryBook" aria-label="日記帳の本を読む" hidden>📖 本</button><button type="button" id="diaryQuit">やめる</button></div>
     <button type="submit" class="skip" id="skip" hidden formnovalidate>答えずに次へ</button>
     <div class="tools">
       <button class="tool mic" id="mic" type="button"><span class="ico" aria-hidden="true"><svg class="micsvg" viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="2.5" width="7" height="12" rx="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 11.5a7 7 0 0 0 14 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="18.5" x2="12" y2="21.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="8" y1="21.5" x2="16" y2="21.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><span id="micLabel">話す</span></button>
@@ -3421,7 +3422,7 @@
     { pic: helpDemo, h: "助けて",
       p: ["困ったときは、", "上の赤い「助けて」を", "長押ししてくださいね。", "8秒たつと、", "登録した連絡先に", "LINEでお知らせします。", "間違えて押したときは、", "「いらない」を押せば", "止められます。", "連絡先", "（友人や家族など、", "連絡を受け取って", "くれる人）は、", "「📖 ノート」から", "登録できます。"] },
     { pic: '<div class="tour-pic">📔</div>', h: "日記",
-      p: ["「📖 ノート」の", "「日記」で、", "「今日の日記を書く」を", "押してください。", "AIファミリーに", "今日のことを", "話すだけで、", "あなたの言葉で", "日記に", "まとめてくれます。", "昔の思い出は", "「思い出話を書く」から", "書きとめられます。", "書いた日記は、", "ファイルで", "ダウンロードも", "できます。"] },
+      p: ["「📖 ノート」の", "「日記」で、", "「今日の日記を書く」を", "押してください。", "AIファミリーに", "今日のことを", "話すだけで、", "あなたの言葉で", "日記に", "まとめてくれます。", "昔の思い出は", "「思い出話を書く」から", "書きとめられます。", "「これで保存」を押すと、", "日記帳の本に", "入ります。", "本は、", "PDFで", "保存もできます。"] },
     { pic: '<div class="tour-pic">🎵</div>', h: "歌う",
       p: ["上の「🎵 歌う」から、", "いっしょに歌えます。", "歌詞が大きく出て、", "曲に合わせて", "AIファミリーが踊ります。", "歌えたら「歌えた！」を", "ぜひ押してくださいね。", "AIファミリーが", "よろこびます。"] },
     { pic: '<div class="tour-pic">📖</div>', h: "ノート",
@@ -3709,6 +3710,7 @@
   function updateDiaryBar() {
     const dm = profile && profile.diaryMode;
     $("diaryBar").hidden = !dm;
+    $("diaryBook").hidden = !dm || !diaries().length;
     if (dm) setPhrases($("diaryBarText"), dm.kind === "memoir" ? "📜 思い出話を|書いています" : "📝 日記を|書いています");
   }
   // 前に書いた日記・思い出話の続き（書き足し）
@@ -3820,7 +3822,9 @@
     endDiary();
     const polite = stageOf(points()) === 0, pi = profile.char === "chamu" ? "" : "ピピッ。";
     const hard = draft.mood === "hard";
-    sayScripted(pi + (polite ? "日記帳に、しまっておきました！ ノートの「日記」で、いつでも読めます。" : "日記帳に、しまっておいたよ！ ノートの「日記」で、いつでも読めるからね。"));
+    sayScripted(pi + (polite ? "日記帳に、しまっておきました！ 日記帳の本にも、もう入っています。" : "日記帳に、しまっておいたよ！ 日記帳の本にも、もう入ってるよ。"));
+    { const saved = cont || list[list.length - 1], bx = log.lastElementChild && log.lastElementChild.querySelector(".bubble");
+      if (saved && bx) { const w = document.createElement("div"); const b = document.createElement("button"); b.type = "button"; b.className = "song-btn"; b.style.background = "#b8501f"; b.textContent = "📖 本で読む"; b.addEventListener("click", () => openBook(saved.id)); w.appendChild(b); bx.appendChild(w); } }
     showFace(hard ? "serious" : "happy", 2200);
     // 今日のいいこと（つらい日は、寄り添うひとこと）。そのあと、必要なら曲にそっと誘う
     setTimeout(() => {
@@ -3892,7 +3896,7 @@
   }
   function renderDiaryTab() {
     if (!profile) return;
-    setPhrases($("diaryLead"), "お話ししたことを、|" + profile.name + "が|日記にまとめます。|うまく書けなくても|大丈夫。|聞きながら、|いっしょに書きます。");
+    setPhrases($("diaryLead"), "お話ししたことを、|" + profile.name + "が|日記にまとめます。|うまく書けなくても|大丈夫。|聞きながら、|いっしょに書きます。|「これで保存」を押すと、|日記帳の本に|入ります。");
     const box = $("diaryList"); box.textContent = "";
     const list = diaries().slice().reverse();
     $("diaryAll").hidden = !list.length;
@@ -3989,12 +3993,13 @@
     $("bookPrev").disabled = i <= 0; $("bookNext").disabled = i >= n - 1;
   }
   function bookGo(i) { const b = $("bookPages"); b.scrollTo({ left: i * b.clientWidth, behavior: "smooth" }); }
-  function openBook() {
+  function openBook(id) {
     if (!profile || !diaries().length) return;
     buildBook();
     $("book").hidden = false;
-    $("bookPages").scrollLeft = 0;
-    bookUI();
+    const { memo, days } = bookEntries(), i = typeof id === "string" ? memo.concat(days).findIndex(d => d.id === id) : -1;
+    const b = $("bookPages"); b.scrollLeft = i >= 0 ? (2 + i) * b.clientWidth : 0;
+    requestAnimationFrame(() => { if (i >= 0) b.scrollLeft = (2 + i) * b.clientWidth; bookUI(); });
   }
   let bookTick = 0;
   $("bookPages").addEventListener("scroll", () => { cancelAnimationFrame(bookTick); bookTick = requestAnimationFrame(bookUI); }, { passive: true });
@@ -4002,7 +4007,8 @@
   $("bookNext").addEventListener("click", () => bookGo(bookIndex() + 1));
   $("bookClose").addEventListener("click", () => { $("book").hidden = true; });
   window.addEventListener("resize", () => { if (!$("book").hidden) { const i = bookIndex(); requestAnimationFrame(() => { $("bookPages").scrollLeft = i * $("bookPages").clientWidth; bookUI(); }); } });
-  $("bookOpen").addEventListener("click", openBook);
+  $("bookOpen").addEventListener("click", () => openBook());
+  $("diaryBook").addEventListener("click", () => openBook());
 
   // ---- 日記帳を、本の形のPDFにする（1ページずつ絵にして、PDFにまとめる。外の部品は使わない） ----
   const PW = 1050, PH = 1485; // A5のたて横（絵の大きさ）
