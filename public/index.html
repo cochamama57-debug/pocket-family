@@ -4110,7 +4110,13 @@
   // 最後まで読めたら true。止められたら false
   async function readAloud(text) {
     stopVoice(); const my = voiceSeq; voicePending = my;
-    const chunks = voiceChunks(text).flatMap(splitLong);
+    // 声のお願いの回数を減らすため、2つめからは120字くらいまでまとめる（外に送らない文は、まとめない）
+    const chunks = [];
+    for (const c of voiceChunks(text).flatMap(splitLong)) {
+      const last = chunks[chunks.length - 1];
+      if (chunks.length > 1 && last.length + c.length <= 120 && !PRIVATE_VOICE.test(last) && !PRIVATE_VOICE.test(c)) chunks[chunks.length - 1] = last + c;
+      else chunks.push(c);
+    }
     const make = (c) => (PRIVATE_VOICE.test(c) ? Promise.resolve(null) : fetchVoice(c));
     let next = make(chunks[0]);
     const drop = () => { if (next) next.then((u) => u && URL.revokeObjectURL(u)); };

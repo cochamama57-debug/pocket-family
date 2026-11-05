@@ -5,10 +5,10 @@
 // 決まり：薬・住所・電話番号などが入った文は、外の声サービスに送らない（スマホの読み上げにまかせる）。
 import { fromOurPage, rateLimited, clientIp, readBody, cleanText } from "../lib/shared.js";
 import { dailyGate } from "../lib/store.js";
-const DEVICE_DAILY = 400; // 1台あたり1日に読み上げる回数の上限
+const DEVICE_DAILY = 1000; // 1台あたり1日に読み上げる回数の上限
 
 const MODEL = process.env.PF_VOICE_MODEL || "s2.1-pro-free";
-const RATE_MAX = 20; // 1分に20回まで（同じ接続元）
+const RATE_MAX = 30; // 1分に30回まで（同じ接続元。本の読み上げで続けて使うため）
 const MAX_CHARS = 200;
 const PRIVATE = /薬|くすり|クスリ|病院|住所|番地|電話|\d{2,4}-\d{2,4}-\d{3,4}|〒/;
 
