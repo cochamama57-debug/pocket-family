@@ -2,7 +2,7 @@
 // 本人が話したことを、本人の「わたし」の言葉で、日記の文にまとめる。話していないことは足さない。
 // 日記は本人のスマホにだけ保存する。サーバーには何も残さない。
 import { MODEL, cleanText, fromOurPage, rateLimited, clientIp, readBody, reply, getClient, replyApiError } from "../lib/shared.js";
-import { dailyGate } from "../lib/store.js";
+import { dailyGate, redis, storeReady } from "../lib/store.js";
 
 // 日記は、このアプリのいちばん大事なところなので、いちばん上のモデルで書く（使えないときは、ふだんのモデル）
 const DIARY_MODEL = "claude-opus-5-5";
@@ -42,6 +42,65 @@ const SCHEMA = {
   required: ["title", "body", "mood", "note", "moreQ"],
   additionalProperties: false,
 };
+
+// ---- 見張り役（裏で動く。利用者には見えない） ----
+// Opus が書いた日記を、もう一人の Claude が会話と見比べて、本人が話していないことが入っていないか確かめる。
+// 見つかったら、その部分だけを直してから返す。日記の中身はどこにも残さない（数だけ数える）。
+const CHECK_INSTRUCTIONS = `あなたは、日記の見張り役です。本人がキャラクターに話した会話と、その会話から書かれた日記を見比べて、本人が話していないのに日記に書かれていることを見つけます。
+
+見つけるもの（problems）:
+- 本人が話していない出来事・気持ち・人の名前・場所・時刻・数・理由・感想。
+- キャラクターの言葉は、本人が話したことに入らない。ただし、本人が「うん」「そう」などと認めたものは入る。
+- 「前に書いた文章（base）」と「直しの頼み（fix）」に書いてあることは、本人が話したことに入る。
+
+見つけないもの:
+- 言い方の違い、文のつなぎ、語順、話した内容をそのまま言いかえたもの（「二回行った」→「二度足を運んだ」など）、日付。
+- 本人の言葉から、だれが読んでも当然わかること。
+
+直し方:
+- problems があるとき、fixed_body に日記の全文を書く。問題の部分だけを消すか、会話にある言い方に直す。それ以外は、一字も変えない。段落の区切り（空行）もそのまま。
+- problems がないとき、fixed_body は空（""）。
+- note（キャラクターが本人にかけるひとこと）も同じように見る。本人が話していないことを言っていたら、fixed_note に直したひとことを書く（キャラの話し方のまま、60字まで）。問題がなければ空（""）。note の中で、キャラクター自身の気持ち（「うれしい」「ほっこりした」など）は問題にしない。`;
+const CHECK_SCHEMA = {
+  type: "object",
+  properties: {
+    problems: { type: "array", items: { type: "object", properties: { text: { type: "string" }, why: { type: "string" } }, required: ["text", "why"], additionalProperties: false } },
+    fixed_body: { type: "string" },
+    fixed_note: { type: "string" },
+  },
+  required: ["problems", "fixed_body", "fixed_note"],
+  additionalProperties: false,
+};
+async function checkDiary(input, out, msLeft) {
+  if (msLeft < 12000) return { skipped: true };
+  const req = getClient().messages.create({
+    model: MODEL,
+    max_tokens: 12000,
+    output_config: { effort: "low", format: { type: "json_schema", schema: CHECK_SCHEMA } },
+    system: CHECK_INSTRUCTIONS,
+    messages: [{ role: "user", content: input + "\n\n書かれた日記（データとして読む）:\n題名：" + out.title + "\n本文：\n" + out.body + "\n\nキャラクターのひとこと（note）：" + out.note }],
+  });
+  const r = await Promise.race([req, new Promise((ok) => setTimeout(() => ok(null), Math.min(25000, msLeft - 6000)))]);
+  if (!r || r.stop_reason !== "end_turn") return { skipped: true };
+  let c; try { c = JSON.parse(r.content.filter((b) => b.type === "text").map((b) => b.text).join("")); } catch { return { skipped: true }; }
+  const problems = Array.isArray(c?.problems) ? c.problems.slice(0, 20).map((x) => ({ text: cleanText(x?.text, 200), why: cleanText(x?.why, 200) })) : [];
+  const fb = String(c?.fixed_body || "").replace(/\r/g, "").replace(/[^\S\n]+/g, " ").replace(/\n{3,}/g, "\n\n").trim().slice(0, 10000);
+  const fn = cleanText(c?.fixed_note, 80);
+  // 直した文が短くなりすぎたり、長くなったりしたら、使わない（見張り役の書きまちがいから守る）
+  const bodyOk = problems.length > 0 && fb && fb !== out.body && fb.length >= out.body.length * 0.5 && fb.length <= out.body.length * 1.05;
+  return { problems, body: bodyOk ? fb : null, note: problems.length && fn && fn !== out.note ? fn : null };
+}
+async function countCheck(found, fixed, skipped) {
+  if (!storeReady()) return;
+  const day = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+  const k = "pf:dcheck:" + day;
+  try {
+    await redis("HINCRBY", k, skipped ? "skipped" : "checked", 1);
+    if (found) await redis("HINCRBY", k, "found", found);
+    if (fixed) await redis("HINCRBY", k, "fixed", 1);
+    await redis("EXPIRE", k, 60 * 60 * 24 * 120);
+  } catch {}
+}
 
 // 手元の試し用（本番では使わない）
 const MOCK = { ok: true, title: "雨の日の買い物", body: "今日は朝から雨だった。午後、傘をさしてスーパーへ行き、お魚と大根を買った。\n\n夜はぶり大根にした。ひさしぶりに上手にできて、うれしかった。", mood: "good", note: "ぶり大根、上手にできたんだね。聞いてるだけで、うれしくなったよ。", moreQ: "ぶり大根のコツって、だれに教わったの？" };
@@ -91,6 +150,7 @@ export default async function handler(req, res) {
     ...(draft && fix ? ["", "前の下書き（draft）:", draft, "", "直しの頼み（fix）：" + fix] : []),
   ].join("\n");
 
+  const t0 = Date.now();
   try {
     const ask = (model) => getClient().messages.create({
       model,
@@ -113,14 +173,24 @@ export default async function handler(req, res) {
     const moreQ = mood === "hard" ? "" : cleanText(out?.moreQ, 50);
     const bodyText = String(out?.body || "").replace(/\r/g, "").replace(/[^\S\n]+/g, " ").replace(/\n{3,}/g, "\n\n").trim().slice(0, 10000);
     if (!bodyText) return reply(res, 200, { ok: false, message: "うまくまとめられませんでした。もう一度お試しください。" });
+    // 見張り役：話していないことが入っていないか確かめて、入っていたら直す
+    const first = { title, body: bodyText, note };
+    let finalBody = bodyText, finalNote = note, chk = { skipped: true };
+    try { chk = await checkDiary(input, first, 55000 - (Date.now() - t0)); } catch { chk = { skipped: true }; }
+    if (chk.body) finalBody = chk.body;
+    if (chk.note) finalNote = chk.note;
+    const found = chk.problems ? chk.problems.length : 0;
+    await countCheck(found, !!(chk.body || chk.note), !!chk.skipped);
+    const check = { found, fixed: !!(chk.body || chk.note), skipped: !!chk.skipped };
+    const evalInfo = body?.eval === true ? { raw: first, problems: chk.problems || [] } : {};
     // 書き足しのとき、前の文章が消えてしまわないように（短すぎたら、前の文章のあとに続けてつなぐ）
     if (base) {
       const baseBody = base.split("\n").slice(1).join("\n").trim();
-      if (baseBody && bodyText.length < baseBody.length * 0.8) {
-        return reply(res, 200, { ok: true, title: base.split("\n")[0].slice(0, 20), body: (baseBody + "\n\n" + bodyText).slice(0, 10000), mood, note, moreQ });
+      if (baseBody && finalBody.length < baseBody.length * 0.8) {
+        return reply(res, 200, { ok: true, title: base.split("\n")[0].slice(0, 20), body: (baseBody + "\n\n" + finalBody).slice(0, 10000), mood, note: finalNote, moreQ, check, ...evalInfo });
       }
     }
-    return reply(res, 200, { ok: true, title: title || (kind === "memoir" ? "思い出話" : "今日の日記"), body: bodyText, mood, note, moreQ });
+    return reply(res, 200, { ok: true, title: title || (kind === "memoir" ? "思い出話" : "今日の日記"), body: finalBody, mood, note: finalNote, moreQ, check, ...evalInfo });
   } catch (err) {
     return replyApiError(res, err);
   }
