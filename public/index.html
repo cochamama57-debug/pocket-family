@@ -295,8 +295,8 @@
   /* お祝いの場面の背景の絵（4枚とも同じ絵本の画風・作者 11/6）。スマホでは左右が切れるので、見せたい側にそろえる */
   .sc-bbg { display: none; position: absolute; inset: 0; background: none 50% 50% / cover no-repeat; }
   .scene.bday .sc-bbg { display: block; background-image: url(events/bday_bg.jpg); background-position: 0% 50%; }
-  .scene.ny .sc-bbg { display: block; background-image: url(events/ny_bg.jpg); }
-  .scene.nye .sc-bbg { display: block; background-image: url(events/nye_bg.jpg); }
+  .scene.ny .sc-bbg { display: block; background-image: url(events/ny_bg.jpg); background-position: 50% 80%; } /* 横長の画面（パソコン）でも、富士山が切れないように */
+  .scene.nye .sc-bbg { display: block; background-image: url(events/nye_bg.jpg); background-position: 50% 90%; } /* 町並みが見えるように */
   .scene.xmas .sc-bbg { display: block; background-image: url(events/xmas_bg2.jpg); background-position: 0% 50%; }
   /* クリスマスの部屋（ツリーの電球は、2組が交互にチカチカ光る） */
   .sc-xbg { display: none; position: absolute; inset: 0; background: url(events/xmas_bg.jpg) 22% 50% / cover no-repeat; }
@@ -2484,6 +2484,7 @@
   const stageCv = $("stageCv");
   let stg = null;
   const clamp01 = (v) => Math.max(0, Math.min(1, v));
+  window.addEventListener("resize", () => { if (mv && !mv.raf && !$("player").hidden) requestAnimationFrame(() => drawStage(rawSongTime(), 0)); });
   function stageCanvas() {
     const r = stageEl.getBoundingClientRect(); if (!r.width || !r.height) return null;
     if (!stg || stg.w !== r.width || stg.h !== r.height) {
@@ -5836,7 +5837,7 @@
     return cx;
   }
   function scBurst(x, y, ang, spread, n, speed, kind, fwType) {
-    if (!scene) return;
+    if (!scene || reduceMotion) return; // 動きを減らす設定の人には、飛ばさない
     const cols = SC_COLORS[scene.kind] || SC_COLORS.bday;
     let fc = FW_COLORS[Math.floor(Math.random() * FW_COLORS.length)]; // 花火は、1発ごとに1色（白をまぜる）
     const T = kind === "fw" ? (fwType || "peony") : "";
@@ -5850,7 +5851,7 @@
     }
   }
   function scRain(kind, n) { // 上から、ゆっくり降ってくる
-    if (!scene) return;
+    if (!scene || reduceMotion) return;
     const cols = SC_COLORS[scene.kind] || SC_COLORS.bday;
     for (let i = 0; i < n; i++) scene.parts.push({ x: Math.random() * innerWidth, y: -20 - Math.random() * innerHeight * 0.6, vx: (Math.random() - 0.5) * 0.6, vy: 0.6 + Math.random() * 1.1,
       r: Math.random() * 6.3, vr: (Math.random() - 0.5) * 0.08, w: 7 + Math.random() * 6, h: 10 + Math.random() * 8, c: kind === "snow" ? "#ffffff" : kind === "gold" ? ["#ffd36b", "#ffe9a8", "#f5b942", "#fff6d6"][i % 4] : kind === "petal" ? ["#ffc2d4", "#ffd9e4", "#ff9fbc"][i % 3] : kind === "ume" ? ["#ff9fbd", "#ffffff", "#ffc2d4", "#f77fa6"][i % 4] : cols[i % cols.length],
@@ -5858,7 +5859,7 @@
   }
   const FW_COLORS = ["#ff6b8b", "#ffd36b", "#7bdcff", "#b98cff", "#7bf0a8", "#ff9f5a"];
   function scRocket() { // 下から花火の玉を打ち上げる（上で開く）
-    if (!scene) return;
+    if (!scene || reduceMotion) return;
     scene.parts.push({ x: innerWidth * (0.15 + Math.random() * 0.7), y: innerHeight + 10, vx: (Math.random() - 0.5) * 1.2, vy: -Math.sqrt(2 * 0.12 * innerHeight * (0.55 + Math.random() * 0.25)), // 画面の上から2〜4割の高さで開く
       r: 0, vr: 0, w: 3, h: 3, c: "#fff6d6", k: "rocket", life: 0, ph: 0, fwt: ["peony", "peony", "chrys", "willow", "ring"][Math.floor(Math.random() * 5)] });
   }
@@ -5885,8 +5886,8 @@
     return g;
   }
   const CRANE = new Image(); CRANE.src = "events/crane.png";
-  function scMap(px, W, H) { // 背景の絵（1024x1536、cover）の中の位置を、画面の位置に（px＝横のそろえ方 0〜1）
-    const sc = Math.max(W / 1024, H / 1536), ox = (W - 1024 * sc) * px, oy = (H - 1536 * sc) * 0.5;
+  function scMap(px, W, H, py = 0.5) { // 背景の絵（1024x1536、cover）の中の位置を、画面の位置に（px・py＝CSSの background-position と同じそろえ方 0〜1）
+    const sc = Math.max(W / 1024, H / 1536), ox = (W - 1024 * sc) * px, oy = (H - 1536 * sc) * py;
     const f = (x, y) => [ox + x * sc, oy + y * sc]; f.sc = sc; return f;
   }
   function scBackdrop(s, cx, W, H) {
@@ -5916,7 +5917,7 @@
       });
       cx.globalCompositeOperation = "source-over";
     } else if (g.kind === "ny") {
-      const P = scMap(0.5, W, H), [sx, sy] = P(510, 1085), sc = P.sc; // 絵の中の初日の出が、ゆっくり輝く
+      const P = scMap(0.5, W, H, 0.8), [sx, sy] = P(510, 1085), sc = P.sc; // 絵の中の初日の出が、ゆっくり輝く
       if (!g.t0) g.t0 = now; const up = reduceMotion ? 1 : clamp01((now - g.t0) / 3);
       cx.globalCompositeOperation = "lighter";
       const pul = 0.5 + 0.5 * Math.sin(now * 1.6), R1 = 330 * sc * (1 + 0.06 * pul);
