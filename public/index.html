@@ -503,6 +503,8 @@
   .pz-talk button { flex: none; min-width: 72px; font: inherit; font-size: 17px; font-weight: 700; color: #fff; background: #e07b3c; border: 0; border-radius: 12px; }
   @media (max-height: 760px) { .pz-big { width: 72px; height: 72px; } .pz-pick { min-height: 84px; } .pz-tray button { width: 66px; height: 66px; } .pz-tools button { min-height: 44px; } #pz .game-top img { width: 52px; height: 52px; } }
   .st-rows { display: flex; flex-direction: column; gap: 10px; }
+  .st-level { display: flex; flex-direction: column; align-items: center; gap: 2px; margin: 0; }
+  .st-level small { font-size: 15px; font-weight: 400; opacity: .9; }
   .st-row { background: #fff; border: 2px solid var(--line); border-radius: 14px; padding: 8px; }
   .st-row.ok { border-color: #6bbf8a; background: #f1fbf4; }
   .st-cells { display: flex; gap: 6px; align-items: center; }
@@ -1036,6 +1038,7 @@
     <div class="st-tray" id="stTray"></div>
     <div class="pz-end" id="stEnd" hidden>
       <button type="button" class="big-btn" id="stNext">つぎの4つも手伝う</button>
+      <button type="button" class="hm-sub" id="stLevel">むずかしさを変える</button>
       <button type="button" class="title-link" id="stQuit">閉じる</button>
     </div>
   </div>
@@ -5250,7 +5253,10 @@
   ];
   let sts = null; // 開いている間 { sel, solvedNow }
   function stState() { const s = profile && profile.study; return s && Array.isArray(s.rows) && s.rows.length === 4 && Array.isArray(s.tray) && Array.isArray(s.ids) && s.ids.every(i => YOJI[i]) ? s : null; }
-  function stNew() {
+  // むずかしさ：e＝やさしい（空欄少なめ）／n＝ふつう／h＝むずかしい（空欄が多く、関係ない字もまざる）
+  const ST_LEVELS = { e: { name: "やさしい", blanks: [0, 1, 0, 1], keep: [1, 3], decoy: 0 }, n: { name: "ふつう", blanks: [1, 2, 1, 2], keep: [1], decoy: 0 }, h: { name: "むずかしい", blanks: [2, 3, 2, 3], keep: [], decoy: 2 } };
+  function stNew(level) {
+    const L = ST_LEVELS[level] || ST_LEVELS.n;
     const done = Array.isArray(profile.studyDone) ? profile.studyDone : [];
     let pool = YOJI.map((_, i) => i).filter(i => !done.includes(i));
     if (pool.length < 4) { profile.studyDone = []; pool = YOJI.map((_, i) => i); }
@@ -5258,13 +5264,16 @@
     const rows = [], tray = [];
     ids.forEach((id, k) => {
       const w = [...YOJI[id][0]], cells = w.slice();
-      // 空欄：0・2番めは1字、1・3番めは2字（作者：簡単すぎる→空欄を増やした）。1番め以外は、順番もバラバラ
-      const blanks = k === 1 || k === 3 ? 2 : 1;
-      for (const i of [0, 1, 2, 3].sort(() => Math.random() - 0.5).slice(0, blanks)) { tray.push(cells[i]); cells[i] = ""; }
-      if (k !== 1) { let t = 0; do { cells.sort(() => Math.random() - 0.5); t++; } while (cells.join("") === w.join("") && t < 20); }
+      // 空欄の数と、順番をバラバラにするかは、むずかしさで決まる
+      for (const i of [0, 1, 2, 3].sort(() => Math.random() - 0.5).slice(0, L.blanks[k])) { tray.push(cells[i]); cells[i] = ""; }
+      if (!L.keep.includes(k)) { let t = 0; do { cells.sort(() => Math.random() - 0.5); t++; } while (cells.join("") === w.join("") && t < 20); }
       rows.push(cells);
     });
-    return { ids, rows, tray: tray.sort(() => Math.random() - 0.5), ok: [false, false, false, false], hint: [false, false, false, false] };
+    // むずかしい：関係ない字も、まざっている（キャラが、よけいな字まで持ってきてしまった）
+    const used = new Set(ids.flatMap(i => [...YOJI[i][0]]));
+    const extra = YOJI.flatMap(y => [...y[0]]).filter(c => !used.has(c)).sort(() => Math.random() - 0.5);
+    for (const c of extra) { if (tray.length >= ids.reduce((n, _, k) => n + L.blanks[k], 0) + L.decoy) break; if (!tray.includes(c)) tray.push(c); }
+    return { ids, rows, tray: tray.sort(() => Math.random() - 0.5), ok: [false, false, false, false], hint: [false, false, false, false], level: level in ST_LEVELS ? level : "n", decoy: L.decoy };
   }
   // voice：声で読む文（四字熟語は漢字だと読みまちがえるので、読みがなで話す）
   function stSay(text, face, quiet, voice) {
@@ -5340,6 +5349,7 @@
       const y = YOJI[st.ids[r]];
       sfx("match");
       const quick = Date.now() - (sts.lastAt || 0) < 25000; sts.lastAt = Date.now();
+      const phew = st.level === "h" && !quick && Math.random() < 0.6 ? pzPick(stageOf(points()) === 0 ? ["ふぅ〜、助かりました…！ ", "やっと、頭のぐるぐるが止まりました…！ "] : ["ふぅ〜、助かった…！ ", "やっと、頭のぐるぐるが止まった…！ "]) : "";
       const wow = quick ? pzPick(stageOf(points()) === 0 ? ["え！ もうできたんですか！ さすがです！ ", "わぁ、早い！ "] : ["え！ もうできたの！ さすがー！ ", "わぁ、はやーい！ "]) : "";
       // 言い方を毎回かえる：意味の言い方＋熟語ごとのひとこと＋お礼（作者：全部「教えてくれてありがとう」だと、つまらない）
       const c = callName(), polite = stageOf(points()) === 0;
@@ -5349,8 +5359,8 @@
       const thx = pzPick(polite ? ["教えてくれて、ありがとうございます！", "ひとつ、かしこくなりました。", c ? c + "がいると、勉強がはかどります。" : "勉強が、はかどります。", "忘れないように、覚えておきますね。", "やっぱり、頼りになります！", "うれしいです。ありがとうございます。"]
         : ["教えてくれて、ありがとう！", "ひとつ、かしこくなっちゃった。", c ? c + "がいると、勉強がはかどるなあ。" : "勉強が、はかどるなあ。", "忘れないように、覚えておくね。", "やっぱり、たよりになるね！", "えへへ、うれしい。ありがとう！"]);
       const pi = profile.char === "colon" ? "ピピッ。" : "";
-      stSay(myWord(pi + wow + "「" + y[0] + "」！ " + y[1] + "。" + imi + " " + one + " " + thx), "banzai", false,
-        myWord(pi + wow + y[1] + "！ " + imi + " " + one.split(y[0]).join(y[1]) + " " + thx));
+      stSay(myWord(pi + wow + phew + "「" + y[0] + "」！ " + y[1] + "。" + imi + " " + one + " " + thx), "banzai", false,
+        myWord(pi + wow + phew + y[1] + "！ " + imi + " " + one.split(y[0]).join(y[1]) + " " + thx));
     });
     saveProfile();
     if (st.ok.every(Boolean)) { sts.sel = null; stRender(); stFinish(); } // 4つめの意味も見えるように、先に描く
@@ -5358,11 +5368,11 @@
   function stFinish() {
     const st = stState(); if (!st) return;
     profile.studyDone = (Array.isArray(profile.studyDone) ? profile.studyDone : []).concat(st.ids);
-    const words = st.ids.map(i => YOJI[i][0]);
+    const words = st.ids.map(i => YOJI[i][0]), left = st.tray.length; // むずかしい：あまった字（関係ない字）
     profile.study = null; saveProfile();
     sfx("fanfare"); confetti(["📚", "✨", "💮", "🌟"], 40, true);
     const mine = sts;
-    afterVoice(() => { if (sts !== mine || $("st").hidden) return; stSay(pzP("4つとも、できました！ " + (callName() ? callName() + "のおかげで、" : "") + "わたし、かしこくなりました。本当に、ありがとうございます！", "4つとも、できたー！ " + (callName() ? callName() + "のおかげで、" : "") + "わたし、かしこくなったよ。ほんとうに、ありがとう！"), "banzai"); }, 2500); // 熟語の説明を話し終わってから
+    afterVoice(() => { if (sts !== mine || $("st").hidden) return; stSay(pzP("4つとも、できました！ " + (callName() ? callName() + "のおかげで、" : "") + "わたし、かしこくなりました。本当に、ありがとうございます！", "4つとも、できたー！ " + (callName() ? callName() + "のおかげで、" : "") + "わたし、かしこくなったよ。ほんとうに、ありがとう！") + (left ? myWord(stageOf(points()) === 0 ? " あれ？ 字が" + left + "つ、あまっていますね…。わたし、よけいな字まで持ってきちゃってたみたいです。えへへ。" : " あれ？ 字が" + left + "つ、あまってる…。わたし、よけいな字まで持ってきちゃってたみたい。えへへ。") : ""), "banzai"); }, 2500); // 熟語の説明を話し終わってから
     history.push({ role: "user", content: "（" + profile.name + "の四字熟語の勉強を手伝った：" + words.join("・") + "）" });
     history.push({ role: "assistant", content: pzP("勉強を手伝ってくれて、ありがとうございました！", "勉強、手伝ってくれて、ありがとう！") }); save();
     mirrorOff = true; bubble("me", "📚 四字熟語の勉強を手伝ったよ（" + words.join("・") + "）"); bubble("her", history[history.length - 1].content); mirrorOff = false;
@@ -5375,13 +5385,22 @@
     stopVoice(); stopMic();
     $("memo").hidden = true; $("helpMenu").hidden = true;
     let st = stState(); const isNew = !st;
-    if (!st) { st = profile.study = stNew(); saveProfile(); }
+    if (!st && (!profile.studyLevel || stPickLevel)) return stLevelPicker();
+    if (!st) { st = profile.study = stNew(profile.studyLevel); saveProfile(); }
     sts = { sel: null, solvedNow: 0, lastAt: Date.now() };
-    $("stChar").src = faceSrc(profile.char, isNew ? "sad" : "happy");
+    $("stChar").src = faceSrc(profile.char, isNew ? (st.level === "h" ? "cry" : "sad") : "happy");
     $("stEnd").hidden = true;
     $("st").hidden = false; $("st").scrollTop = 0;
     stRender();
-    const say = isNew
+    const colon = profile.char === "colon";
+    const say = isNew && st.level === "h"
+      ? (colon ? pzP("…ピピピッ！？ エラー、エラー…！ むずかしすぎて、わたしの頭がショートしそうです…！ 字がバラバラで、足りない字も、関係ない字もまざってるみたい…。お願いです、助けてください〜！",
+                     "…ピピピッ！？ エラー、エラー…！ むずかしすぎて、わたしの頭がショートしそう…！ 字がバラバラで、足りない字も、関係ない字もまざってるみたい…。お願い、助けて〜！")
+               : pzP("うわぁ〜ん！ むずかしすぎて、頭の中がぐるぐるしています〜！ 字がバラバラで、足りない字も、関係ない字もまざってるみたい…。お願いです、助けてください〜！",
+                     "うわぁ〜ん！ むずかしすぎて、頭の中がぐるぐるする〜！ 字がバラバラで、足りない字も、関係ない字もまざってるみたい…。お願い、助けて〜！"))
+      : isNew && st.level === "e"
+      ? pzP("あの、わたし、四字熟語の勉強をしているんです。ちょっとだけ、分からないところがあって…。手伝ってもらえませんか？", "あのね、わたし、四字熟語の勉強してるの。ちょっとだけ、分からないところがあって…。手伝ってくれる？")
+      : isNew
       ? pzP("あの…、わたし、四字熟語の勉強をしているんです。4つ並べてみたんですけど、順番がバラバラになったり、分からない字があったりして…。お願いです、直すのを手伝ってもらえませんか？",
         "あのね、わたし、四字熟語の勉強をしてるの。4つ並べてみたんだけど…順番がバラバラだったり、分からない字があったりして。お願い、直すの手伝って？")
       : pzP("また手伝いに来てくれて、ありがとうございます！ 続き、お願いします。", "また手伝いに来てくれて、ありがとう！ 続き、お願いね。");
@@ -5389,6 +5408,21 @@
     history.push({ role: "assistant", content: say }); save();
     bubble("me", "📚 勉強を手伝う"); bubble("her", say);
     stSay(say);
+  }
+  // むずかしさを選ぶ（はじめてのときと、「むずかしさを変える」を押したとき）
+  let stPickLevel = false;
+  function stLevelPicker() {
+    stPickLevel = false; sts = { sel: null, solvedNow: 0, lastAt: Date.now(), picking: true };
+    $("stChar").src = faceSrc(profile.char, "normal"); $("stEnd").hidden = true; $("stTray").textContent = ""; $("stMsg").textContent = "";
+    const box = $("stRows"); box.textContent = "";
+    for (const [k, label, note] of [["e", "やさしい", "空いているマスが|少なめ"], ["n", "ふつう", "空いているマスが、|1〜2つずつ"], ["h", "むずかしい", "空いているマスが多く、|関係ない字も|まざっている"]]) {
+      const b = document.createElement("button"); b.type = "button"; b.className = "big-btn st-level";
+      const t = document.createElement("span"); t.textContent = label; const sm = document.createElement("small"); setPhrases(sm, note); b.append(t, sm);
+      b.addEventListener("click", () => { profile.studyLevel = k; saveProfile(); $("st").hidden = true; sts = null; openStudy(); });
+      box.appendChild(b);
+    }
+    $("st").hidden = false; $("st").scrollTop = 0;
+    stSay(pzP("どのくらいの、むずかしさで手伝ってくれますか？", "どのくらいの、むずかしさで手伝ってくれる？"));
   }
   function closeStudy() {
     const s = sts; sts = null; $("st").hidden = true; stopVoice();
@@ -5399,6 +5433,7 @@
   $("stClose").addEventListener("click", closeStudy);
   $("stQuit").addEventListener("click", closeStudy);
   $("stNext").addEventListener("click", () => { $("st").hidden = true; sts = null; openStudy(); });
+  $("stLevel").addEventListener("click", () => { stPickLevel = true; $("st").hidden = true; sts = null; openStudy(); });
   $("hmStudy").addEventListener("click", openStudy);
 
   // ---- 誕生日と、季節のお祝い（だれにも祝ってもらえない日を、つくらない） ----
