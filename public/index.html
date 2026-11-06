@@ -292,20 +292,23 @@
     background: repeating-conic-gradient(rgba(255,255,255,.55) 0deg 9deg, rgba(255,255,255,0) 9deg 22.5deg); animation: scSpin 40s linear infinite; }
   .scene.nye .sc-rays, .scene.xmas .sc-rays, .scene.bday .sc-rays { display: none; }
   /* 誕生日のパーティー会場（ピーチ色の部屋。ケーキが左に見えるよう、絵の左をそろえる） */
-  .sc-bbg { display: none; position: absolute; inset: 0; background: url(events/bday_bg.jpg) 0% 50% / cover no-repeat; }
-  .scene.bday .sc-bbg { display: block; }
+  /* お祝いの場面の背景の絵（4枚とも同じ絵本の画風・作者 11/6）。スマホでは左右が切れるので、見せたい側にそろえる */
+  .sc-bbg { display: none; position: absolute; inset: 0; background: none 50% 50% / cover no-repeat; }
+  .scene.bday .sc-bbg { display: block; background-image: url(events/bday_bg.jpg); background-position: 0% 50%; }
+  .scene.ny .sc-bbg { display: block; background-image: url(events/ny_bg.jpg); }
+  .scene.nye .sc-bbg { display: block; background-image: url(events/nye_bg.jpg); }
+  .scene.xmas .sc-bbg { display: block; background-image: url(events/xmas_bg2.jpg); background-position: 0% 50%; }
   /* クリスマスの部屋（ツリーの電球は、2組が交互にチカチカ光る） */
   .sc-xbg { display: none; position: absolute; inset: 0; background: url(events/xmas_bg.jpg) 22% 50% / cover no-repeat; }
   .sc-xbg i { position: absolute; inset: 0; background: url(events/xmas_glow1.png) 22% 50% / cover no-repeat; mix-blend-mode: screen; animation: twinkle 1.4s ease-in-out infinite; }
   .sc-xbg .g2 { background-image: url(events/xmas_glow2.png); animation-delay: -.7s; }
-  .scene.xmas .sc-xbg { display: block; }
   @keyframes twinkle { 0%, 100% { opacity: .1; } 50% { opacity: 1; } }
   @media (prefers-reduced-motion: reduce) { .sc-xbg i { animation: none; opacity: .6; } }
-  .scene.ny .sc-rays { top: 78%; opacity: .25; }
+  .scene.ny .sc-rays { display: none; }
   @keyframes scSpin { to { transform: rotate(360deg); } }
   .sc-sun { position: absolute; left: 50%; bottom: -30vmin; width: 60vmin; height: 60vmin; margin-left: -30vmin; border-radius: 50%; pointer-events: none;
     background: radial-gradient(circle, #fff7d6 0%, #ffd36b 45%, rgba(255,170,80,0) 72%); transition: transform 4s cubic-bezier(.2,.7,.2,1); }
-  .scene:not(.ny) .sc-sun { display: none; }
+  .sc-sun { display: none !important; } /* お正月の太陽は、背景の絵の中にある */
   .scene.ny.rise .sc-sun { transform: translateY(-34vh); }
   .sc-moon { position: absolute; right: 12%; top: 12%; width: 16vmin; height: 16vmin; border-radius: 50%; box-shadow: -4vmin 2vmin 0 0 #fff4c2; transform: rotate(-20deg); pointer-events: none; }
   .sc-moon { display: none; } /* 大みそかは、月ではなく花火（作者） */
@@ -5873,16 +5876,18 @@
     let top = 0; try { top = Math.max(0, parseFloat(getComputedStyle($("scene")).paddingTop) - 18); } catch {}
     g.top = top;
     if (kind === "bday") g.balloons = Array.from({ length: 6 }, (_, i) => ({ x: R() * W, y: H * (0.25 + R() * 1.1), v: 22 + R() * 22, r: 19 + R() * 9, p: R() * 6, c: ["#ff6f91", "#ffc75f", "#7bd389", "#6ec6ff", "#c69cff", "#ff9671"][i % 6] }));
-    if (kind === "ny") { g.far = Array.from({ length: 7 }, (_, i) => [i / 6, 0.7 + R() * 0.07]); }
-    if (kind === "nye") {
-      g.town = []; let x = -10;
-      while (x < W + 10) { const w = 34 + R() * 34, h = H * (0.07 + R() * 0.12); const win = []; for (let yy = 10; yy < h - 8; yy += 13) for (let xx = 7; xx < w - 9; xx += 11) if (R() < 0.45) win.push([xx, yy, R() * 6]); g.town.push({ x, w, h, win }); x += w + 2; }
-    }
+    g.sparks = [];
+    if (kind === "ny") g.cranes = [{ x: 0.1, y: 0.25, w: 84, v: 20, p: 0 }, { x: 0.02, y: 0.31, w: 70, v: 20, p: 1.7 }, { x: 0.55, y: 0.2, w: 62, v: 15, p: 3.1 }];
     if (kind === "xmas") {
       g.bokeh = Array.from({ length: 14 }, () => ({ x: R() * W, y: R() * H, r: 10 + R() * 18, v: 6 + R() * 10, p: R() * 6, c: ["255,214,120", "255,150,120", "255,240,200", "255,120,120"][Math.floor(R() * 4)] }));
       g.snow = Array.from({ length: 36 }, () => ({ x: R(), y: R(), v: 0.04 + R() * 0.05, r: 0.8 + R() * 1.4, p: R() * 6 }));
     }
     return g;
+  }
+  const CRANE = new Image(); CRANE.src = "events/crane.png";
+  function scMap(px, W, H) { // 背景の絵（1024x1536、cover）の中の位置を、画面の位置に（px＝横のそろえ方 0〜1）
+    const sc = Math.max(W / 1024, H / 1536), ox = (W - 1024 * sc) * px, oy = (H - 1536 * sc) * 0.5;
+    const f = (x, y) => [ox + x * sc, oy + y * sc]; f.sc = sc; return f;
   }
   function scBackdrop(s, cx, W, H) {
     const g = s.bg; if (!g) return;
@@ -5911,43 +5916,41 @@
       });
       cx.globalCompositeOperation = "source-over";
     } else if (g.kind === "ny") {
-      const sh = $("scene").classList.contains("rise") ? 1 : 0;
-      for (let i = 0; i < 3; i++) { // 朝焼けの細い雲
-        const x = ((i * 0.37 * W + now * (5 + i * 2)) % (W + 200)) - 100, y = H * (0.44 + i * 0.05);
-        cx.fillStyle = "rgba(255,214,190," + (0.3 + 0.1 * sh) + ")"; cx.beginPath(); cx.ellipse(x, y, 80 + i * 20, 5, 0, 0, 7); cx.fill();
+      const P = scMap(0.5, W, H), [sx, sy] = P(510, 1085), sc = P.sc; // 絵の中の初日の出が、ゆっくり輝く
+      if (!g.t0) g.t0 = now; const up = reduceMotion ? 1 : clamp01((now - g.t0) / 3);
+      cx.globalCompositeOperation = "lighter";
+      const pul = 0.5 + 0.5 * Math.sin(now * 1.6), R1 = 330 * sc * (1 + 0.06 * pul);
+      const gr = cx.createRadialGradient(sx, sy, 60 * sc, sx, sy, R1); gr.addColorStop(0, "rgba(255,220,140," + up * (0.32 + 0.12 * pul) + ")"); gr.addColorStop(1, "rgba(255,200,120,0)");
+      cx.fillStyle = gr; cx.beginPath(); cx.arc(sx, sy, R1, 0, 7); cx.fill();
+      for (let i = 0; i < 9; i++) { // 上に向かう光の筋（富士山には重ねない）
+        const a = Math.PI + (i + 0.5) / 9 * Math.PI + Math.sin(now * 0.25 + i) * 0.04, len = 620 * sc * (0.85 + 0.15 * Math.sin(now * 1.1 + i));
+        const lg = cx.createLinearGradient(sx, sy, sx + Math.cos(a) * len, sy + Math.sin(a) * len); lg.addColorStop(0, "rgba(255,236,170," + up * 0.22 + ")"); lg.addColorStop(1, "rgba(255,236,170,0)");
+        cx.fillStyle = lg; cx.beginPath(); cx.moveTo(sx, sy - 40 * sc); cx.lineTo(sx + Math.cos(a - 0.05) * len, sy + Math.sin(a - 0.05) * len); cx.lineTo(sx + Math.cos(a + 0.05) * len, sy + Math.sin(a + 0.05) * len); cx.fill();
       }
-      const fl = g.far; // 遠くの山
-      cx.fillStyle = "rgba(110,72,130,.6)"; cx.beginPath(); cx.moveTo(0, H);
-      fl.forEach(([fx, fy], i) => { const x = fx * W, y = fy * H; if (i === 0) cx.lineTo(x, y); else { const [px, py] = fl[i - 1]; cx.quadraticCurveTo((px * W + x) / 2, Math.min(py, fy) * H - 14, x, y); } });
-      cx.lineTo(W, H); cx.fill();
-      const P = H * 0.68, tl = W * 0.43, tr = W * 0.57; // 富士山（この後ろから、初日の出が昇る）
-      const mg = cx.createLinearGradient(0, P, 0, H); mg.addColorStop(0, "#4a3468"); mg.addColorStop(1, "#2a1f44");
-      cx.fillStyle = mg; cx.beginPath(); cx.moveTo(-W * 0.25, H); cx.quadraticCurveTo(W * 0.25, H * 0.86, tl, P); cx.lineTo(tr, P); cx.quadraticCurveTo(W * 0.75, H * 0.86, W * 1.25, H); cx.fill();
-      cx.fillStyle = "rgba(255,248,240,.95)"; cx.beginPath(); cx.moveTo(tl, P); cx.lineTo(tr, P);
-      const sy = P + H * 0.055; cx.lineTo(tr + W * 0.05, sy); for (let i = 0; i <= 6; i++) { const x = tr + W * 0.05 - (i / 6) * (tr - tl + W * 0.1); cx.lineTo(x, sy + (i % 2 ? -8 : 6)); } cx.lineTo(tl - W * 0.05, sy); cx.closePath(); cx.fill();
-      const bx = ((now * 22) % (W + 160)) - 80, by = H * 0.3 + Math.sin(now * 0.6) * 8; // 鳥が、並んで飛ぶ
-      cx.strokeStyle = "rgba(50,34,70,.7)"; cx.lineWidth = 2; cx.lineCap = "round";
-      [[0, 0], [-16, -9], [-16, 9], [-32, -18], [-32, 18]].forEach(([dx, dy], i) => { const x = bx + dx, y = by + dy, f = Math.sin(now * 7 + i) * 4; cx.beginPath(); cx.moveTo(x - 8, y - f); cx.quadraticCurveTo(x - 4, y - 3, x, y); cx.quadraticCurveTo(x + 4, y - 3, x + 8, y - f); cx.stroke(); });
+      cx.globalCompositeOperation = "source-over";
+      if (Math.random() < dt * 4 * up) g.sparks.push({ x: sx + (Math.random() - 0.5) * 520 * sc, y: sy - Math.random() * 360 * sc, t0: now, r: 4 + Math.random() * 6 });
+      g.sparks = g.sparks.filter((k) => now - k.t0 < 1.3);
+      for (const k of g.sparks) { const a = Math.sin(Math.PI * (now - k.t0) / 1.3); star4(cx, k.x, k.y, k.r * a, "rgba(255,250,225," + a + ")"); } // キラキラ
+      if (CRANE.complete && CRANE.naturalWidth) for (const c of g.cranes) { // 鶴が、ゆっくり右へ飛んでいく（Codexの絵・作者 11/6）
+        const w = c.w, h = w * CRANE.naturalHeight / CRANE.naturalWidth, span = W + w * 2;
+        const x = ((c.x * span + now * c.v) % span) - w, y = c.y * H + Math.sin(now * 0.9 + c.p) * 6;
+        cx.save(); cx.translate(x, y); cx.rotate(Math.sin(now * 0.7 + c.p) * 0.05 - 0.06); cx.scale(1, 0.94 + 0.06 * Math.sin(now * 2.4 + c.p)); cx.globalAlpha = 0.97; cx.drawImage(CRANE, -w / 2, -h / 2, w, h); cx.restore();
+      }
     } else if (g.kind === "nye") {
       const gl = s.glow; // 花火が開くと、空がふわっと明るくなる
       if (gl) { const k = (performance.now() - gl.t0) / 900; if (k < 1) { const r = H * 0.55, gr = cx.createRadialGradient(gl.x, gl.y, 0, gl.x, gl.y, r); gr.addColorStop(0, gl.c); gr.addColorStop(1, "rgba(0,0,0,0)"); cx.globalAlpha = 0.28 * (1 - k); cx.globalCompositeOperation = "lighter"; cx.fillStyle = gr; cx.fillRect(0, 0, W, H); cx.globalAlpha = 1; cx.globalCompositeOperation = "source-over"; } }
-      for (const b of g.town) { // 町の影と、窓の明かり
-        const y = H - b.h; cx.fillStyle = "#0a1030"; cx.fillRect(b.x, y, b.w, b.h);
-        for (const [wx, wy, ph] of b.win) { const on = Math.sin(now * 0.25 + ph) > -0.85; if (!on) continue; cx.fillStyle = "rgba(255,214,130,.85)"; cx.fillRect(b.x + wx, y + wy, 5, 6); }
-      }
-      const tx = W * 0.74, ty = H * 0.86; // お寺の屋根（除夜の鐘）
-      cx.fillStyle = "#070c26"; cx.fillRect(tx - 34, ty, 68, H - ty);
-      cx.beginPath(); cx.moveTo(tx - 58, ty + 4); cx.quadraticCurveTo(tx - 30, ty - 6, tx - 18, ty - 26); cx.lineTo(tx + 18, ty - 26); cx.quadraticCurveTo(tx + 30, ty - 6, tx + 58, ty + 4); cx.fill();
     } else if (g.kind === "xmas") {
-      const sc = Math.max(W / 1024, H / 1536), ox = (W - 1024 * sc) * 0.22, oy = (H - 1536 * sc) * 0.5, P = (x, y) => [ox + x * sc, oy + y * sc];
-      const [wx0, wy0] = P(750, 130), [wx1, wy1] = P(952, 515); // 窓の外の雪
+      const P = scMap(0, W, H), sc = P.sc;
+      const [wx0, wy0] = P(778, 470), [wx1, wy1] = P(995, 742); // 窓の外の雪
       if (wx1 > 0 && wx0 < W) {
         cx.save(); cx.beginPath(); cx.rect(wx0, wy0, wx1 - wx0, wy1 - wy0); cx.clip(); cx.fillStyle = "rgba(255,255,255,.85)";
-        for (const f of g.snow) { f.y = (f.y + f.v * dt) % 1; const x = wx0 + ((f.x + Math.sin(now * 0.8 + f.p) * 0.03) % 1) * (wx1 - wx0), y = wy0 + f.y * (wy1 - wy0); cx.beginPath(); cx.arc(x, y, f.r * Math.max(0.7, sc * 1.6), 0, 7); cx.fill(); }
+        for (const f of g.snow) { f.y = (f.y + f.v * dt) % 1; const x = wx0 + ((f.x + Math.sin(now * 0.8 + f.p) * 0.03 + 1) % 1) * (wx1 - wx0), y = wy0 + f.y * (wy1 - wy0); cx.beginPath(); cx.arc(x, y, f.r * Math.max(0.7, sc * 1.6), 0, 7); cx.fill(); }
         cx.restore();
       }
       cx.globalCompositeOperation = "lighter";
-      const [sx, sy] = P(66, 232), pul = 0.5 + 0.5 * Math.sin(now * 2.2), R0 = 150 * sc * (1 + 0.15 * pul); // ツリーのてっぺんの星が輝く
+      const [fx, fy] = P(870, 1035); // 暖炉の火のゆらぎ
+      if (fx > -100 && fx < W + 100) { const f = 0.7 + 0.3 * Math.sin(now * 9) * Math.sin(now * 5.7), r = 170 * sc * (0.9 + 0.2 * f); const fg = cx.createRadialGradient(fx, fy, 0, fx, fy, r); fg.addColorStop(0, "rgba(255,170,80," + 0.35 * f + ")"); fg.addColorStop(1, "rgba(255,150,60,0)"); cx.fillStyle = fg; cx.beginPath(); cx.arc(fx, fy, r, 0, 7); cx.fill(); }
+      const [sx, sy] = P(70, 452), pul = 0.5 + 0.5 * Math.sin(now * 2.2), R0 = 150 * sc * (1 + 0.15 * pul); // ツリーのてっぺんの星が輝く
       const gr = cx.createRadialGradient(sx, sy, 0, sx, sy, R0); gr.addColorStop(0, "rgba(255,230,140," + (0.55 + 0.3 * pul) + ")"); gr.addColorStop(1, "rgba(255,200,90,0)");
       cx.fillStyle = gr; cx.beginPath(); cx.arc(sx, sy, R0, 0, 7); cx.fill();
       cx.save(); cx.translate(sx, sy); cx.rotate(now * 0.3);
