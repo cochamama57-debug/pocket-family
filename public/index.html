@@ -1306,7 +1306,7 @@
   // ---- 表示 ----
   const voiceAlt = new Map(); // 画面の文 → 声で読む文
   // 日付が変わるところに「―― 11月6日（金） ――」の線（LINEのように）
-  let sepDate = "", rendering = false;
+  let sepDate = "", rendering = false, mirrorOff = false; // mirrorOff：手伝いの画面が自分で書いた吹き出しは、上に写さない
   function dateSep(d) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(d || "") || d === sepDate) return;
     sepDate = d;
@@ -1316,8 +1316,8 @@
   }
   function bubble(cls, text, imgUrl, msg) {
     if (!rendering) dateSep(today());
-    if (cls === "her" && text && !rendering && !$("pz").hidden && $("pzSay").textContent !== text) setPhrases($("pzSay"), String(text).replace(/([。！？])\s*/g, "$1|"));
-    if (cls === "her" && text && !rendering && !$("st").hidden && $("stSay").textContent !== text) setPhrases($("stSay"), String(text).replace(/([。！？])\s*/g, "$1|"));
+    if (cls === "her" && text && !rendering && !mirrorOff && !$("pz").hidden && $("pzSay").textContent !== text) setPhrases($("pzSay"), String(text).replace(/([。！？])\s*/g, "$1|"));
+    if (cls === "her" && text && !rendering && !mirrorOff && !$("st").hidden && $("stSay").textContent !== text) setPhrases($("stSay"), String(text).replace(/([。！？])\s*/g, "$1|"));
     const row = document.createElement("div");
     row.className = "msg " + cls;
     const b = document.createElement("div");
@@ -4972,7 +4972,7 @@
       pzSay(pzPick(PZ_WOW)(), "banzai");
     } else if (pzMile()) { /* 半分まで来た、など */ }
     else if (Math.random() < 0.3) pzSay(pzLine("good"), "happy");
-    if (pzs.since >= 3) { pzs.since = 0; setTimeout(pzCharTurn, 1600); }
+    if (pzs.since >= 3) { pzs.since = 0; afterVoice(pzCharTurn, 1600); } // 褒め言葉を話し終わってから
   }
   // 節目（のこり40・半分・13・5）で、いっしょに喜ぶ（1つのお仕事で、それぞれ1回）
   function pzMile() {
@@ -5051,7 +5051,7 @@
     pzs.zoom = 1; b.style.width = "100%";
     history.push({ role: "user", content: "（" + profile.name + "の、バラバラに切れた『" + job.name + "』の写真を、いっしょに元どおりにした。" + (fixes ? profile.name + "の間違いを" + fixes + "か所、見つけて直してあげた" : "") + "）" });
     history.push({ role: "assistant", content: pzP("写真を直してくれて、本当に、ありがとうございました！", "写真、直してくれて、ほんとうにありがとう！") });
-    save(); bubble("me", "🧩 『" + job.name + "』の写真を、元にもどしたよ"); bubble("her", history[history.length - 1].content);
+    save(); mirrorOff = true; bubble("me", "🧩 『" + job.name + "』の写真を、元にもどしたよ"); bubble("her", history[history.length - 1].content); mirrorOff = false;
     pzSay(pzP("写真が、元どおりになりました！ " + (call ? call + "のおかげです。" : "") + "本当に、ありがとうございます！ この写真は、「手伝う」の中に飾っておきますね。",
       "写真が、元どおりになったー！ " + (call ? call + "のおかげだよ。" : "") + "ほんとうに、ありがとう！ この写真は、「手伝う」の中に飾っておくね。"), "banzai");
 
@@ -5201,17 +5201,21 @@
     const rows = [], tray = [];
     ids.forEach((id, k) => {
       const w = [...YOJI[id][0]], cells = w.slice();
-      // 0・2番め：順番がバラバラ／1番め：1字入っていない／3番め：1字入っていなくて、バラバラ
-      if (k === 1 || k === 3) { const i = Math.floor(Math.random() * 4); tray.push(cells[i]); cells[i] = ""; }
+      // 空欄：0・2番めは1字、1・3番めは2字（作者：簡単すぎる→空欄を増やした）。1番め以外は、順番もバラバラ
+      const blanks = k === 1 || k === 3 ? 2 : 1;
+      for (const i of [0, 1, 2, 3].sort(() => Math.random() - 0.5).slice(0, blanks)) { tray.push(cells[i]); cells[i] = ""; }
       if (k !== 1) { let t = 0; do { cells.sort(() => Math.random() - 0.5); t++; } while (cells.join("") === w.join("") && t < 20); }
       rows.push(cells);
     });
     return { ids, rows, tray: tray.sort(() => Math.random() - 0.5), ok: [false, false, false, false], hint: [false, false, false, false] };
   }
-  function stSay(text, face, quiet) {
+  // voice：声で読む文（四字熟語は漢字だと読みまちがえるので、読みがなで話す）
+  function stSay(text, face, quiet, voice) {
     setPhrases($("stSay"), String(text).replace(/([。！？])\s*/g, "$1|"));
     if (face) $("stChar").src = faceSrc(profile.char, face);
-    if (!quiet) speak(text);
+    if (quiet) return;
+    if (voiceBusy()) { const v = voice || text, mine = sts; afterVoice(() => { if (sts === mine && !$("st").hidden) speak(v); }, 300); }
+    else speak(voice || text);
   }
   function stRender() {
     const st = stState(); if (!st || !sts) return;
@@ -5279,15 +5283,17 @@
       const y = YOJI[st.ids[r]];
       sfx("match");
       const quick = Date.now() - (sts.lastAt || 0) < 25000; sts.lastAt = Date.now();
-      const wow = quick ? pzPick([pzP("え！ もうできたんですか！ さすがです！ ", "え！ もうできたの！ さすがー！ "), pzP("わぁ、早い！ ", "わぁ、はやーい！ ")]) : "";
+      const wow = quick ? pzPick(stageOf(points()) === 0 ? ["え！ もうできたんですか！ さすがです！ ", "わぁ、早い！ "] : ["え！ もうできたの！ さすがー！ ", "わぁ、はやーい！ "]) : "";
       // 言い方を毎回かえる：意味の言い方＋熟語ごとのひとこと＋お礼（作者：全部「教えてくれてありがとう」だと、つまらない）
       const c = callName(), polite = stageOf(points()) === 0;
-      const imi = pzPick(polite ? [y[2] + "、なんですね。", "へえ〜、" + y[2] + "、という意味なんですね！", "そうなんですね。" + y[2] + "のこと、なんですね。"]
-        : [y[2] + "、なんだね。", "へえ〜、" + y[2] + "、っていう意味なんだ！", "そっかぁ、" + y[2] + "のこと、なんだね。"]);
+      const imi = pzPick(polite ? [y[2] + "、なんですね。", "へえ〜、" + y[2] + "、という意味なんですね！", "なるほど〜。" + y[2] + "、なんですね。"]
+        : [y[2] + "、なんだね。", "へえ〜、" + y[2] + "、っていう意味なんだ！", "なるほど〜。" + y[2] + "、なんだね。"]);
       const one = c || !/\{c\}/.test(y[3] || "") ? String((polite ? y[4] : y[3]) || "").replace(/\{c\}/g, c) : ""; // 呼び名がないときは、名前の入るひとことは言わない
       const thx = pzPick(polite ? ["教えてくれて、ありがとうございます！", "ひとつ、かしこくなりました。", c ? c + "がいると、勉強がはかどります。" : "勉強が、はかどります。", "忘れないように、覚えておきますね。", "やっぱり、頼りになります！", "うれしいです。ありがとうございます。"]
         : ["教えてくれて、ありがとう！", "ひとつ、かしこくなっちゃった。", c ? c + "がいると、勉強がはかどるなあ。" : "勉強が、はかどるなあ。", "忘れないように、覚えておくね。", "やっぱり、たよりになるね！", "えへへ、うれしい。ありがとう！"]);
-      stSay(myWord((profile.char === "colon" ? "ピピッ。" : "") + wow + "「" + y[0] + "」！ " + y[1] + "。" + imi + " " + one + " " + thx), "banzai");
+      const pi = profile.char === "colon" ? "ピピッ。" : "";
+      stSay(myWord(pi + wow + "「" + y[0] + "」！ " + y[1] + "。" + imi + " " + one + " " + thx), "banzai", false,
+        myWord(pi + wow + y[1] + "！ " + imi + " " + one.split(y[0]).join(y[1]) + " " + thx));
     });
     saveProfile();
     if (st.ok.every(Boolean)) { sts.sel = null; stRender(); stFinish(); } // 4つめの意味も見えるように、先に描く
@@ -5299,10 +5305,10 @@
     profile.study = null; saveProfile();
     sfx("win"); confetti(["📚", "✨", "💮"], 24);
     const mine = sts;
-    setTimeout(() => { if (sts !== mine || $("st").hidden) return; stSay(pzP("4つとも、できました！ " + (callName() ? callName() + "のおかげで、" : "") + "わたし、かしこくなりました。本当に、ありがとうございます！", "4つとも、できたー！ " + (callName() ? callName() + "のおかげで、" : "") + "わたし、かしこくなったよ。ほんとうに、ありがとう！"), "banzai"); }, 3500);
+    afterVoice(() => { if (sts !== mine || $("st").hidden) return; stSay(pzP("4つとも、できました！ " + (callName() ? callName() + "のおかげで、" : "") + "わたし、かしこくなりました。本当に、ありがとうございます！", "4つとも、できたー！ " + (callName() ? callName() + "のおかげで、" : "") + "わたし、かしこくなったよ。ほんとうに、ありがとう！"), "banzai"); }, 2500); // 熟語の説明を話し終わってから
     history.push({ role: "user", content: "（" + profile.name + "の四字熟語の勉強を手伝った：" + words.join("・") + "）" });
     history.push({ role: "assistant", content: pzP("勉強を手伝ってくれて、ありがとうございました！", "勉強、手伝ってくれて、ありがとう！") }); save();
-    bubble("me", "📚 四字熟語の勉強を手伝ったよ（" + words.join("・") + "）"); bubble("her", history[history.length - 1].content);
+    mirrorOff = true; bubble("me", "📚 四字熟語の勉強を手伝ったよ（" + words.join("・") + "）"); bubble("her", history[history.length - 1].content); mirrorOff = false;
     afterActivity("help");
     $("stEnd").hidden = false;
   }
