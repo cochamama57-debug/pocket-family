@@ -251,7 +251,7 @@
   .paper .bk-photo.multi { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
   .paper .bk-photo.multi .ph { margin: 0; }
   .paper .bk-photo.multi img { max-height: 32vh; }
-  .paper .bk-photo .ph-x { position: absolute; top: 4px; right: 4px; min-height: 30px; padding: 0 8px; font: inherit; font-size: 12px; color: #5a4632; background: rgba(255,255,255,.92); border: 1px solid var(--line); border-radius: 10px; }
+  .paper .bk-photo .ph-x { position: absolute; top: 4px; right: 4px; min-height: 44px; padding: 0 10px; font: inherit; font-size: 14px; color: #5a4632; background: rgba(255,255,255,.92); border: 1px solid var(--line); border-radius: 10px; }
   .paper .bk-photo-btns { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
   .paper .bk-photo-btns button { min-height: 48px; padding: 0 16px; font-size: 17px; font-family: inherit; border: 2px solid var(--line); border-radius: 12px; background: #fff; color: var(--ink); }
   .paper .bk-photo-msg { font-size: 15px; color: #9a5a20; margin-top: 8px; }
@@ -509,7 +509,7 @@
   .st-row { background: #fff; border: 2px solid var(--line); border-radius: 14px; padding: 8px; }
   .st-row.ok { border-color: #6bbf8a; background: #f1fbf4; }
   .st-cells { display: flex; gap: 6px; align-items: center; }
-  .st-cell { flex: 1; aspect-ratio: 1; max-width: 72px; border: 2px solid #e0cfb0; border-radius: 10px; background: #fffaf0; font: inherit; font-size: 34px; font-weight: 700; color: #3a2e24; font-family: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif; padding: 0; }
+  .st-cell { flex: 1; aspect-ratio: 1; min-height: 48px; max-width: 72px; border: 2px solid #e0cfb0; border-radius: 10px; background: #fffaf0; font: inherit; font-size: 34px; font-weight: 700; color: #3a2e24; font-family: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif; padding: 0; }
   .st-cell.empty { background: repeating-linear-gradient(45deg, #fff 0 6px, #f6eedd 6px 12px); border-style: dashed; }
   .st-cell.sel, .st-tray button.sel { outline: 4px solid #e05a2a; outline-offset: 1px; }
   .st-row.ok .st-cell { border-color: #6bbf8a; background: #fff; }
@@ -521,6 +521,7 @@
   .st-tray button { width: 60px; height: 60px; border: 2px solid #e0b04a; border-radius: 10px; background: #fff3d6; font: inherit; font-size: 32px; font-weight: 700; color: #3a2e24; font-family: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif; padding: 0; }
   @media (max-width: 360px) { .st-cell { font-size: 28px; } .st-tray button { width: 52px; height: 52px; font-size: 28px; } }
   .sing-lbl { line-height: 1.1; text-align: center; }
+  .sheet-help { min-height: 46px; margin: 0 0 8px; flex: none; }
   .day-sep { display: flex; align-items: center; gap: 10px; margin: 16px 0 6px; color: var(--sub); font-size: 15px; }
   .day-sep::before, .day-sep::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
   .day-sep span { white-space: nowrap; }
@@ -996,6 +997,7 @@
 </div>
 <div class="sheet pz" id="pz" hidden role="dialog" aria-label="写真を直す手伝い">
   <div class="pz-in">
+    <button type="button" class="help-btn-s sheet-help" aria-label="助けて（長押し）"><span class="hfill" aria-hidden="true"></span><span class="hico" aria-hidden="true">🚑</span><span class="htx"><b>助けて</b><small>長押しで連絡先に知らせます</small></span></button>
     <div class="game-top">
       <img id="pzChar" alt="" width="64" height="64">
       <div class="game-say" id="pzSay" aria-live="polite"></div>
@@ -1028,6 +1030,7 @@
 </div>
 <div class="sheet pz" id="st" hidden role="dialog" aria-label="勉強の手伝い">
   <div class="pz-in">
+    <button type="button" class="help-btn-s sheet-help" aria-label="助けて（長押し）"><span class="hfill" aria-hidden="true"></span><span class="hico" aria-hidden="true">🚑</span><span class="htx"><b>助けて</b><small>長押しで連絡先に知らせます</small></span></button>
     <div class="game-top">
       <img id="stChar" alt="" width="64" height="64">
       <div class="game-say" id="stSay" aria-live="polite"></div>
@@ -1253,13 +1256,13 @@
     const after = stageOf(points());
     updateHearts();
     if (after > before) {
-      setTimeout(() => {
+      afterVoice(() => {
         sayScripted(LEVEL_UP[profile.char][after]);
         clearInterval(talkTimer);
         showFace("banzai", 2600);
         avatar.classList.add("happy");
         setTimeout(() => avatar.classList.remove("happy"), 2400);
-      }, 900);
+      }, 1200);
     }
     if (g.sinceMemory >= MEMORY_EVERY) updateMemory();
   }
@@ -2023,6 +2026,7 @@
           if (!profile) { typing.remove(); return; }
         }
         typing.remove();
+        if (data.help === "ask" || data.find || data.song || data.plan || data.walk === true) closeHelpSheets();
         history.push({ role: "assistant", content: data.reply });
         save();
         bubble("her", data.reply);
@@ -2044,7 +2048,7 @@
         }
         afterActivity("talk");
         hello();
-        setTimeout(checkReminders, 1500);
+        afterVoice(checkReminders, 1500);
         if (profile.diaryMode && data.help !== "now") {
           // 日記の時間：話が一区切りついたら（または、何回か話したら）まとめる
           const dm = profile.diaryMode; dm.turns = (dm.turns || 0) + 1; saveProfile(); updateDiaryBar();
@@ -2066,7 +2070,7 @@
 
   // PCでは Ctrl/⌘+Enter で送信（スマホは「送る」ボタン）
   input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); form.requestSubmit(); }
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submitForm(form); }
   });
 
   // ---- はじめから（2回押し） ----
@@ -2650,7 +2654,7 @@
     const row = log.lastElementChild; if (!row || !q) return;
     const b = document.createElement("button"); b.type = "button"; b.className = "song-btn";
     for (const t of ["🔍 『" + q + "』を", "YouTubeで探す"]) { const sp = document.createElement("span"); sp.className = "nb"; sp.textContent = t; b.appendChild(sp); }
-    b.addEventListener("click", () => { stopMic(); openSongs(); $("favQ").value = q; setTimeout(() => { $("favForm").scrollIntoView({ block: "start", behavior: "smooth" }); $("favForm").requestSubmit(); }, 300); });
+    b.addEventListener("click", () => { stopMic(); openSongs(); $("favQ").value = q; setTimeout(() => { $("favForm").scrollIntoView({ block: "start", behavior: "smooth" }); submitForm($("favForm")); }, 300); });
     row.querySelector(".bubble").appendChild(b);
     log.scrollTop = log.scrollHeight;
   }
@@ -2930,6 +2934,7 @@
     sayMed(lines.join("") + tail, says.join("") + tail);
   }
   function sayRemind(text, remind, say) {
+    closeHelpSheets(); // 「飲みました」などのボタンが、手伝いの画面の後ろに隠れないように
     if (say) voiceAlt.set(text, say);
     history.push({ role: "assistant", content: text, remind, med: remind && remind.type === "med" ? 1 : undefined, say: say || undefined });
     save();
@@ -3168,6 +3173,7 @@
   }
   bindHold(helpBtn);
   bindHold($("titleHelp"));
+  document.querySelectorAll(".sheet-help").forEach(bindHold); // 手伝う（写真・勉強）の画面の上にも（点検 11/6：長い手伝いの間、助けてが押せなかった）
   helpBtn.addEventListener("click", () => { if (!helpBusy) { statusEl.textContent = "助けてボタンは、長押ししてください"; setTimeout(() => { if (!sending) statusEl.textContent = "お話ししましょう"; }, 3000); } });
 
   // 家族に送る文章の材料（名前とペットだけ。文章はサーバーで組み立てる。薬や住所は送らない）
@@ -3804,19 +3810,20 @@
     return pi + pick("おかえりなさい！ 待っていました。", "おかえり！ 待ってたよ。");
   }
   // 手伝ってもらった次の日（と、写真が直って1週間後）に、もう一度お礼を言う（Fableの意見 11/6。閉じたあとも、感謝が続くように）
-  function helpThanksLine() {
+  function helpThanksLine(mark) {
     const t = today(), polite = stageOf(points()) === 0, pi = profile.char === "colon" ? "ピピッ。" : "", c = callName();
     const h = profile.pzThanks;
+    const y = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); })();
     if (h && h.d && h.d < t && !h.said) {
-      h.said = true; saveProfile();
-      const done = h.done, kind = h.kind;
-      if (kind === "study") return myWord(pi + (polite ? "きのうは、四字熟語の勉強を見てくれて、ありがとうございました。教えてもらったこと、ちゃんと覚えていますよ。" : "きのう、四字熟語の勉強、見てくれてありがとう。教えてもらったこと、ちゃんと覚えてるよ。"));
-      if (done) return myWord(pi + (polite ? "きのうは、写真を元どおりにしてくれて、ありがとうございました。あのあと、何回も見ちゃいました。" : "きのう、写真を元どおりにしてくれて、ありがとう。あのあと、何回も見ちゃった。"));
-      return myWord(pi + (polite ? "きのうは、写真を直すのを手伝ってくれて、ありがとうございました。" + (c ? c + "がいると、心強いです。" : "とても心強かったです。") : "きのう、写真直すの手伝ってくれて、ありがとう。" + (c ? c + "がいると、心強いなあ。" : "すっごく心強かった。")));
+      if (mark) { h.said = true; saveProfile(); return ""; }
+      const done = h.done, kind = h.kind, kino = h.d === y ? "きのう" : "この前";
+      if (kind === "study") return myWord(pi + (polite ? kino + "は、四字熟語の勉強を見てくれて、ありがとうございました。教えてもらったこと、ちゃんと覚えていますよ。" : kino + "、四字熟語の勉強、見てくれてありがとう。教えてもらったこと、ちゃんと覚えてるよ。"));
+      if (done) return myWord(pi + (polite ? kino + "は、写真を元どおりにしてくれて、ありがとうございました。あのあと、何回も見ちゃいました。" : kino + "、写真を元どおりにしてくれて、ありがとう。あのあと、何回も見ちゃった。"));
+      return myWord(pi + (polite ? kino + "は、写真を直すのを手伝ってくれて、ありがとうございました。" + (c ? c + "がいると、心強いです。" : "とても心強かったです。") : kino + "、写真直すの手伝ってくれて、ありがとう。" + (c ? c + "がいると、心強いなあ。" : "すっごく心強かった。")));
     }
     const r = profile.pzRecall;
     if (r && r.at && r.at <= t && !r.said) {
-      r.said = true; saveProfile();
+      if (mark) { r.said = true; saveProfile(); return ""; }
       return myWord(pi + (polite ? "飾ってある写真を見るたびに、うれしくなります。直してくれて、本当にありがとうございました。" : "飾ってある写真、見るたびにうれしくなるよ。直してくれて、ほんとうにありがとう。"));
     }
     return "";
@@ -3830,9 +3837,9 @@
     saveProfile();
     setTimeout(() => { sayScripted(text); showFace("wave", 2000); }, 600);
     const thx = helpThanksLine();
-    if (thx) setTimeout(() => afterVoice(() => { if (!inActivity()) { sayScripted(thx); showFace("happy", 2400); } }, 1500), 900);
+    if (thx) setTimeout(() => afterVoice(() => { if (!inActivity()) { helpThanksLine(true); sayScripted(thx); showFace("happy", 2400); } }, 1500), 900); // 言えたときに「言った」と記録
     const h = new Date().getHours();
-    if (h >= 5 && h < 11 && profile.morningSong !== today() && !greetGentle) setTimeout(morningSong, 3800); // つらかった日の翌朝は、歌に誘わない
+    if (h >= 5 && h < 11 && profile.morningSong !== today() && !greetGentle) afterVoice(morningSong, 3800); // つらかった日の翌朝は、歌に誘わない
   }
   function morningSong() {
     if (!profile || inActivity() || profile.diaryMode || helpBusy || profile.morningSong === today() || !profile.birthday || bdayAsking || songRest()) return;
@@ -4321,11 +4328,10 @@
       const ph = document.createElement("div"); ph.className = "ph";
       const im = document.createElement("img"); im.src = url; im.alt = "日記の写真 " + (k + 1); ph.appendChild(im);
       const rm = document.createElement("button"); rm.type = "button"; rm.className = "ph-x"; rm.textContent = "✕ 外す";
-      rm.addEventListener("click", async () => {
-        if (!rm.dataset.sure) { rm.dataset.sure = "1"; rm.textContent = "もう一度押すと外します"; return; }
+      rm.addEventListener("click", () => twoPress(rm, "もう一度押すと外します", async () => {
         await photosSet(d.id, urls.filter((_, i) => i !== k));
         fillPhoto(d, pic, pbtn, "写真を外しました。（スマホの写真は、そのまま残っています）");
-      });
+      }));
       ph.appendChild(rm); pic.appendChild(ph);
     });
     if (urls.length < PHOTO_MAX) {
@@ -5168,8 +5174,25 @@
     bubble("her", say);
     clearInterval(pzs.timer); pzs.timer = setInterval(pzTick, 5000);
   }
-  function closePuzzle() {
-    const s = pzs; pzs = null; $("pz").hidden = true; stopVoice();
+  // ボタンの付く返事やお知らせが来たら、手伝いの画面を静かに閉じる（ボタンが画面の後ろに隠れないように。続きは保存されている）
+  // 2回押しの確認：1回めから0.7秒以内の押しは無視（ダブルタップで消えないように）。5秒たったら元に戻る
+  function twoPress(btn, sureText, action) {
+    const now = Date.now();
+    if (!btn._t || now - btn._t > 5000) {
+      btn._t = now; btn._orig = btn.textContent; btn.textContent = sureText;
+      setTimeout(() => { if (btn._t === now) { btn._t = 0; btn.textContent = btn._orig; } }, 5000);
+      return;
+    }
+    if (now - btn._t < 700) return;
+    btn._t = 0; action();
+  }
+  function submitForm(f) { if (f.requestSubmit) f.requestSubmit(); else f.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })); } // iOS 15以前の守り
+  function closeHelpSheets() {
+    if (!$("pz").hidden) closePuzzle(true);
+    if (!$("st").hidden) closeStudy(true);
+  }
+  function closePuzzle(quiet) {
+    const s = pzs; pzs = null; $("pz").hidden = true; if (quiet !== true) stopVoice();
     if (!s) return;
     clearInterval(s.timer);
     if (s.placed + s.fixedNow > 0 || s.finished) profile.pzThanks = { d: today(), done: !!s.finished, kind: "puzzle" };
@@ -5177,6 +5200,7 @@
     saveProfile();
     if (!s.finished && s.placed + s.fixedNow > 0) {
       afterActivity("help");
+      if (quiet === true) return;
       sayScripted(pzP("手伝ってくれて、ありがとうございました！ 続きは、また今度お願いしますね。", "手伝ってくれて、ありがとう！ 続きは、また今度お願いね。"));
     }
     setTimeout(checkReminders, 2500);
@@ -5202,7 +5226,7 @@
     const t = $("pzInput").value.trim(); if (!t || sending) return;
     $("pzInput").value = ""; $("pzInput").blur();
     if (pendingPhoto) { pendingPhoto = null; preview.hidden = true; } // 写真は、いっしょに送らない
-    input.value = t; form.requestSubmit();
+    input.value = t; submitForm(form);
     if (sending) pzSay("…", null, true);
   });
   // 「手伝う」のメニュー
@@ -5364,7 +5388,7 @@
       tray.appendChild(b);
     });
     setPhrases($("stMsg"), st.tray.length ? "下の字は、|空いているマスに|入れてください。" : "");
-    const lv = $("stLevelNow"); lv.hidden = st.ok.every(Boolean); delete lv.dataset.sure;
+    const lv = $("stLevelNow"); lv.hidden = st.ok.every(Boolean); lv._t = 0;
     lv.textContent = "むずかしさ：" + (ST_LEVELS[st.level] || ST_LEVELS.n).name + "　→ 変える";
   }
   function stGet(s) { const st = stState(); return s.t === "c" ? st.rows[s.r][s.i] : st.tray[s.k]; }
@@ -5476,10 +5500,10 @@
     $("st").hidden = false; $("st").scrollTop = 0;
     stSay(pzP("どのくらいの、むずかしさで手伝ってくれますか？", "どのくらいの、むずかしさで手伝ってくれる？"));
   }
-  function closeStudy() {
-    const s = sts; sts = null; $("st").hidden = true; stopVoice();
+  function closeStudy(quiet) {
+    const s = sts; sts = null; $("st").hidden = true; if (quiet !== true) stopVoice();
     if (s && s.solvedNow > 0 && !(profile.pzThanks && profile.pzThanks.d === today() && profile.pzThanks.kind === "puzzle")) { profile.pzThanks = { d: today(), kind: "study" }; saveProfile(); }
-    if (s && s.solvedNow > 0 && stState()) { afterActivity("help"); sayScripted(pzP("勉強を手伝ってくれて、ありがとうございました！ 続きは、また今度お願いしますね。", "勉強、手伝ってくれて、ありがとう！ 続きは、また今度お願いね。")); }
+    if (s && s.solvedNow > 0 && stState()) { afterActivity("help"); if (quiet !== true) sayScripted(pzP("勉強を手伝ってくれて、ありがとうございました！ 続きは、また今度お願いしますね。", "勉強、手伝ってくれて、ありがとう！ 続きは、また今度お願いね。")); }
     setTimeout(checkReminders, 2500);
   }
   $("stClose").addEventListener("click", closeStudy);
@@ -5487,11 +5511,9 @@
   $("stNext").addEventListener("click", () => { $("st").hidden = true; sts = null; stSameLevel = true; openStudy(); });
   $("stLevel").addEventListener("click", () => { stPickLevel = true; $("st").hidden = true; sts = null; openStudy(); });
   // とちゅうでも、むずかしさを変えられる（作者：むずかしいを選ぶと、ずっとむずかしいになる）。今の4つはやめる（2回押し）
-  $("stLevelNow").addEventListener("click", () => {
-    const b = $("stLevelNow");
-    if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "もう一度押すと、今の4つをやめて、選び直します"; return; }
+  $("stLevelNow").addEventListener("click", () => twoPress($("stLevelNow"), "もう一度押すと、今の4つをやめて、選び直します", () => {
     profile.study = null; saveProfile(); stPickLevel = true; $("st").hidden = true; sts = null; openStudy();
-  });
+  }));
   $("hmStudy").addEventListener("click", openStudy);
 
   // ---- 誕生日と、季節のお祝い（だれにも祝ってもらえない日を、つくらない） ----
@@ -6093,14 +6115,14 @@
     if (dm && dm.day && dm.day !== today()) setTimeout(() => {
       if (!profile || !profile.diaryMode) return;
       const polite = stageOf(points()) === 0, pi = profile.char === "chamu" ? "" : "ピピッ。";
-      sayScripted(pi + (polite ? "そういえば、" + Number(dm.day.slice(5, 7)) + "月" + Number(dm.day.slice(8)) + "日の日記が、書きかけです。下の「まとめる」を押すと、日記にできます。書かないときは「やめる」を押してくださいね。" : "そういえば、" + Number(dm.day.slice(5, 7)) + "月" + Number(dm.day.slice(8)) + "日の日記、書きかけだよ。下の「まとめる」で日記にできるよ。書かないなら「やめる」を押してね。"));
+      sayScripted(pi + (polite ? "そういえば、" + Number(dm.day.slice(5, 7)) + "月" + Number(dm.day.slice(8)) + "日の日記が、書きかけです。下の「まとめる」を押すと、日記にできます。書かないときは「おしゃべりに戻る」を押してくださいね。" : "そういえば、" + Number(dm.day.slice(5, 7)) + "月" + Number(dm.day.slice(8)) + "日の日記、書きかけだよ。下の「まとめる」で日記にできるよ。書かないなら「おしゃべりに戻る」を押してね。"));
     }, 6000);
     { const q = new URLSearchParams(location.search), sc = q.get("scene");
       if (sc) { q.delete("scene"); try { window.history.replaceState(null, "", location.pathname + (q.toString() ? "?" + q : "") + location.hash); } catch {} }
       if (["bday", "ny", "nye", "xmas"].includes(sc)) setTimeout(() => playScene(sc, null), 1500); }
-    setTimeout(checkReminders, 3000);
-    setTimeout(() => { if (profile.birthday) invite(); }, 9000); // あいさつのあと、少しして、たまに誘う
-    setTimeout(maybeGift, 20000); // たまに、絵を持ってくる
+    afterVoice(checkReminders, 3000); // 声が話し終わってから（点検 11/6：あいさつの声が、お知らせで切れた）
+    afterVoice(() => { if (profile.birthday) invite(); }, 9000); // あいさつのあと、少しして、たまに誘う
+    afterVoice(maybeGift, 20000); // たまに、絵を持ってくる
     setTimeout(() => hello(true), 1000);
   }
   $("titleStart").addEventListener("click", () => {
