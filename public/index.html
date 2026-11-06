@@ -4851,7 +4851,7 @@
     const left = PZ_JOBS.filter(j => !pzDone().includes(j.id));
     return left.find(j => j.char === profile.char) || left[0] || null; // 自分の写真から
   }
-  const pzP = (a, b) => myWord((profile.char === "colon" ? "ピピッ。" : "") + (stageOf(points()) === 0 ? a : b));
+  const pzP = (a, b) => { const t = stageOf(points()) === 0 ? a : b; return myWord((profile.char === "colon" && !/^…?ピピ/.test(t) ? "ピピッ。" : "") + t); }; // 「ピピッ。…ピピピッ！？」と重ねない
   const pzPick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
   // ちゃむの返事（毎回ちがう言葉に。直前の2回と同じものは選ばない。作者：同じ言葉ばかりだと機械だなとなる）
@@ -5325,15 +5325,41 @@
     ["不撓不屈", "ふとうふくつ", "どんなことがあっても、くじけないこと"],
     ["抱腹絶倒", "ほうふくぜっとう", "おなかをかかえて、ひっくり返るほど大笑いすること"],
   ];
-  const YOJI_ALL = YOJI.concat(YOJI_HARD); // 番号は、この並びで覚える（前からの番号は変わらない）
+  // むずかしい用（とてもむずかしい四字熟語。作者 11/6「むずかしいは、もっとむずかしく」）
+  const YOJI_EXPERT = [
+    ["乾坤一擲", "けんこんいってき", "運命をかけて、いちかばちかの大勝負に出ること"],
+    ["換骨奪胎", "かんこつだったい", "人の作品をもとに、工夫して、自分のものに作りかえること"],
+    ["羊頭狗肉", "ようとうくにく", "見かけはりっぱでも、中身がともなわないこと"],
+    ["曲学阿世", "きょくがくあせい", "正しい学問をまげて、世の中や力のある人にこびること"],
+    ["鶏口牛後", "けいこうぎゅうご", "大きな集まりのしっぽより、小さな集まりの頭になるほうがよいこと"],
+    ["南船北馬", "なんせんほくば", "あちこちを、いそがしく旅してまわること"],
+    ["泰然自若", "たいぜんじじゃく", "落ち着いていて、何があっても、あわてないこと"],
+    ["百花繚乱", "ひゃっかりょうらん", "すぐれた人や、すばらしいものが、たくさん出そろうこと"],
+    ["一蓮托生", "いちれんたくしょう", "結果がどうなっても、最後まで運命をともにすること"],
+    ["快刀乱麻", "かいとうらんま", "こじれたことを、あざやかに解決すること"],
+    ["竜頭蛇尾", "りゅうとうだび", "はじめは勢いがよいのに、終わりはしぼんでしまうこと"],
+    ["白砂青松", "はくしゃせいしょう", "白い砂浜と、青い松の、美しい海辺の景色"],
+    ["堅忍不抜", "けんにんふばつ", "がまん強く、どんなことがあっても、心がゆらがないこと"],
+    ["虚心坦懐", "きょしんたんかい", "わだかまりがなく、すなおな心で向き合うこと"],
+    ["和魂洋才", "わこんようさい", "日本の心を大切にしながら、西洋の学問を取り入れること"],
+    ["外柔内剛", "がいじゅうないごう", "見かけはやさしいけれど、心はしっかりしていること"],
+    ["晴好雨奇", "せいこううき", "晴れても雨でも、景色がすばらしいこと"],
+    ["櫛風沐雨", "しっぷうもくう", "風や雨にさらされながら、苦労してはたらくこと"],
+    ["一陽来復", "いちようらいふく", "悪いことが続いたあと、よいことがめぐってくること"],
+    ["雲外蒼天", "うんがいそうてん", "苦しいことを乗りこえれば、青空が待っていること"],
+  ];
+  const YOJI_ALL = YOJI.concat(YOJI_HARD, YOJI_EXPERT); // 番号は、この並びで覚える（前からの番号は変わらない。新しい熟語は後ろに足す）
   let sts = null; // 開いている間 { sel, solvedNow }
   function stState() { const s = profile && profile.study; return s && Array.isArray(s.rows) && s.rows.length === 4 && Array.isArray(s.tray) && Array.isArray(s.ids) && s.ids.every(i => YOJI_ALL[i]) ? s : null; }
   // むずかしさ：e＝やさしい（空欄少なめ）／n＝ふつう／h＝むずかしい（空欄が多く、関係ない字もまざる）
-  const ST_LEVELS = { e: { name: "やさしい", blanks: [0, 1, 0, 1], keep: [1, 3], decoy: 0 }, n: { name: "ふつう", blanks: [1, 2, 1, 2], keep: [1], decoy: 0 }, h: { name: "むずかしい", blanks: [2, 3, 2, 3], keep: [], decoy: 4 } };
+  // 作者 11/6：やさしい＝前のふつう／ふつう＝前のむずかしい／むずかしい＝とてもむずかしい熟語・手がかり1字・関係ない字8つ・ヒント1回
+  // pool：0＝ふだんの熟語、1＝むずかしめ、2＝とてもむずかしい／fade：ヒントが4秒で消える／once：ヒントは1回だけ
+  const ST_LEVELS = { e: { name: "やさしい", blanks: [1, 2, 1, 2], keep: [1], decoy: 0, pool: 0 }, n: { name: "ふつう", blanks: [2, 3, 2, 3], keep: [], decoy: 4, pool: 1, fade: true }, h: { name: "むずかしい", blanks: [3, 3, 3, 3], keep: [], decoy: 8, pool: 2, fade: true, once: true } };
+  function stPool(k) { const a = YOJI.length, b = a + YOJI_HARD.length; return k === 2 ? YOJI_EXPERT.map((_, i) => b + i) : k === 1 ? YOJI_HARD.map((_, i) => a + i) : YOJI.map((_, i) => i); }
   function stNew(level) {
     const L = ST_LEVELS[level] || ST_LEVELS.n;
     const done = Array.isArray(profile.studyDone) ? profile.studyDone : [];
-    const all = level === "h" ? YOJI_HARD.map((_, i) => YOJI.length + i) : YOJI.map((_, i) => i); // むずかしいは、むずかしめの熟語から
+    const all = stPool(L.pool); // むずかしさに合った熟語から
     let pool = all.filter(i => !done.includes(i));
     if (pool.length < 4) { profile.studyDone = done.filter(i => !all.includes(i)); pool = all; }
     const ids = pool.sort(() => Math.random() - 0.5).slice(0, 4);
@@ -5347,7 +5373,7 @@
     });
     // むずかしい：関係ない字も、まざっている（キャラが、よけいな字まで持ってきてしまった）
     const used = new Set(ids.flatMap(i => [...YOJI_ALL[i][0]]));
-    const extra = YOJI_ALL.flatMap(y => [...y[0]]).filter(c => !used.has(c)).sort(() => Math.random() - 0.5);
+    const extra = (L.pool ? YOJI_HARD.concat(YOJI_EXPERT) : YOJI_ALL).flatMap(y => [...y[0]]).filter(c => !used.has(c)).sort(() => Math.random() - 0.5); // むずかしい熟語の字をまぜると、見分けにくい
     for (const c of extra) { if (tray.length >= ids.reduce((n, _, k) => n + L.blanks[k], 0) + L.decoy) break; if (!tray.includes(c)) tray.push(c); }
     return { ids, rows, tray: tray.sort(() => Math.random() - 0.5), ok: [false, false, false, false], hint: [false, false, false, false], level: level in ST_LEVELS ? level : "n", decoy: L.decoy };
   }
@@ -5374,16 +5400,21 @@
         line.appendChild(b);
       });
       if (!st.ok[r]) {
-        const h = document.createElement("button"); h.type = "button"; h.className = "st-hint"; h.textContent = st.hint[r] && st.level !== "h" ? "読み" : "💡\nヒント"; h.style.whiteSpace = "pre-line";
+        const LV = ST_LEVELS[st.level] || ST_LEVELS.n;
+        const h = document.createElement("button"); h.type = "button"; h.className = "st-hint"; h.style.whiteSpace = "pre-line";
+        const used = st.hint[r] === "used";
+        h.textContent = used ? "ヒント\n済み" : st.hint[r] === true && !LV.fade ? "読み" : "💡\nヒント";
+        if (used || (st.hint[r] === true && LV.fade)) h.disabled = true;
         h.addEventListener("click", () => {
+          if (st.hint[r] === "used" || (st.hint[r] === true && LV.fade)) return;
           st.hint[r] = true; saveProfile(); stRender();
-          if (st.level === "h") { const mine = sts; setTimeout(() => { const s2 = stState(); if (s2 && sts === mine && !s2.ok[r]) { s2.hint[r] = false; saveProfile(); stRender(); } }, 4000); } // むずかしいは、4秒で消える
+          if (LV.fade) { const mine = sts; setTimeout(() => { const s2 = stState(); if (s2 && sts === mine && !s2.ok[r]) { s2.hint[r] = LV.once ? "used" : false; saveProfile(); stRender(); } }, 4000); } // 4秒で消える（むずかしいは1回だけ）
         });
         line.appendChild(h);
       }
       row.appendChild(line);
       const y = YOJI_ALL[st.ids[r]];
-      if (st.ok[r] || st.hint[r]) { const p = document.createElement("p"); p.className = "st-yomi"; p.textContent = (st.ok[r] ? "読み：" : "ヒント（読み）：") + y[1]; row.appendChild(p); }
+      if (st.ok[r] || st.hint[r] === true) { const p = document.createElement("p"); p.className = "st-yomi"; p.textContent = (st.ok[r] ? "読み：" : "ヒント（読み）：") + y[1]; row.appendChild(p); }
       if (st.ok[r]) { const p = document.createElement("p"); p.className = "st-imi"; p.textContent = y[2]; row.appendChild(p); }
       box.appendChild(row);
     });
@@ -5437,8 +5468,8 @@
       const imi = pzPick(polite ? [y[2] + "、なんですね。", "へえ〜、" + y[2] + "、という意味なんですね！", "なるほど〜。" + y[2] + "、なんですね。"]
         : [y[2] + "、なんだね。", "へえ〜、" + y[2] + "、っていう意味なんだ！", "なるほど〜。" + y[2] + "、なんだね。"]);
       const one = c || !/\{c\}/.test(y[3] || "") ? String((polite ? y[4] : y[3]) || "").replace(/\{c\}/g, c) : ""; // 呼び名がないときは、名前の入るひとことは言わない
-      const thx = pzPick(polite ? ["教えてくれて、ありがとうございます！", "ひとつ、かしこくなりました。", c ? c + "がいると、勉強がはかどります。" : "勉強が、はかどります。", "忘れないように、覚えておきますね。", "やっぱり、頼りになります！", "うれしいです。ありがとうございます。"]
-        : ["教えてくれて、ありがとう！", "ひとつ、かしこくなっちゃった。", c ? c + "がいると、勉強がはかどるなあ。" : "勉強が、はかどるなあ。", "忘れないように、覚えておくね。", "やっぱり、たよりになるね！", "えへへ、うれしい。ありがとう！"]);
+      const thx = pzPick(polite ? ["教えてくれて、ありがとうございます！", "ひとつ、かしこくなりました。", c ? c + "がいると、勉強がはかどります。" : "勉強が、はかどります。", "忘れないように、覚えておきますね。", (c ? "やっぱり、" + c + "は頼りになります！" : "やっぱり、教えてもらってよかったです！"), "うれしいです。ありがとうございます。"]
+        : ["教えてくれて、ありがとう！", "ひとつ、かしこくなっちゃった。", c ? c + "がいると、勉強がはかどるなあ。" : "勉強が、はかどるなあ。", "忘れないように、覚えておくね。", (c ? "やっぱり、" + c + "はたよりになるね！" : "やっぱり、教えてもらってよかった！"), "えへへ、うれしい。ありがとう！"]);
       const pi = profile.char === "colon" ? "ピピッ。" : "";
       stSay(myWord(pi + wow + phew + "「" + y[0] + "」！ " + y[1] + "。" + imi + " " + one + " " + thx), "banzai", false,
         myWord(pi + wow + phew + y[1] + "！ " + imi + " " + one.split(y[0]).join(y[1]) + " " + thx));
@@ -5469,6 +5500,7 @@
     if (!st && (!profile.studyLevel || stPickLevel || !stSameLevel)) return stLevelPicker();
     stSameLevel = false;
     if (!st) { st = profile.study = stNew(profile.studyLevel); saveProfile(); }
+    { const LV = ST_LEVELS[st.level] || ST_LEVELS.n; if (LV.fade && Array.isArray(st.hint)) st.hint = st.hint.map(v => v === true ? (LV.once ? "used" : false) : v); }
     sts = { sel: null, solvedNow: 0, lastAt: Date.now() };
     $("stChar").src = faceSrc(profile.char, isNew ? (st.level === "h" ? "cry" : "sad") : "happy");
     $("stEnd").hidden = true;
@@ -5497,7 +5529,7 @@
     stPickLevel = false; sts = { sel: null, solvedNow: 0, lastAt: Date.now(), picking: true };
     $("stChar").src = faceSrc(profile.char, "normal"); $("stEnd").hidden = true; $("stTray").textContent = ""; $("stMsg").textContent = ""; $("stLevelNow").hidden = true;
     const box = $("stRows"); box.textContent = "";
-    for (const [k, label, note] of [["e", "やさしい", "空いているマスが|少なめ"], ["n", "ふつう", "空いているマスが、|1〜2つずつ"], ["h", "むずかしい", "むずかしめの熟語。|空いているマスが多く、|関係ない字も|まざっている。|ヒントは4秒で消えます"]]) {
+    for (const [k, label, note] of [["e", "やさしい", "空いているマスが、|1〜2つずつ"], ["n", "ふつう", "むずかしめの熟語。|空いているマスが多く、|関係ない字も|まざっている。|ヒントは4秒で消えます"], ["h", "むずかしい", "とてもむずかしい熟語。|手がかりは1字だけ。|関係ない字が8つ。|ヒントは1回だけ"]]) {
       const b = document.createElement("button"); b.type = "button"; b.className = "big-btn st-level";
       const t = document.createElement("span"); t.textContent = label; const sm = document.createElement("small"); setPhrases(sm, note); b.append(t, sm);
       if (profile.studyLevel === k) b.classList.add("last");
