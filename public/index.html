@@ -4822,15 +4822,22 @@
   // 勝負ではなく「キャラのお仕事を手伝う」。キャラはひとりで置いてみて、ところどころ間違えている。
   // オレンジの枠＝キャラが置いたピース。押して「ちがうよ」で直すと、感謝される。30分以上かかる大きさで、続きから再開できる
   const PZ_COLS = 9, PZ_ROWS = 6, PZ_N = PZ_COLS * PZ_ROWS;
+  // 写真は、キャラごとに5枚ずつ（作者：ちゃむもコロンも同じ絵が出る→違う方がいい）。自分の5枚が終わったら、もう1人の写真も手伝える
   const PZ_JOBS = [
-    { id: "garden", name: "理想のお庭" }, { id: "house", name: "理想のお家" }, { id: "travel", name: "理想の旅行" },
-    { id: "seaside", name: "理想の海辺" }, { id: "festival", name: "理想のお祭り" },
+    { id: "garden", name: "理想のお庭", char: "chamu" }, { id: "house", name: "理想のお家", char: "chamu" }, { id: "travel", name: "理想の旅行", char: "chamu" },
+    { id: "seaside", name: "理想の海辺", char: "chamu" }, { id: "festival", name: "理想のお祭り", char: "chamu" },
+    { id: "concert", name: "森の音楽会", char: "colon" }, { id: "library", name: "理想の図書館", char: "colon" }, { id: "snowtown", name: "雪の日の町", char: "colon" },
+    { id: "shops", name: "理想の商店街", char: "colon" }, { id: "hanami", name: "理想のお花見", char: "colon" },
   ];
   const pzSrc = (job) => "puzzle/" + job.id + ".jpg";
   let pzs = null; // 開いている間の状態
   function pzState() { return profile && profile.pz && Array.isArray(profile.pz.slots) && profile.pz.slots.length === PZ_N && PZ_JOBS.some(j => j.id === profile.pz.job) ? profile.pz : null; }
   function pzDone() { return Array.isArray(profile && profile.pzDone) ? profile.pzDone.filter(x => typeof x === "string") : []; }
-  function pzNextJob() { const st = pzState(); if (st) return PZ_JOBS.find(j => j.id === st.job); return PZ_JOBS.find(j => !pzDone().includes(j.id)) || null; }
+  function pzNextJob() {
+    const st = pzState(); if (st) return PZ_JOBS.find(j => j.id === st.job);
+    const left = PZ_JOBS.filter(j => !pzDone().includes(j.id));
+    return left.find(j => j.char === profile.char) || left[0] || null; // 自分の写真から
+  }
   const pzP = (a, b) => myWord((profile.char === "colon" ? "ピピッ。" : "") + (stageOf(points()) === 0 ? a : b));
   const pzPick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
@@ -5117,6 +5124,12 @@
 
     afterActivity("help");
   }
+  // 写真の持ち主（自分の写真なら「わたし」、もう1人の写真なら、その子の名前）
+  function pzOwner(job) {
+    if (!job.char || job.char === profile.char) return "わたし";
+    const o = profile.others && profile.others[job.char];
+    return (o && o.name) || CHARS[job.char].label;
+  }
   async function openPuzzle() {
     if (!profile || (!$("pz").hidden && pzs)) return;
     if (profile.diaryMode) { $("helpMenu").hidden = true; addNote("日記を書いている途中です。「おしゃべりに戻る」を押してから、手伝ってくださいね。"); return; }
@@ -5144,8 +5157,8 @@
     // 前の版で、全部そろったのにお祝いが出なかった写真は、開いたときにお祝いする（キャラが最後の1つを置いた場合など）
     if (!pzLeft()) { pzFinish(); return; }
     const say = isNew
-      ? pzP("あの…、わたしの大事な『" + job.name + "』の写真が、バラバラに切れちゃったんです。ひとりで直そうとしたんですけど、ぐちゃぐちゃになっちゃって…。お願いです、元にもどすのを、手伝ってもらえませんか？ オレンジの枠が、わたしが置いたピースです。",
-        "あのね、わたしの大事な『" + job.name + "』の写真が、バラバラに切れちゃったの。ひとりで直そうとしたんだけど…ぐちゃぐちゃになっちゃった。お願い、元にもどすの、手伝って？ オレンジの枠が、わたしが置いたピースだよ。")
+      ? pzP("あの…、" + pzOwner(job) + "の大事な『" + job.name + "』の写真が、バラバラに切れちゃったんです。ひとりで直そうとしたんですけど、ぐちゃぐちゃになっちゃって…。お願いです、元にもどすのを、手伝ってもらえませんか？ オレンジの枠が、わたしが置いたピースです。",
+        "あのね、" + pzOwner(job) + "の大事な『" + job.name + "』の写真が、バラバラに切れちゃったの。ひとりで直そうとしたんだけど…ぐちゃぐちゃになっちゃった。お願い、元にもどすの、手伝って？ オレンジの枠が、わたしが置いたピースだよ。")
       : pzLine("resume", pzLeft()) + (pzWrongs().length ? pzP("オレンジの枠のピース、合っているか見てもらえますか？", "オレンジの枠のピース、合ってるか見てくれる？") : "");
     // おしゃべりのAIにも、いま手伝っていることが分かるように
     history.push({ role: "user", content: "（" + profile.name + "に頼まれて、バラバラに切れた『" + job.name + "』の写真を元にもどすのを手伝い" + (isNew ? "始めた" : "に来た") + "）" });
