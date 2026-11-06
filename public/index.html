@@ -3511,7 +3511,7 @@
 
   // ---- キャラの交代（ちゃむ⇔コロン）。思い出・なかよし度・会話は、それぞれの子が別々に持つ ----
   // 予定・お薬・ペット・連絡先・声の設定などは、あなたのものなので、交代しても同じ
-  const CHAR_FIELDS = ["char", "name", "answers", "step", "createdAt", "grow", "walking", "pz", "pzDone", "study", "studyDone"];
+  const CHAR_FIELDS = ["char", "name", "answers", "step", "createdAt", "grow", "walking", "pz", "pzDone", "study", "studyDone", "pzThanks", "pzRecall"];
   const otherChar = () => (profile && profile.char === "chamu" ? "colon" : "chamu");
   const chatKey = (ch) => "pf.chat." + ch;
   let swapping = false;
@@ -3608,7 +3608,7 @@
     const name = nameInput.value.replace(/\s+/g, " ").trim().slice(0, 12) || CHARS[picked].label;
     const fresh = { char: picked, name, answers: {}, step: 0, createdAt: new Date().toISOString() };
     suffixPending = null; yomiPending = null;
-    if (swapping && profile) { delete profile.grow; delete profile.walking; delete profile.pz; delete profile.pzDone; delete profile.study; delete profile.studyDone; Object.assign(profile, fresh); } // 予定・ペットなどは、そのまま
+    if (swapping && profile) { delete profile.grow; delete profile.walking; delete profile.pz; delete profile.pzDone; delete profile.study; delete profile.studyDone; delete profile.pzThanks; delete profile.pzRecall; Object.assign(profile, fresh); } // 予定・ペットなどは、そのまま
     else profile = fresh;
     swapping = false;
     markDay();
@@ -3766,6 +3766,24 @@
     if (h >= 17) return pi + pick("おかえりなさい！ 今日はどうでしたか？", "おかえり！ 今日はどうだった？");
     return pi + pick("おかえりなさい！ 待っていました。", "おかえり！ 待ってたよ。");
   }
+  // 手伝ってもらった次の日（と、写真が直って1週間後）に、もう一度お礼を言う（Fableの意見 11/6。閉じたあとも、感謝が続くように）
+  function helpThanksLine() {
+    const t = today(), polite = stageOf(points()) === 0, pi = profile.char === "colon" ? "ピピッ。" : "", c = callName();
+    const h = profile.pzThanks;
+    if (h && h.d && h.d < t && !h.said) {
+      h.said = true; saveProfile();
+      const done = h.done, kind = h.kind;
+      if (kind === "study") return myWord(pi + (polite ? "きのうは、四字熟語の勉強を見てくれて、ありがとうございました。教えてもらったこと、ちゃんと覚えていますよ。" : "きのう、四字熟語の勉強、見てくれてありがとう。教えてもらったこと、ちゃんと覚えてるよ。"));
+      if (done) return myWord(pi + (polite ? "きのうは、写真を元どおりにしてくれて、ありがとうございました。あのあと、何回も見ちゃいました。" : "きのう、写真を元どおりにしてくれて、ありがとう。あのあと、何回も見ちゃった。"));
+      return myWord(pi + (polite ? "きのうは、写真を直すのを手伝ってくれて、ありがとうございました。" + (c ? c + "がいると、心強いです。" : "とても心強かったです。") : "きのう、写真直すの手伝ってくれて、ありがとう。" + (c ? c + "がいると、心強いなあ。" : "すっごく心強かった。")));
+    }
+    const r = profile.pzRecall;
+    if (r && r.at && r.at <= t && !r.said) {
+      r.said = true; saveProfile();
+      return myWord(pi + (polite ? "飾ってある写真を見るたびに、うれしくなります。直してくれて、本当にありがとうございました。" : "飾ってある写真、見るたびにうれしくなるよ。直してくれて、ほんとうにありがとう。"));
+    }
+    return "";
+  }
   function greet() {
     const last = Number(profile.lastGreet) || 0;
     const text = greetText(); // 前に会った時刻を見てから、今の時刻を記録する
@@ -3774,6 +3792,8 @@
     profile.lastGreet = Date.now();
     saveProfile();
     setTimeout(() => { sayScripted(text); showFace("wave", 2000); }, 600);
+    const thx = helpThanksLine();
+    if (thx) setTimeout(() => afterVoice(() => { if (!inActivity()) { sayScripted(thx); showFace("happy", 2400); } }, 1500), 900);
     const h = new Date().getHours();
     if (h >= 5 && h < 11 && profile.morningSong !== today() && !greetGentle) setTimeout(morningSong, 3800); // つらかった日の翌朝は、歌に誘わない
   }
@@ -4830,11 +4850,12 @@
     [13, ["あと少しです！ わくわくしてきました。", "あと少し！ わくわくしてきた。"]], [5, ["あと5つです！ もうすぐ元どおりです。", "あと5つ！ もうすぐ元どおりだよ。"]]];
   const pzLast = {};
   function pzLine(key, n) {
-    const arr = PZL[key], used = pzLast[key] || [];
-    let pool = arr.map((_, i) => i).filter(i => !used.includes(i)); if (!pool.length) pool = arr.map((_, i) => i);
+    const arr = PZL[key], used = pzLast[key] || [], noName = !callName();
+    const ok = (i) => !(noName && /\{c\}/.test(arr[i][0])); // 呼び名がないときは、名前の入る言葉を使わない（孫は「あなた」と言わない）
+    let pool = arr.map((_, i) => i).filter(i => ok(i) && !used.includes(i)); if (!pool.length) pool = arr.map((_, i) => i).filter(ok); if (!pool.length) pool = [0];
     const i = pzPick(pool); pzLast[key] = used.concat([i]).slice(-Math.min(2, arr.length - 1));
     const pair = arr[i];
-    return pzP(pair[0], pair[1]).replace(/\{c\}/g, callName() || "あなた").replace(/\{n\}/g, String(n || ""));
+    return pzP(pair[0], pair[1]).replace(/\{c\}/g, callName()).replace(/\{n\}/g, String(n || ""));
   }
   // 早くできたときの、うんと褒める言葉（作者 11/6）
   const PZ_WOW = [
@@ -4983,7 +5004,7 @@
       st.by[s] = "u"; saveProfile(); sfx("match");
       pzSay(pzLine("yesRight"), "happy");
     } else {
-      st.wrongAt = Date.now(); saveProfile();
+      st.wrongAt = Date.now(); st.vouched = (Array.isArray(st.vouched) ? st.vouched : []).concat([s]); saveProfile();
       pzSay(pzLine("yesWrong"), "happy");
     }
     pzMsgDefault(); pzRender();
@@ -5013,13 +5034,15 @@
     const w = pzWrongs(); if (!w.length) return;
     if (Date.now() - (st.wrongAt || 0) < 60000 || Date.now() - pzs.hinted < 120000) return;
     pzs.hinted = Date.now();
-    pzSay(pzLine("hint"), "sleepy");
+    const vouched = Array.isArray(st.vouched) && w.some(x => st.vouched.includes(x));
+    if (vouched) { st.vouched = []; saveProfile(); }
+    pzSay(vouched ? pzP("さっき、合っているって言ってもらったんですけど…、やっぱり、変かもしれません。ごめんなさい、もう一回、見てもらえますか？", "さっき、合ってるって言ってもらったけど…、やっぱり変かも。ごめんね、もう一回、見てくれる？") : pzLine("hint"), "sleepy");
     for (const s of w) pzPop(s, "wig");
   }
   function pzFinish() {
     const st = pzState(); if (!st || !pzs) return;
     pzs.finished = true; clearInterval(pzs.timer);
-    const job = pzs.job, fixes = st.fixes || 0, call = callName() || "あなた";
+    const job = pzs.job, fixes = st.fixes || 0, call = callName();
     profile.pzDone = pzDone().filter(x => x !== job.id).concat([job.id]); profile.pz = null; saveProfile();
     sfx("win"); confetti(["✨", "🎉", "💛", "🧩"]);
     $("pzTray").hidden = true; $("pzPick").hidden = true; $("pzEnd").hidden = false;
@@ -5029,8 +5052,8 @@
     history.push({ role: "user", content: "（" + profile.name + "の、バラバラに切れた『" + job.name + "』の写真を、いっしょに元どおりにした。" + (fixes ? profile.name + "の間違いを" + fixes + "か所、見つけて直してあげた" : "") + "）" });
     history.push({ role: "assistant", content: pzP("写真を直してくれて、本当に、ありがとうございました！", "写真、直してくれて、ほんとうにありがとう！") });
     save(); bubble("me", "🧩 『" + job.name + "』の写真を、元にもどしたよ"); bubble("her", history[history.length - 1].content);
-    pzSay(pzP("写真が、元どおりになりました！ " + call + "のおかげです。本当に、ありがとうございます！ この写真は、「手伝う」の中に飾っておきますね。",
-      "写真が、元どおりになったー！ " + call + "のおかげだよ。ほんとうに、ありがとう！ この写真は、「手伝う」の中に飾っておくね。"), "banzai");
+    pzSay(pzP("写真が、元どおりになりました！ " + (call ? call + "のおかげです。" : "") + "本当に、ありがとうございます！ この写真は、「手伝う」の中に飾っておきますね。",
+      "写真が、元どおりになったー！ " + (call ? call + "のおかげだよ。" : "") + "ほんとうに、ありがとう！ この写真は、「手伝う」の中に飾っておくね。"), "banzai");
 
     afterActivity("help");
   }
@@ -5074,6 +5097,9 @@
     const s = pzs; pzs = null; $("pz").hidden = true; stopVoice();
     if (!s) return;
     clearInterval(s.timer);
+    if (s.placed + s.fixedNow > 0 || s.finished) profile.pzThanks = { d: today(), done: !!s.finished, kind: "puzzle" };
+    if (s.finished) { const a = new Date(); a.setDate(a.getDate() + 7); profile.pzRecall = { at: a.getFullYear() + "-" + String(a.getMonth() + 1).padStart(2, "0") + "-" + String(a.getDate()).padStart(2, "0") }; }
+    saveProfile();
     if (!s.finished && s.placed + s.fixedNow > 0) {
       afterActivity("help");
       sayScripted(pzP("手伝ってくれて、ありがとうございました！ 続きは、また今度お願いしますね。", "手伝ってくれて、ありがとう！ 続きは、また今度お願いね。"));
@@ -5255,12 +5281,12 @@
       const quick = Date.now() - (sts.lastAt || 0) < 25000; sts.lastAt = Date.now();
       const wow = quick ? pzPick([pzP("え！ もうできたんですか！ さすがです！ ", "え！ もうできたの！ さすがー！ "), pzP("わぁ、早い！ ", "わぁ、はやーい！ ")]) : "";
       // 言い方を毎回かえる：意味の言い方＋熟語ごとのひとこと＋お礼（作者：全部「教えてくれてありがとう」だと、つまらない）
-      const c = callName() || "あなた", polite = stageOf(points()) === 0;
+      const c = callName(), polite = stageOf(points()) === 0;
       const imi = pzPick(polite ? [y[2] + "、なんですね。", "へえ〜、" + y[2] + "、という意味なんですね！", "そうなんですね。" + y[2] + "のこと、なんですね。"]
         : [y[2] + "、なんだね。", "へえ〜、" + y[2] + "、っていう意味なんだ！", "そっかぁ、" + y[2] + "のこと、なんだね。"]);
-      const one = String((polite ? y[4] : y[3]) || "").replace(/\{c\}/g, c);
-      const thx = pzPick(polite ? ["教えてくれて、ありがとうございます！", "ひとつ、かしこくなりました。", c + "がいると、勉強がはかどります。", "忘れないように、覚えておきますね。", "やっぱり、頼りになります！", "うれしいです。ありがとうございます。"]
-        : ["教えてくれて、ありがとう！", "ひとつ、かしこくなっちゃった。", c + "がいると、勉強がはかどるなあ。", "忘れないように、覚えておくね。", "やっぱり、たよりになるね！", "えへへ、うれしい。ありがとう！"]);
+      const one = c || !/\{c\}/.test(y[3] || "") ? String((polite ? y[4] : y[3]) || "").replace(/\{c\}/g, c) : ""; // 呼び名がないときは、名前の入るひとことは言わない
+      const thx = pzPick(polite ? ["教えてくれて、ありがとうございます！", "ひとつ、かしこくなりました。", c ? c + "がいると、勉強がはかどります。" : "勉強が、はかどります。", "忘れないように、覚えておきますね。", "やっぱり、頼りになります！", "うれしいです。ありがとうございます。"]
+        : ["教えてくれて、ありがとう！", "ひとつ、かしこくなっちゃった。", c ? c + "がいると、勉強がはかどるなあ。" : "勉強が、はかどるなあ。", "忘れないように、覚えておくね。", "やっぱり、たよりになるね！", "えへへ、うれしい。ありがとう！"]);
       stSay(myWord((profile.char === "colon" ? "ピピッ。" : "") + wow + "「" + y[0] + "」！ " + y[1] + "。" + imi + " " + one + " " + thx), "banzai");
     });
     saveProfile();
@@ -5273,7 +5299,7 @@
     profile.study = null; saveProfile();
     sfx("win"); confetti(["📚", "✨", "💮"], 24);
     const mine = sts;
-    setTimeout(() => { if (sts !== mine || $("st").hidden) return; stSay(pzP("4つとも、できました！ " + (callName() || "あなた") + "のおかげで、わたし、かしこくなりました。本当に、ありがとうございます！", "4つとも、できたー！ " + (callName() || "あなた") + "のおかげで、わたし、かしこくなったよ。ほんとうに、ありがとう！"), "banzai"); }, 3500);
+    setTimeout(() => { if (sts !== mine || $("st").hidden) return; stSay(pzP("4つとも、できました！ " + (callName() ? callName() + "のおかげで、" : "") + "わたし、かしこくなりました。本当に、ありがとうございます！", "4つとも、できたー！ " + (callName() ? callName() + "のおかげで、" : "") + "わたし、かしこくなったよ。ほんとうに、ありがとう！"), "banzai"); }, 3500);
     history.push({ role: "user", content: "（" + profile.name + "の四字熟語の勉強を手伝った：" + words.join("・") + "）" });
     history.push({ role: "assistant", content: pzP("勉強を手伝ってくれて、ありがとうございました！", "勉強、手伝ってくれて、ありがとう！") }); save();
     bubble("me", "📚 四字熟語の勉強を手伝ったよ（" + words.join("・") + "）"); bubble("her", history[history.length - 1].content);
@@ -5303,6 +5329,7 @@
   }
   function closeStudy() {
     const s = sts; sts = null; $("st").hidden = true; stopVoice();
+    if (s && s.solvedNow > 0 && !(profile.pzThanks && profile.pzThanks.d === today() && profile.pzThanks.kind === "puzzle")) { profile.pzThanks = { d: today(), kind: "study" }; saveProfile(); }
     if (s && s.solvedNow > 0 && stState()) { afterActivity("help"); sayScripted(pzP("勉強を手伝ってくれて、ありがとうございました！ 続きは、また今度お願いしますね。", "勉強、手伝ってくれて、ありがとう！ 続きは、また今度お願いね。")); }
     setTimeout(checkReminders, 2500);
   }
