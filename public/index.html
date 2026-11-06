@@ -505,6 +505,7 @@
   .st-rows { display: flex; flex-direction: column; gap: 10px; }
   .st-level { display: flex; flex-direction: column; align-items: center; gap: 2px; margin: 0; }
   .st-level small { font-size: 15px; font-weight: 400; opacity: .9; }
+  .st-level.last { outline: 4px solid #3f8a63; outline-offset: 2px; }
   .st-row { background: #fff; border: 2px solid var(--line); border-radius: 14px; padding: 8px; }
   .st-row.ok { border-color: #6bbf8a; background: #f1fbf4; }
   .st-cells { display: flex; gap: 6px; align-items: center; }
@@ -5198,6 +5199,7 @@
     $("helpMenuImg").src = faceSrc(profile.char, "normal");
     const st = pzState(), job = pzNextJob();
     $("hmPuzzle").disabled = !job;
+    { const s2 = stState(); $("hmStudy").textContent = "📚 勉強を手伝う" + (s2 ? "（" + (ST_LEVELS[s2.level] || ST_LEVELS.n).name + "・続き）" : ""); }
     $("hmPuzzle").textContent = "🧩 " + (st ? "写真を直す、続きを手伝う" : job ? "写真を直すのを手伝う" : "写真は、全部直りました");
     setPhrases($("hmPuzzleNote"), st ? "『" + job.name + "』の写真|のこり " + pzLeft() + " ピース" : job ? profile.name + "の大事な写真が、|バラバラに|切れてしまいました。|ジグソーのように、|元にもどしてあげてください。|30分以上かかるので、|何回かに分けて|手伝ってください。" : "たくさん手伝ってくれて、|ありがとう！");
     const done = pzDone(), box = $("hmDone"); box.textContent = "";
@@ -5420,7 +5422,8 @@
     stopVoice(); stopMic();
     $("memo").hidden = true; $("helpMenu").hidden = true;
     let st = stState(); const isNew = !st;
-    if (!st && (!profile.studyLevel || stPickLevel)) return stLevelPicker();
+    if (!st && (!profile.studyLevel || stPickLevel || !stSameLevel)) return stLevelPicker();
+    stSameLevel = false;
     if (!st) { st = profile.study = stNew(profile.studyLevel); saveProfile(); }
     sts = { sel: null, solvedNow: 0, lastAt: Date.now() };
     $("stChar").src = faceSrc(profile.char, isNew ? (st.level === "h" ? "cry" : "sad") : "happy");
@@ -5445,7 +5448,7 @@
     stSay(say);
   }
   // むずかしさを選ぶ（はじめてのときと、「むずかしさを変える」を押したとき）
-  let stPickLevel = false;
+  let stPickLevel = false, stSameLevel = false;
   function stLevelPicker() {
     stPickLevel = false; sts = { sel: null, solvedNow: 0, lastAt: Date.now(), picking: true };
     $("stChar").src = faceSrc(profile.char, "normal"); $("stEnd").hidden = true; $("stTray").textContent = ""; $("stMsg").textContent = ""; $("stLevelNow").hidden = true;
@@ -5453,7 +5456,8 @@
     for (const [k, label, note] of [["e", "やさしい", "空いているマスが|少なめ"], ["n", "ふつう", "空いているマスが、|1〜2つずつ"], ["h", "むずかしい", "むずかしめの熟語。|空いているマスが多く、|関係ない字も|まざっている。|ヒントは4秒で消えます"]]) {
       const b = document.createElement("button"); b.type = "button"; b.className = "big-btn st-level";
       const t = document.createElement("span"); t.textContent = label; const sm = document.createElement("small"); setPhrases(sm, note); b.append(t, sm);
-      b.addEventListener("click", () => { profile.studyLevel = k; saveProfile(); $("st").hidden = true; sts = null; openStudy(); });
+      if (profile.studyLevel === k) b.classList.add("last");
+      b.addEventListener("click", () => { profile.studyLevel = k; saveProfile(); $("st").hidden = true; sts = null; stSameLevel = true; openStudy(); });
       box.appendChild(b);
     }
     $("st").hidden = false; $("st").scrollTop = 0;
@@ -5467,7 +5471,7 @@
   }
   $("stClose").addEventListener("click", closeStudy);
   $("stQuit").addEventListener("click", closeStudy);
-  $("stNext").addEventListener("click", () => { $("st").hidden = true; sts = null; openStudy(); });
+  $("stNext").addEventListener("click", () => { $("st").hidden = true; sts = null; stSameLevel = true; openStudy(); });
   $("stLevel").addEventListener("click", () => { stPickLevel = true; $("st").hidden = true; sts = null; openStudy(); });
   // とちゅうでも、むずかしさを変えられる（作者：むずかしいを選ぶと、ずっとむずかしいになる）。今の4つはやめる（2回押し）
   $("stLevelNow").addEventListener("click", () => {
