@@ -81,6 +81,20 @@ function takePlan(text) {
   const ok = m && validDate(m[1]) && (!m[2] || /^([01]\d|2[0-3]):[0-5]\d$/.test(m[2]));
   return { clean, plan: ok ? { date: m[1], time: m[2] || "", text: cleanText(m[3], 30) } : null };
 }
+// 一覧にない曲を、いっしょに聴くための案内（「歌う・聴く」の「私の好きな曲」でYouTubeを探せる）
+const FIND_RULE = [
+  "一覧にない曲（相手の思い出の歌、子どものころ好きだった歌、アニメや歌謡曲など）の話が出て、相手が聴きたそう・好きそうなとき、または「調べて」「聴きたい」と言ったとき:",
+  "- 「調べられない」「できない」とは言わない。このアプリでは、相手が「🎵 歌う・聴く」の「私の好きな曲」でYouTubeから探して登録すると、いっしょに聴ける。",
+  "- 「その曲、好きな曲に入れてくれたら、いっしょに聴けるよ！」のように、うれしそうに1回だけ案内する。",
+  "- 返事のいちばん最後の行に、曲の記号だけを [[探す:曲名]] の形で書く（例：[[探す:母をたずねて三千里]]）。曲名は相手の言った曲の名前だけ（歌手名を足してもよい。30字まで）。記号は画面で「探す」ボタンに変わる。記号のことは言葉で説明しない。",
+  "- 一覧にある曲なら、こちらは使わず、いつもの [[曲:id]] で誘う。同じ返事で、両方は使わない。",
+].join("\n");
+function takeFind(text) {
+  const m = text.match(/\[\[探す:([^\]\n]{1,40})\]\]/);
+  const clean = text.replace(/\[\[探す:[^\]]*\]\]/g, "").trim();
+  const q = m ? cleanText(m[1], 30).replace(/[<>{}\[\]]/g, "") : "";
+  return { clean, find: q || null };
+}
 function takeSong(text, songs) {
   const m = text.match(/\[\[曲:([A-Za-z0-9_-]{1,40})\]\]/);
   const clean = text.replace(/\[\[曲:[^\]]*\]\]/g, "").trim();
@@ -227,6 +241,7 @@ export default async function handler(req, res) {
         { type: "text", text: PLAN_RULE },
         { type: "text", text: WALK_RULE },
         { type: "text", text: songBlock(songs) },
+        ...(mode ? [] : [{ type: "text", text: FIND_RULE }]),
         { type: "text", text: nowBlock() },
         { type: "text", text: profileBlock(profile) },
         { type: "text", text: QUESTION_RULE },
@@ -247,13 +262,14 @@ export default async function handler(req, res) {
     const { clean: t0, help } = takeHelp(text);
     const { clean: tw, walk } = takeWalk(t0);
     const { clean: t1, plan } = takePlan(tw);
-    const { clean: t2, id } = takeSong(t1, songs);
+    const { clean: t1b, find } = takeFind(t1);
+    const { clean: t2, id } = takeSong(t1b, songs);
     const { clean: t3, ready } = takeDiary(t2);
     // 書きまちがえた印や、まぎれこんだ記号（<…>、```）も見せない
     const clean = t3.replace(/\[\[[^\]]*\]\]/g, "").replace(/<\/?[A-Za-z][^>]{0,80}>/g, "").replace(/```[a-z]*/g, "").replace(/\n{3,}/g, "\n\n").trim();
     // 日記の時間は、歌・お散歩・予定の誘いは出さない（緊急だけは、いつでも）
     if (mode) return reply(res, 200, { reply: clean || "……うん、聞いてるよ。", help: help || undefined, diaryReady: ready || undefined });
-    return reply(res, 200, { reply: clean || "……うん、聞いてるよ。", song: id || undefined, plan: plan || undefined, help: help || undefined, walk: walk || undefined });
+    return reply(res, 200, { reply: clean || "……うん、聞いてるよ。", song: id || undefined, find: !id && find ? find : undefined, plan: plan || undefined, help: help || undefined, walk: walk || undefined });
   } catch (err) {
     return replyApiError(res, err);
   }

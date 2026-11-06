@@ -246,7 +246,12 @@
   .book-read { min-height: 52px; padding: 0 20px; font-size: 19px; border: 2px solid #e2b866; border-radius: 999px; background: #fff3d6; color: var(--ink); }
   .book-read.on { background: #b8501f; border-color: #b8501f; color: #fff; }
   @media (max-width: 440px) { .book-read { flex: 1 0 100%; order: -1; } }
-  .paper .bk-photo img { display: block; width: 100%; max-height: 60vh; object-fit: contain; background: #fff; border-radius: 6px; margin: 0 0 14px; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+  .paper .bk-photo img { display: block; width: 100%; max-height: 60vh; object-fit: contain; background: #fff; border-radius: 6px; margin: 0; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+  .paper .bk-photo .ph { position: relative; margin: 0 0 14px; }
+  .paper .bk-photo.multi { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+  .paper .bk-photo.multi .ph { margin: 0; }
+  .paper .bk-photo.multi img { max-height: 32vh; }
+  .paper .bk-photo .ph-x { position: absolute; top: 4px; right: 4px; min-height: 30px; padding: 0 8px; font: inherit; font-size: 12px; color: #5a4632; background: rgba(255,255,255,.92); border: 1px solid var(--line); border-radius: 10px; }
   .paper .bk-photo-btns { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
   .paper .bk-photo-btns button { min-height: 48px; padding: 0 16px; font-size: 17px; font-family: inherit; border: 2px solid var(--line); border-radius: 12px; background: #fff; color: var(--ink); }
   .paper .bk-photo-msg { font-size: 15px; color: #9a5a20; margin-top: 8px; }
@@ -826,7 +831,7 @@
     <div class="stat swap-box" style="margin-top:20px">
       <img id="swapImg" alt="" width="72" height="72">
       <div>
-        <p class="hint-s" style="margin:0 0 6px"><span class="nb">もう一人の家族にも</span><span class="nb">会えます。</span><span class="nb">思い出は、</span><span class="nb">それぞれが</span><span class="nb">覚えています。</span></p>
+        <p class="hint-s" style="margin:0 0 6px"><span class="nb">もう一人の家族にも</span><span class="nb">会えます。</span><span class="nb">おしゃべり・思い出・</span><span class="nb">仲よし度は、</span><span class="nb">それぞれが持っています。</span><span class="nb">日記帳・予定・お薬・</span><span class="nb">連絡先は、</span><span class="nb">2人で同じです。</span><span class="nb">ふだんは、</span><span class="nb">どちらか1人と</span><span class="nb">毎日話すのが</span><span class="nb">おすすめです。</span></p>
         <button type="button" class="big-btn" id="swapBtn" style="margin:0"></button>
       </div>
     </div>
@@ -950,7 +955,7 @@
     <button type="button" class="book-read" id="bookRead">🔊 読む</button>
     <button type="button" class="book-arrow" id="bookNext">つぎ ›</button>
   </div>
-  <input class="sr" id="bookPhotoInput" type="file" accept="image/*" tabindex="-1" aria-hidden="true">
+  <input class="sr" id="bookPhotoInput" type="file" accept="image/*" multiple tabindex="-1" aria-hidden="true">
 </div>
 <div class="sheet game" id="game" hidden role="dialog" aria-label="神経衰弱">
   <div class="game-in">
@@ -1192,6 +1197,7 @@
       days: Math.max(1, g.days.length),
       notes: g.notes,
       habits: g.habits,
+      other: (() => { const o = profile.others && profile.others[profile.char === "chamu" ? "colon" : "chamu"]; return o && o.name ? { char: o.char, name: o.name } : null; })(),
       pets: pets(),
       plans: upcomingPlans(),
     };
@@ -1299,7 +1305,7 @@
     for (const m of history) if (m.d === undefined) m.d = today(); // 日付の線のため（前からある会話には "?" が付いている）
     try {
       // 写真そのものは残さない（容量のため）。「写真を見せた」という印だけ残す
-      const slim = history.slice(-MAX_KEEP).map(m => ({ role: m.role, content: m.content, photo: m.photo ? true : undefined, song: typeof m.song === "string" ? m.song : undefined, remind: m.remind && typeof m.remind === "object" ? m.remind : undefined, walk: m.walk === "go" || m.walk === "back" ? m.walk : undefined, gift: Number.isInteger(m.gift) ? m.gift : undefined, react: REACTS.includes(m.react) ? m.react : undefined, med: m.med ? 1 : undefined, say: typeof m.say === "string" ? m.say : undefined, d: typeof m.d === "string" ? m.d : undefined, ds: m.ds ? 1 : undefined, df: m.df ? 1 : undefined, dd: m.dd && typeof m.dd === "object" ? { title: String(m.dd.title || "").slice(0, 20), body: String(m.dd.body || "").slice(0, 10000), kind: m.dd.kind === "memoir" ? "memoir" : "diary" } : undefined }));
+      const slim = history.slice(-MAX_KEEP).map(m => ({ role: m.role, content: m.content, photo: m.photo ? true : undefined, song: typeof m.song === "string" ? m.song : undefined, find: typeof m.find === "string" ? m.find.slice(0, 40) : undefined, remind: m.remind && typeof m.remind === "object" ? m.remind : undefined, walk: m.walk === "go" || m.walk === "back" ? m.walk : undefined, gift: Number.isInteger(m.gift) ? m.gift : undefined, react: REACTS.includes(m.react) ? m.react : undefined, med: m.med ? 1 : undefined, say: typeof m.say === "string" ? m.say : undefined, d: typeof m.d === "string" ? m.d : undefined, ds: m.ds ? 1 : undefined, df: m.df ? 1 : undefined, dd: m.dd && typeof m.dd === "object" ? { title: String(m.dd.title || "").slice(0, 20), body: String(m.dd.body || "").slice(0, 10000), kind: m.dd.kind === "memoir" ? "memoir" : "diary" } : undefined }));
       localStorage.setItem(STORE_KEY, JSON.stringify(slim));
     } catch {
       if (canSave) {
@@ -1549,6 +1555,7 @@
       if (m.say) voiceAlt.set(shown(m), m.say);
       bubble(m.role === "user" ? "me" : "her", shown(m), undefined, m.role === "assistant" ? m : undefined);
       if (m.song) songInvite(m.song);
+      if (m.find) findInvite(m.find);
       if (m.remind) remindBubble(m);
       if (m.dd) { const bx = log.lastElementChild && log.lastElementChild.querySelector(".bubble"); if (bx) bx.appendChild(diaryCard(m.dd)); }
       if (Number.isInteger(m.gift) && profile && gifts()[m.gift]) { const bx = log.lastElementChild && log.lastElementChild.querySelector(".bubble"); if (bx) bx.appendChild(giftCard(gifts()[m.gift])); }
@@ -2024,6 +2031,7 @@
           save();
           remindBubble(history[history.length - 1]);
         }
+        if (typeof data.find === "string" && data.find) { findInvite(data.find); history[history.length - 1].find = data.find; save(); }
         if (typeof data.song === "string") {
           songInvite(data.song);
           history[history.length - 1].song = data.song;
@@ -2628,6 +2636,16 @@
     parts.push(sg.youtube ? "を聞いてみる" : "をかける");
     for (const t of parts) { const sp = document.createElement("span"); sp.className = "nb"; sp.textContent = t; b.appendChild(sp); }
     b.addEventListener("click", () => openPlayer(sg.id));
+    row.querySelector(".bubble").appendChild(b);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  // 一覧にない曲：「私の好きな曲」でYouTubeを探すボタン（押すと、曲名を入れて探し始める）
+  function findInvite(q) {
+    const row = log.lastElementChild; if (!row || !q) return;
+    const b = document.createElement("button"); b.type = "button"; b.className = "song-btn";
+    for (const t of ["🔍 『" + q + "』を", "YouTubeで探す"]) { const sp = document.createElement("span"); sp.className = "nb"; sp.textContent = t; b.appendChild(sp); }
+    b.addEventListener("click", () => { stopMic(); openSongs(); $("favQ").value = q; setTimeout(() => { $("favForm").scrollIntoView({ block: "start", behavior: "smooth" }); $("favForm").requestSubmit(); }, 300); });
     row.querySelector(".bubble").appendChild(b);
     log.scrollTop = log.scrollHeight;
   }
@@ -3614,6 +3632,10 @@
     const name = nameInput.value.replace(/\s+/g, " ").trim().slice(0, 12) || CHARS[picked].label;
     const fresh = { char: picked, name, answers: {}, step: 0, createdAt: new Date().toISOString() };
     suffixPending = null; yomiPending = null;
+    // 2人目：1人目から聞いていたことにして、呼び名は聞き直さない（モニターさん：2人が同じことを言っている）
+    const sib = swapping && profile && profile.others && profile.others[picked === "chamu" ? "colon" : "chamu"];
+    const sibCall = sib && sib.answers && cleanCall(sib.answers.call);
+    if (sibCall) { fresh.answers = { call: sib.answers.call }; if (sib.answers.callYomi) fresh.answers.callYomi = sib.answers.callYomi; fresh.step = 1; }
     if (swapping && profile) { delete profile.grow; delete profile.walking; delete profile.pz; delete profile.pzDone; delete profile.study; delete profile.studyDone; delete profile.pzThanks; delete profile.pzRecall; Object.assign(profile, fresh); } // 予定・ペットなどは、そのまま
     else profile = fresh;
     swapping = false;
@@ -3625,7 +3647,11 @@
     applyChar();
     render();
     hello(true); // 端末を登録（声や曲さがしは、登録した端末だけが使える）
-    setTimeout(() => { sayScripted(QUESTIONS[0].ask(profile.name)); setTimeout(() => showFace("wave", 2200), 1600); }, 300);
+    if (sibCall) {
+      const pi = profile.char === "colon" ? "ピピッ。" : "";
+      setTimeout(() => { sayScripted(myWord(pi + "はじめまして。\nわたし、" + profile.name + "です。\n" + sib.name + "から、" + sibCall + "のこと、いっぱい聞いていました！\nわたしも、" + sibCall + "って呼びますね。\nこれから、よろしくお願いします。")); setTimeout(() => showFace("wave", 2200), 1600);
+        afterVoice(() => { if (profile && profile.step === 1) sayScripted(myWord(QUESTIONS[1].again.replace("あなた", sibCall))); }, 2500); }, 300);
+    } else setTimeout(() => { sayScripted(QUESTIONS[0].ask(profile.name)); setTimeout(() => showFace("wave", 2200), 1600); }, 300);
   });
 
   // ---- タイトル画面と、使い方の説明 ----
@@ -4276,33 +4302,45 @@
   const photoGet = (id) => photoOp("readonly", (st) => st.get(id)).then((v) => (typeof v === "string" && v.startsWith("data:image/") ? v : null)).catch(() => null);
   const photoPut = (id, url) => photoOp("readwrite", (st) => st.put(url, id));
   const photoDel = (id) => photoOp("readwrite", (st) => st.delete(id)).catch(() => {});
+  // 1つの日記に、写真は4枚まで（モニターさん：ブログのように何枚も入れたい）。1枚めは日記の番号そのまま、2枚めから「番号#2」…
+  const PHOTO_MAX = 4;
+  const pkey = (id, i) => (i ? id + "#" + (i + 1) : id);
+  async function photosGet(id) { const out = []; for (let i = 0; i < PHOTO_MAX; i++) { const u = await photoGet(pkey(id, i)); if (!u) break; out.push(u); } return out; }
+  async function photosSet(id, urls) { for (let i = 0; i < PHOTO_MAX; i++) { if (urls[i]) await photoPut(pkey(id, i), urls[i]); else await photoDel(pkey(id, i)); } }
   let photoFor = null;
   async function fillPhoto(d, pic, pbtn, msg) {
-    const url = await photoGet(d.id);
+    const urls = await photosGet(d.id);
     pic.textContent = ""; pbtn.textContent = ""; pbtn.className = "bk-photo-btns";
-    if (url) { const im = document.createElement("img"); im.src = url; im.alt = "日記の写真"; pic.appendChild(im); }
-    const add = document.createElement("button"); add.type = "button"; add.textContent = url ? "📷 写真を替える" : "📷 写真を入れる";
-    add.addEventListener("click", () => { stopReading(); photoFor = { d, pic, pbtn }; $("bookPhotoInput").click(); });
-    pbtn.appendChild(add);
-    if (url) {
-      const rm = document.createElement("button"); rm.type = "button"; rm.textContent = "写真を外す";
+    pic.classList.toggle("multi", urls.length > 1);
+    urls.forEach((url, k) => {
+      const ph = document.createElement("div"); ph.className = "ph";
+      const im = document.createElement("img"); im.src = url; im.alt = "日記の写真 " + (k + 1); ph.appendChild(im);
+      const rm = document.createElement("button"); rm.type = "button"; rm.className = "ph-x"; rm.textContent = "✕ 外す";
       rm.addEventListener("click", async () => {
         if (!rm.dataset.sure) { rm.dataset.sure = "1"; rm.textContent = "もう一度押すと外します"; return; }
-        await photoDel(d.id); fillPhoto(d, pic, pbtn, "写真を外しました。（スマホの写真は、そのまま残っています）");
+        await photosSet(d.id, urls.filter((_, i) => i !== k));
+        fillPhoto(d, pic, pbtn, "写真を外しました。（スマホの写真は、そのまま残っています）");
       });
-      pbtn.appendChild(rm);
-    }
+      ph.appendChild(rm); pic.appendChild(ph);
+    });
+    if (urls.length < PHOTO_MAX) {
+      const add = document.createElement("button"); add.type = "button";
+      add.textContent = urls.length ? "📷 写真を足す（あと" + (PHOTO_MAX - urls.length) + "枚）" : "📷 写真を入れる（4枚まで）";
+      add.addEventListener("click", () => { stopReading(); photoFor = { d, pic, pbtn, have: urls }; $("bookPhotoInput").click(); });
+      pbtn.appendChild(add);
+    } else { const m = document.createElement("p"); m.className = "bk-photo-msg"; m.textContent = "写真は、1つの日記に4枚まで入ります。"; pbtn.appendChild(m); }
     if (msg) { const m = document.createElement("p"); m.className = "bk-photo-msg"; m.textContent = msg; pbtn.appendChild(m); }
   }
   $("bookPhotoInput").addEventListener("change", async () => {
-    const inp = $("bookPhotoInput"), file = inp.files && inp.files[0], t = photoFor;
+    const inp = $("bookPhotoInput"), t = photoFor, files = [...(inp.files || [])];
     inp.value = ""; photoFor = null;
-    if (!file || !t) return;
-    try {
-      const sm = await shrink(file);
-      await photoPut(t.d.id, sm.url);
-      fillPhoto(t.d, t.pic, t.pbtn, "写真を入れました。PDFにも入ります。");
-    } catch { fillPhoto(t.d, t.pic, t.pbtn, "この写真は入れられませんでした。ほかの写真でお試しください。"); }
+    if (!files.length || !t) return;
+    const room = PHOTO_MAX - t.have.length, add = [];
+    let bad = 0;
+    for (const f of files.slice(0, room)) { try { add.push((await shrink(f)).url); } catch { bad++; } }
+    if (add.length) await photosSet(t.d.id, t.have.concat(add)).catch(() => { bad = add.length; add.length = 0; });
+    const over = files.length > room ? "（4枚をこえた分は、入れていません）" : "";
+    fillPhoto(t.d, t.pic, t.pbtn, add.length ? "写真を" + add.length + "枚入れました。PDFにも入ります。" + over : "この写真は入れられませんでした。ほかの写真でお試しください。");
   });
 
   // ---- 本を、キャラが声で読む（題名・本文・見つけた、いいこと） ----
@@ -4513,11 +4551,16 @@
         font(30); const gl = wrapText(ctx, "🌼 " + (d.by || profile.name) + "が見つけた、いいこと：" + d.good, TW - 40).slice(0, 3);
         items.push({ h: gl.length * 46 + 60, draw: (y) => { font(30); ctx.fillStyle = "#fff6d8"; ctx.fillRect(M, y, TW, gl.length * 46 + 30); ctx.fillStyle = "#5d4a12"; gl.forEach((ln, k) => ctx.fillText(ln, M + 20, y + 15 + k * 46)); ctx.fillStyle = "#3a2e24"; } });
       }
-      const pu = await photoGet(d.id), pim = pu ? await loadImg(pu) : null;
-      if (pim && pim.naturalWidth) {
-        let pw = TW, ph = TW * pim.naturalHeight / pim.naturalWidth;
+      const pims = []; for (const u of await photosGet(d.id)) { const im = await loadImg(u).catch(() => null); if (im && im.naturalWidth) pims.push(im); }
+      if (pims.length === 1) {
+        const pim = pims[0]; let pw = TW, ph = TW * pim.naturalHeight / pim.naturalWidth;
         if (ph > 760) { ph = 760; pw = ph * pim.naturalWidth / pim.naturalHeight; }
         items.push({ h: ph + 30, draw: (y) => { ctx.drawImage(pim, M + (TW - pw) / 2, y, pw, ph); } });
+      } else for (let k = 0; k < pims.length; k += 2) { // 2枚ずつ横に並べる
+        const row = pims.slice(k, k + 2), cw = (TW - 20) / 2;
+        const fit = row.map(im => { let w = cw, h = cw * im.naturalHeight / im.naturalWidth; if (h > 440) { h = 440; w = h * im.naturalWidth / im.naturalHeight; } return [w, h]; });
+        const rh = Math.max(...fit.map(f => f[1]));
+        items.push({ h: rh + 24, draw: (y) => { row.forEach((im, i) => { const [w, h] = fit[i]; ctx.drawImage(im, M + i * (cw + 20) + (cw - w) / 2, y + (rh - h) / 2, w, h); }); } });
       }
       font(34);
       for (const ln of wrapText(ctx, d.body || "", TW)) items.push({ h: 64, draw: (y) => { font(34); ctx.fillStyle = "#3a2e24"; ctx.fillText(ln, M, y); } });
