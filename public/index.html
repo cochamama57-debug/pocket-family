@@ -290,7 +290,10 @@
   .scene.xmas { background: radial-gradient(120% 90% at 50% 40%, #2f7a55 0%, #1d5a3c 55%, #123d29 100%); }
   .sc-rays { position: absolute; left: 50%; top: 46%; width: 180vmax; height: 180vmax; margin: -90vmax 0 0 -90vmax; pointer-events: none; opacity: .35;
     background: repeating-conic-gradient(rgba(255,255,255,.55) 0deg 9deg, rgba(255,255,255,0) 9deg 22.5deg); animation: scSpin 40s linear infinite; }
-  .scene.nye .sc-rays, .scene.xmas .sc-rays { display: none; }
+  .scene.nye .sc-rays, .scene.xmas .sc-rays, .scene.bday .sc-rays { display: none; }
+  /* 誕生日のパーティー会場（ピーチ色の部屋。ケーキが左に見えるよう、絵の左をそろえる） */
+  .sc-bbg { display: none; position: absolute; inset: 0; background: url(events/bday_bg.jpg) 0% 50% / cover no-repeat; }
+  .scene.bday .sc-bbg { display: block; }
   /* クリスマスの部屋（ツリーの電球は、2組が交互にチカチカ光る） */
   .sc-xbg { display: none; position: absolute; inset: 0; background: url(events/xmas_bg.jpg) 22% 50% / cover no-repeat; }
   .sc-xbg i { position: absolute; inset: 0; background: url(events/xmas_glow1.png) 22% 50% / cover no-repeat; mix-blend-mode: screen; animation: twinkle 1.4s ease-in-out infinite; }
@@ -934,6 +937,7 @@
 
 <div class="scene" id="scene" hidden role="dialog" aria-label="お祝い">
   <div class="sc-xbg" aria-hidden="true"><i class="g1"></i><i class="g2"></i></div>
+  <div class="sc-bbg" aria-hidden="true"></div>
   <div class="sc-rays" aria-hidden="true"></div>
   <div class="sc-sun" aria-hidden="true"></div>
   <div class="sc-moon" aria-hidden="true"></div>
@@ -5868,7 +5872,7 @@
     const W = innerWidth, H = innerHeight, R = Math.random, g = { kind };
     let top = 0; try { top = Math.max(0, parseFloat(getComputedStyle($("scene")).paddingTop) - 18); } catch {}
     g.top = top;
-    if (kind === "bday") g.balloons = Array.from({ length: 9 }, (_, i) => ({ x: R() * W, y: H * (0.25 + R() * 1.1), v: 22 + R() * 22, r: 19 + R() * 9, p: R() * 6, c: ["#ff6f91", "#ffc75f", "#7bd389", "#6ec6ff", "#c69cff", "#ff9671"][i % 6] }));
+    if (kind === "bday") g.balloons = Array.from({ length: 6 }, (_, i) => ({ x: R() * W, y: H * (0.25 + R() * 1.1), v: 22 + R() * 22, r: 19 + R() * 9, p: R() * 6, c: ["#ff6f91", "#ffc75f", "#7bd389", "#6ec6ff", "#c69cff", "#ff9671"][i % 6] }));
     if (kind === "ny") { g.far = Array.from({ length: 7 }, (_, i) => [i / 6, 0.7 + R() * 0.07]); }
     if (kind === "nye") {
       g.town = []; let x = -10;
@@ -5894,12 +5898,18 @@
         cx.globalAlpha = 0.92; cx.fillStyle = gr; cx.beginPath(); cx.ellipse(x, y, b.r, b.r * 1.18, 0, 0, 7); cx.fill();
         cx.fillStyle = b.c; cx.beginPath(); cx.moveTo(x, y + b.r * 1.12); cx.lineTo(x - 4, y + b.r * 1.32); cx.lineTo(x + 4, y + b.r * 1.32); cx.fill(); cx.globalAlpha = 1;
       }
-      const y0 = g.top + 2, sag = 26, n = Math.ceil(W / 30) + 1, C = ["#ff6f91", "#ffc75f", "#7bd389", "#6ec6ff", "#c69cff"]; // 上の旗飾り
-      cx.strokeStyle = "rgba(255,255,255,.9)"; cx.lineWidth = 1.5; cx.beginPath(); cx.moveTo(-10, y0); cx.quadraticCurveTo(W / 2, y0 + sag * 2, W + 10, y0); cx.stroke();
-      for (let j = 0; j < n; j++) {
-        const t = j / (n - 1), x = -10 + (W + 20) * t, y = y0 + sag * 4 * t * (1 - t), a = Math.sin(now * 1.8 + j * 0.7) * 0.12;
-        cx.save(); cx.translate(x, y); cx.rotate(a); cx.fillStyle = C[j % C.length]; cx.beginPath(); cx.moveTo(-10, 0); cx.lineTo(10, 0); cx.lineTo(0, 24); cx.fill(); cx.restore();
-      }
+      const sc = Math.max(W / 1024, H / 1536), oy = (H - 1536 * sc) * 0.5; // ケーキのろうそくの火（絵の左をそろえて置いている）
+      cx.globalCompositeOperation = "lighter";
+      const hg = cx.createRadialGradient(100 * sc, oy + 800 * sc, 0, 100 * sc, oy + 800 * sc, 150 * sc); hg.addColorStop(0, "rgba(255,200,110," + (0.28 + 0.06 * Math.sin(now * 5)) + ")"); hg.addColorStop(1, "rgba(255,200,110,0)");
+      cx.fillStyle = hg; cx.beginPath(); cx.arc(100 * sc, oy + 800 * sc, 150 * sc, 0, 7); cx.fill();
+      [49, 74, 101, 124, 149].forEach((fx0, i) => {
+        const f = 0.75 + 0.25 * Math.sin(now * (9 + i) + i * 1.7) * Math.sin(now * (5.3 + i * 0.7)), x = fx0 * sc, y = oy + 792 * sc, r = 34 * sc * (0.8 + 0.3 * f);
+        const fg = cx.createRadialGradient(x, y, 0, x, y, r); fg.addColorStop(0, "rgba(255,225,150," + 0.55 * f + ")"); fg.addColorStop(1, "rgba(255,200,110,0)");
+        cx.fillStyle = fg; cx.beginPath(); cx.arc(x, y, r, 0, 7); cx.fill();
+        const sw = Math.sin(now * (7 + i) + i) * 3 * sc, fh = 26 * sc * (0.85 + 0.25 * f), fw = 7 * sc; // 炎の形（ゆらゆら）
+        cx.fillStyle = "rgba(255,240,200," + (0.55 + 0.35 * f) + ")"; cx.beginPath(); cx.moveTo(x + sw, y - fh * 0.6); cx.quadraticCurveTo(x + fw, y, x, y + fh * 0.35); cx.quadraticCurveTo(x - fw, y, x + sw, y - fh * 0.6); cx.fill();
+      });
+      cx.globalCompositeOperation = "source-over";
     } else if (g.kind === "ny") {
       const sh = $("scene").classList.contains("rise") ? 1 : 0;
       for (let i = 0; i < 3; i++) { // 朝焼けの細い雲
