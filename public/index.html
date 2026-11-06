@@ -2630,11 +2630,13 @@
       if (sb < 0.995) { const r = R0 - 14; star4(cx, ox + Math.cos(end) * r, oy + Math.sin(end) * r, 9, "rgba(255,255,255,.95)"); }
       else for (let i = 0; i < 3; i++) { const a = Math.PI + ((now * 0.13 + i / 3) % 1) * Math.PI, tw = Math.sin(now * 3 + i * 2) * 0.5 + 0.5; star4(cx, ox + Math.cos(a) * (R0 - 15), oy + Math.sin(a) * (R0 - 15), 3 + 5 * tw, "rgba(255,255,255," + tw + ")"); }
     }
-    const PD = [[W * 0.17, H - 11, Math.min(52, W * 0.15), 7], [W * 0.84, H - 13, Math.min(60, W * 0.17), 8]]; // 水たまり（キャラの左右）
-    for (const [px, py, rx, ry] of PD) {
-      const pg = cx.createLinearGradient(0, py - ry, 0, py + ry); pg.addColorStop(0, "rgba(150,170,200,.55)"); pg.addColorStop(1, "rgba(120,145,185,.65)");
+    const PD = [[W * 0.18, H - 17, Math.min(50, W * 0.14), 6], [W * 0.83, H - 17, Math.min(56, W * 0.16), 6.5]]; // 水たまり（キャラの足と同じ高さ、左右に）
+    const dry = len ? clamp01((prog - 0.84) / 0.1) : 0, wet = 1 - dry * dry * (3 - 2 * dry); // 晴れると、ゆっくり乾いて消える
+    if (wet > 0.01) for (const [px, py, rx0, ry0] of PD) {
+      const rx = rx0 * (0.55 + 0.45 * wet), ry = ry0 * (0.6 + 0.4 * wet);
+      const pg = cx.createLinearGradient(0, py - ry, 0, py + ry); pg.addColorStop(0, "rgba(150,170,200," + 0.55 * wet + ")"); pg.addColorStop(1, "rgba(120,145,185," + 0.65 * wet + ")");
       cx.fillStyle = pg; cx.beginPath(); cx.ellipse(px, py, rx, ry, 0, 0, 7); cx.fill();
-      cx.strokeStyle = "rgba(255,255,255,.55)"; cx.lineWidth = 1.2; cx.beginPath(); cx.ellipse(px, py, rx, ry, 0, Math.PI * 1.05, Math.PI * 1.6); cx.stroke(); // 水面の光
+      cx.strokeStyle = "rgba(255,255,255," + 0.55 * wet + ")"; cx.lineWidth = 1.2; cx.beginPath(); cx.ellipse(px, py, rx, ry, 0, Math.PI * 1.05, Math.PI * 1.6); cx.stroke(); // 水面の光
     }
     const active = Math.round(g.drops.length * (1 - k) * (0.6 + 0.4 * Math.min(1, L + 0.3)));
     cx.strokeStyle = "rgba(230,238,250,.6)"; cx.lineWidth = 1; cx.lineCap = "round"; cx.beginPath();
