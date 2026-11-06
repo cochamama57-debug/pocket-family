@@ -28,7 +28,11 @@ export default async function handler(req, res) {
   if (!text || PRIVATE.test(text)) return noVoice(res);
 
   const key = process.env.FISH_API_KEY;
-  const voice = char === "chamu" ? process.env.FISH_VOICE_CHAMU : process.env.FISH_VOICE_COLON;
+  // 声えらびの見本づくり（一時的。作者 11/6「ちゃむを男の子の声に」。決まったら外す）。Fish Official の声だけ
+  const TRIAL = new Set(["c496c7d0e93640a59a0befd78b47f39e", "297a6fd278df47c3b9da9bfdf55ac89a", "bf5634e34ee5489991fe687ad0d202c5", "59a78821a8924989b70d2a63d588e8eb"]);
+  const trial = typeof body?.trial === "string" && TRIAL.has(body.trial) ? body.trial : "";
+  const trialSpeed = typeof body?.trialSpeed === "number" ? Math.max(0.5, Math.min(1.2, body.trialSpeed)) : 0;
+  const voice = trial || (char === "chamu" ? process.env.FISH_VOICE_CHAMU : process.env.FISH_VOICE_COLON);
   if (!key || !voice) return noVoice(res);
   // 登録した端末だけ。1日の回数の上限つき（だめなときは、画面がスマホの読み上げで代わりに話す）
   const gate = await dailyGate("voice", body?.id, body?.secret, DEVICE_DAILY);
@@ -39,7 +43,7 @@ export default async function handler(req, res) {
       method: "POST",
       headers: { Authorization: "Bearer " + key, "Content-Type": "application/json", model: MODEL },
       // 声を高くして子どもらしくする（画面で速く再生して高くするので、ここではそのぶんゆっくり話させる）。ちゃむ＝1.41倍（見本F・作者 11/4）、コロン＝1.25倍
-      body: JSON.stringify({ text, reference_id: voice, format: "mp3", mp3_bitrate: 64, latency: "balanced", language: "ja", prosody: { speed: char === "chamu" ? 0.71 : 0.8 } }),
+      body: JSON.stringify({ text, reference_id: voice, format: "mp3", mp3_bitrate: 64, latency: "balanced", language: "ja", prosody: { speed: trialSpeed || (char === "chamu" ? 0.71 : 0.8) } }),
       signal: AbortSignal.timeout(15000),
     });
     if (!r.ok) {
