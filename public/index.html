@@ -1709,7 +1709,8 @@
   const isAndroid = /Android/.test(ua);
   const guide = $("guide"), guideText = $("guideText"), guideClose = $("guideClose"), kbdMic = $("kbdMic");
   // iPhoneはページの中の音声認識が不安定なので使わない（キーボードのマイクを使う）
-  let useKeyboardMic = isIOS;
+  // Androidも同じ（11/6 モニターさん：押すと雑音・話の途中で切れる。キーボードのマイクのほうが、間があいても切れにくい）
+  let useKeyboardMic = isIOS || isAndroid;
 
   const GUIDE_OFF_KEY = "pf.guide.off";
   function guideOff() { try { return localStorage.getItem(GUIDE_OFF_KEY) === "1"; } catch { return false; } }
@@ -1720,8 +1721,8 @@
     else kbdMic.removeAttribute("transform"); // iPhoneは右下
     guideText.innerHTML = 'キーボードの<b>' + where + 'の</b> <span class="micbox"><svg class="micsvg" viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="2.5" width="7" height="12" rx="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 11.5a7 7 0 0 0 14 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="18.5" x2="12" y2="21.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="8" y1="21.5" x2="16" y2="21.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span> を<span class="nb">押して話してね</span>'
       + '<span class="tip"><span class="nb">スマホを</span><span class="nb">口に近づけて、</span><span class="nb">ゆっくり</span><span class="nb">話してね</span></span>'
-      + (isAndroid ? '' : '<span class="help" id="guideHelp" hidden>設定 → 一般 → キーボード →「音声入力」をオンにしてね</span>')
-      + '<span class="links">' + (isAndroid ? '' : '<button type="button" class="more" id="guideMore">マイクが見つからないとき</button>') + '<button type="button" class="more" id="guideOff">次から出さない</button></span>';
+      + '<span class="help" id="guideHelp" hidden>' + (isAndroid ? 'キーボードの設定（歯車のマーク）→「音声入力」をオンにしてね' : '設定 → 一般 → キーボード →「音声入力」をオンにしてね') + '</span>'
+      + '<span class="links">' + '<button type="button" class="more" id="guideMore">マイクが見つからないとき</button>' + '<button type="button" class="more" id="guideOff">次から出さない</button></span>';
     const more = $("guideMore");
     if (more) more.addEventListener("click", () => { $("guideHelp").hidden = false; more.hidden = true; input.focus(); });
     $("guideOff").addEventListener("click", () => {
