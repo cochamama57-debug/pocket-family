@@ -472,6 +472,12 @@
   .pz-slot.pop .pc { animation: pzPop .35s ease-out; }
   @keyframes pzWig { 0%,100% { transform: rotate(0); } 25% { transform: rotate(-6deg); } 75% { transform: rotate(6deg); } }
   @keyframes pzPop { 0% { transform: scale(1.25); } 100% { transform: scale(1); } }
+  .pz-shine { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+  .pz-shine::before { content: ""; position: absolute; top: 0; bottom: 0; width: 40%; left: -50%; background: linear-gradient(100deg, transparent, rgba(255,255,255,.75), transparent); animation: pzSweep 1.6s ease-in-out .3s 3; }
+  .pz-shine i { position: absolute; font-style: normal; opacity: 0; animation: pzTwinkle 1.4s ease-in-out infinite; }
+  @keyframes pzSweep { 0% { left: -50%; } 100% { left: 110%; } }
+  @keyframes pzTwinkle { 0%,100% { opacity: 0; transform: scale(.3) rotate(0); } 50% { opacity: 1; transform: scale(1.15) rotate(20deg); } }
+  @media (prefers-reduced-motion: reduce) { .pz-shine::before, .pz-shine i { animation: none; } }
   .pz-ghost { position: absolute; inset: 0; background-size: 100% 100%; opacity: .9; pointer-events: none; }
   .pz-tools { display: flex; gap: 8px; margin: 8px 0; }
   .pz-tools button { flex: 1; min-height: 48px; font: inherit; font-size: 16px; color: var(--ink); background: #fff; border: 2px solid var(--line); border-radius: 12px; }
@@ -989,7 +995,7 @@
     </div>
     <div class="pz-bar"><b id="pzTitle"></b><span id="pzCount"></span></div>
     <div class="pz-view" id="pzView"><div class="pz-board" id="pzBoard"></div></div>
-    <div class="pz-tools">
+    <div class="pz-tools" id="pzTools">
       <button type="button" id="pzOut" aria-label="小さくする">－ 小さく</button>
       <button type="button" id="pzIn" aria-label="大きくする">＋ 大きく</button>
       <button type="button" id="pzPeek">🖼 見本</button>
@@ -4645,7 +4651,9 @@
       if (actx.state !== "running") actx.resume();
       const t0 = actx.currentTime + 0.02;
       const notes = { flip: [[660, 0, 0.08, "triangle"]], match: [[784, 0, 0.18], [1046.5, 0.12, 0.3]], miss: [[392, 0, 0.18, "triangle"], [330, 0.12, 0.22, "triangle"]],
-        win: [[784, 0, 0.16], [988, 0.14, 0.16], [1175, 0.28, 0.16], [1568, 0.42, 0.5]] }[kind] || [];
+        win: [[784, 0, 0.16], [988, 0.14, 0.16], [1175, 0.28, 0.16], [1568, 0.42, 0.5]],
+        fanfare: [[523.25, 0, 0.16], [659.25, 0.14, 0.16], [783.99, 0.28, 0.16], [1046.5, 0.42, 0.3], [783.99, 0.72, 0.14], [1046.5, 0.86, 0.9], [1318.5, 0.86, 0.9], [1568, 0.86, 0.9],
+          [2093, 1.5, 0.25, "triangle"], [2637, 1.62, 0.25, "triangle"], [3136, 1.74, 0.4, "triangle"]] }[kind] || [];
       for (const [f, dt, len, type] of notes) {
         const o = actx.createOscillator(), g = actx.createGain();
         o.type = type || "sine"; o.frequency.value = f;
@@ -5044,11 +5052,15 @@
     pzs.finished = true; clearInterval(pzs.timer);
     const job = pzs.job, fixes = st.fixes || 0, call = callName();
     profile.pzDone = pzDone().filter(x => x !== job.id).concat([job.id]); profile.pz = null; saveProfile();
-    sfx("win"); confetti(["✨", "🎉", "💛", "🧩"]);
-    $("pzTray").hidden = true; $("pzPick").hidden = true; $("pzEnd").hidden = false;
+    sfx("fanfare"); confetti(["✨", "🌟", "💛", "✨", "🎉"], 60, true); setTimeout(() => confetti(["✨", "⭐", "✨"], 30, true), 1800);
+    $("pzTray").hidden = true; $("pzPick").hidden = true; $("pzTools").hidden = true; $("pzEnd").hidden = false;
     $("pzCount").textContent = "できあがり！";
     const b = $("pzBoard"); b.textContent = ""; const im = document.createElement("img"); im.src = pzSrc(job); im.alt = job.name; im.style.cssText = "width:100%;display:block"; b.appendChild(im);
-    pzs.zoom = 1; b.style.width = "100%";
+    pzs.zoom = 1; b.style.width = "100%"; b.style.gridAutoRows = ""; b.style.gridTemplateColumns = "";
+    // 写真の上で、キラキラが光る＋光がすっと流れる
+    const sp = document.createElement("div"); sp.className = "pz-shine"; sp.setAttribute("aria-hidden", "true");
+    for (let i = 0; i < 16; i++) { const k = document.createElement("i"); k.textContent = i % 3 ? "✨" : "⭐"; k.style.left = (4 + Math.random() * 88) + "%"; k.style.top = (6 + Math.random() * 82) + "%"; k.style.animationDelay = (Math.random() * 2.4) + "s"; k.style.fontSize = (18 + Math.random() * 18) + "px"; sp.appendChild(k); }
+    b.appendChild(sp);
     history.push({ role: "user", content: "（" + profile.name + "の、バラバラに切れた『" + job.name + "』の写真を、いっしょに元どおりにした。" + (fixes ? profile.name + "の間違いを" + fixes + "か所、見つけて直してあげた" : "") + "）" });
     history.push({ role: "assistant", content: pzP("写真を直してくれて、本当に、ありがとうございました！", "写真、直してくれて、ほんとうにありがとう！") });
     save(); mirrorOff = true; bubble("me", "🧩 『" + job.name + "』の写真を、元にもどしたよ"); bubble("her", history[history.length - 1].content); mirrorOff = false;
@@ -5069,7 +5081,7 @@
     const mine = pzs = { job, sel: null, judge: null, zoom: 1, peek: false, since: 0, placed: 0, fixedNow: 0, finished: false, colors: null, hinted: 0, timer: 0 };
     $("pzChar").src = faceSrc(profile.char, "normal");
     $("pzTitle").textContent = "『" + job.name + "』";
-    $("pzTray").hidden = false; $("pzPick").hidden = false; $("pzEnd").hidden = true; $("pzPeek").classList.remove("on");
+    $("pzTray").hidden = false; $("pzPick").hidden = false; $("pzTools").hidden = false; $("pzEnd").hidden = true; $("pzPeek").classList.remove("on");
     $("pzInput").placeholder = profile.name + "に話しかける";
     $("pz").hidden = false; $("pz").scrollTop = 0;
     pzMsgDefault(); pzRender();
@@ -5303,7 +5315,7 @@
     profile.studyDone = (Array.isArray(profile.studyDone) ? profile.studyDone : []).concat(st.ids);
     const words = st.ids.map(i => YOJI[i][0]);
     profile.study = null; saveProfile();
-    sfx("win"); confetti(["📚", "✨", "💮"], 24);
+    sfx("fanfare"); confetti(["📚", "✨", "💮", "🌟"], 40, true);
     const mine = sts;
     afterVoice(() => { if (sts !== mine || $("st").hidden) return; stSay(pzP("4つとも、できました！ " + (callName() ? callName() + "のおかげで、" : "") + "わたし、かしこくなりました。本当に、ありがとうございます！", "4つとも、できたー！ " + (callName() ? callName() + "のおかげで、" : "") + "わたし、かしこくなったよ。ほんとうに、ありがとう！"), "banzai"); }, 2500); // 熟語の説明を話し終わってから
     history.push({ role: "user", content: "（" + profile.name + "の四字熟語の勉強を手伝った：" + words.join("・") + "）" });
@@ -5347,9 +5359,10 @@
   // ---- 誕生日と、季節のお祝い（だれにも祝ってもらえない日を、つくらない） ----
   const md = (d = new Date()) => String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
   function isBirthday() { return !!(profile && profile.birthday && profile.birthday === md()); }
-  function confetti(kinds, n = 36) {
+  function confetti(kinds, n = 36, front) {
     const layer = document.createElement("div");
     layer.className = "confetti"; layer.setAttribute("aria-hidden", "true");
+    if (front) layer.style.zIndex = 40; // 手伝いの画面の上にも降らせる
     for (let i = 0; i < n; i++) {
       const e = document.createElement("i");
       e.textContent = kinds[i % kinds.length];
