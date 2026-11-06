@@ -2502,7 +2502,8 @@
     g.clouds = Array.from({ length: m === "comfort" ? 6 : 3 }, (_, i) => ({ x: R(), y: m === "comfort" ? 0.06 + R() * 0.22 : 0.1 + R() * 0.35, v: m === "comfort" ? 4 + R() * 5 : 6 + R() * 6, s: m === "comfort" ? 1.3 + R() * 0.9 : 0.8 + R() * 0.6, a: 0.75 + R() * 0.2 }));
     g.stars = [];
     for (let i = 0; i < 60 && g.stars.length < 48; i++) { const x = R(), y = R() * 0.72; if (Math.hypot((x - 0.84) * W, (y - 0.24) * H) < 34) continue; g.stars.push({ x, y, r: 0.5 + R() * 1.2, p: R() * 6, sp: 0.8 + R() * 2.2, big: R() < 0.12 }); }
-    g.drops = Array.from({ length: 90 }, () => ({ x: R() * (W + 40), y: R() * H, v: 260 + R() * 160, len: 9 + R() * 8 }));
+    g.drops = Array.from({ length: 46 }, () => ({ x: R() * (W + 20), y: R() * H, v: 130 + R() * 70, len: 6 + R() * 5 })); // しとしと雨（作者 11/6）
+    g.bowShown = 0; g.offAt = null;
   }
   function drawStage(t, b) {
     const g = stageCanvas(); if (!g || !mv) return;
@@ -2598,46 +2599,59 @@
         cx.strokeStyle = gr; cx.lineWidth = 2; cx.lineCap = "round"; cx.beginPath(); cx.moveTo(x, y); cx.lineTo(x + 46, y - 21); cx.stroke();
       }
     }
+    if (!g.offAt && lineTimes) lyricLines.forEach((el, k) => { if (/おやすみ/.test(el.textContent) && lineTimes[k] != null) g.offAt = lineTimes[k] + 2.5; }); // 「おやすみなさい」と歌ったあと
+    const offAt = g.offAt || (songLength() ? songLength() * 0.92 : 1e9);
+    const tt = rawSongTime(), want = tt >= offAt ? 0 : 1;
+    g.lamp = g.lamp == null ? want : g.lamp + (want - g.lamp) * (reduceMotion ? 1 : Math.min(1, dt * 1.6));
+    const hx = W * 0.14, hb = H - 33, hw = 40, hh = 26; // 小さなお家（丘の上）
+    if (g.lamp > 0.01) { const lg = cx.createRadialGradient(hx, hb - hh * 0.5, 2, hx, hb - hh * 0.5, 44); lg.addColorStop(0, "rgba(255,210,120," + 0.45 * g.lamp + ")"); lg.addColorStop(1, "rgba(255,210,120,0)"); cx.fillStyle = lg; cx.beginPath(); cx.arc(hx, hb - hh * 0.5, 44, 0, 7); cx.fill(); }
+    cx.fillStyle = "#2b3470"; cx.fillRect(hx - hw / 2, hb - hh, hw, hh + 10);
+    cx.fillStyle = "#222a5e"; cx.beginPath(); cx.moveTo(hx - hw / 2 - 6, hb - hh + 1); cx.lineTo(hx, hb - hh - 18); cx.lineTo(hx + hw / 2 + 6, hb - hh + 1); cx.fill();
+    cx.fillRect(hx + 9, hb - hh - 16, 6, 10); // えんとつ
+    const wc = "rgb(" + Math.round(60 + 195 * g.lamp) + "," + Math.round(70 + 150 * g.lamp) + "," + Math.round(110 + 10 * g.lamp) + ")"; // 窓の明かり（消えると、暗い色に）
+    cx.fillStyle = wc; cx.fillRect(hx - 13, hb - hh + 8, 10, 10); cx.fillRect(hx + 4, hb - hh + 8, 10, 10);
+    cx.fillStyle = "#2b3470"; cx.fillRect(hx - 8.6, hb - hh + 8, 1.2, 10); cx.fillRect(hx - 13, hb - hh + 12.4, 10, 1.2); cx.fillRect(hx + 8.4, hb - hh + 8, 1.2, 10); cx.fillRect(hx + 4, hb - hh + 12.4, 10, 1.2);
     cx.fillStyle = "rgba(22,28,62,.9)"; // 遠くの丘
     cx.beginPath(); cx.moveTo(0, H); cx.lineTo(0, H - 24); cx.quadraticCurveTo(W * 0.25, H - 44, W * 0.5, H - 26); cx.quadraticCurveTo(W * 0.78, H - 10, W, H - 32); cx.lineTo(W, H); cx.fill();
   }
   function drawRain(g, cx, W, H, now, dt, t, L) {
     const len = songLength(), prog = len ? t / len : 0;
     const k = len ? clamp01((prog - 0.78) / 0.06) : 0;   // 雨が、少しずつやむ
-    const lit = len ? clamp01((prog - 0.82) / 0.05) : 0;  // 雲が切れて、光が差す
     const bow = len ? clamp01((prog - 0.85) / 0.08) : 0;  // 虹が、端から少しずつかかる
-    if (lit > 0) { // 光の筋
-      cx.save(); cx.globalCompositeOperation = "lighter";
-      for (let i = 0; i < 4; i++) {
-        const x0 = W * (0.62 + i * 0.1), a = lit * (0.16 + 0.05 * Math.sin(now * 0.8 + i));
-        const gr = cx.createLinearGradient(x0, 0, x0 - H * 0.5, H); gr.addColorStop(0, "rgba(255,248,215," + a + ")"); gr.addColorStop(1, "rgba(255,248,215,0)");
-        cx.fillStyle = gr; cx.beginPath(); cx.moveTo(x0, 0); cx.lineTo(x0 + 16, 0); cx.lineTo(x0 + 16 - H * 0.5, H); cx.lineTo(x0 - H * 0.5 - 10, H); cx.fill();
-      }
+    g.bowShown += (bow - g.bowShown) * (reduceMotion ? 1 : Math.min(1, dt * 1.5)); // 作者 11/6「虹がカクカク」→ なめらかに追いかける
+    if (g.bowShown < 0.002) g.bowShown = bow;
+    if (g.bowShown > 0.002) {
+      const sb = g.bowShown, ox = W * 0.5, oy = H + 12, R0 = Math.min(W * 0.47, H * 0.95), e = sb * sb * (3 - 2 * sb), end = Math.PI + Math.PI * e;
+      const C = ["255,110,110", "255,170,90", "255,228,110", "130,210,140", "110,180,240", "135,135,225", "180,125,215"];
+      const a0 = 0.42 + 0.06 * Math.sin(now * 1.2);
+      cx.save(); cx.lineCap = "round"; cx.shadowColor = "rgba(255,255,255,.6)"; cx.shadowBlur = 6;
+      C.forEach((c, i) => { cx.strokeStyle = "rgba(" + c + "," + a0 + ")"; cx.lineWidth = 6.5; cx.beginPath(); cx.arc(ox, oy, R0 - i * 4.6, Math.PI, end); cx.stroke(); }); // 帯を少し重ねて、色の境目をやわらかく
       cx.restore();
-    }
-    if (bow > 0) {
-      const ox = W * 0.5, oy = H + 12, R0 = Math.min(W * 0.47, H * 0.95), e = 1 - Math.pow(1 - bow, 3), end = Math.PI + Math.PI * e;
-      const C = ["255,95,95", "255,165,70", "255,225,90", "110,205,120", "90,170,240", "120,120,220", "170,110,210"];
-      cx.lineWidth = 5;
-      C.forEach((c, i) => { cx.strokeStyle = "rgba(" + c + "," + (0.5 + 0.1 * Math.sin(now * 1.5)) + ")"; cx.beginPath(); cx.arc(ox, oy, R0 - i * 5, Math.PI, end); cx.stroke(); });
-      if (bow < 1) { const r = R0 - 15; star4(cx, ox + Math.cos(end) * r, oy + Math.sin(end) * r, 9, "rgba(255,255,255,.95)"); }
+      if (sb < 0.995) { const r = R0 - 14; star4(cx, ox + Math.cos(end) * r, oy + Math.sin(end) * r, 9, "rgba(255,255,255,.95)"); }
       else for (let i = 0; i < 3; i++) { const a = Math.PI + ((now * 0.13 + i / 3) % 1) * Math.PI, tw = Math.sin(now * 3 + i * 2) * 0.5 + 0.5; star4(cx, ox + Math.cos(a) * (R0 - 15), oy + Math.sin(a) * (R0 - 15), 3 + 5 * tw, "rgba(255,255,255," + tw + ")"); }
     }
-    for (const c of g.clouds) { const x = ((c.x * (W + 160) + now * c.v) % (W + 160)) - 80; cloudPath(cx, x, c.y * H, c.s); cx.fillStyle = "rgba(118,128,148," + 0.6 * (1 - k * 0.92) + ")"; cx.fill(); } // 雨雲
+    const PD = [[W * 0.17, H - 11, Math.min(52, W * 0.15), 7], [W * 0.84, H - 13, Math.min(60, W * 0.17), 8]]; // 水たまり（キャラの左右）
+    for (const [px, py, rx, ry] of PD) {
+      const pg = cx.createLinearGradient(0, py - ry, 0, py + ry); pg.addColorStop(0, "rgba(150,170,200,.55)"); pg.addColorStop(1, "rgba(120,145,185,.65)");
+      cx.fillStyle = pg; cx.beginPath(); cx.ellipse(px, py, rx, ry, 0, 0, 7); cx.fill();
+      cx.strokeStyle = "rgba(255,255,255,.55)"; cx.lineWidth = 1.2; cx.beginPath(); cx.ellipse(px, py, rx, ry, 0, Math.PI * 1.05, Math.PI * 1.6); cx.stroke(); // 水面の光
+    }
     const active = Math.round(g.drops.length * (1 - k) * (0.6 + 0.4 * Math.min(1, L + 0.3)));
-    cx.strokeStyle = "rgba(225,235,250,.75)"; cx.lineWidth = 1.3; cx.lineCap = "round"; cx.beginPath();
-    g.drops.forEach((d, i) => { // 斜めに降る雨
-      d.y += d.v * dt; d.x -= d.v * 0.2 * dt;
-      if (d.y > H - 6) { if (i < active && g.splash.length < 40) g.splash.push({ x: d.x, y: H - 6, t0: now }); d.y = rndIn(-40, -4); d.x = rndIn(0, W + 40); }
-      if (i < active) { cx.moveTo(d.x, d.y); cx.lineTo(d.x + d.len * 0.2, d.y - d.len); }
+    cx.strokeStyle = "rgba(230,238,250,.6)"; cx.lineWidth = 1; cx.lineCap = "round"; cx.beginPath();
+    g.drops.forEach((d, i) => { // しとしと降る雨
+      d.y += d.v * dt; d.x -= d.v * 0.08 * dt;
+      const pd = PD.find(([px, , rx]) => Math.abs(d.x - px) < rx * 0.85); // 水たまりに落ちたら、波紋
+      if (d.y > (pd ? pd[1] + rndIn(-0.4, 0.4) * pd[3] : H - 4)) { if (pd && i < active && g.splash.length < 24) g.splash.push({ x: d.x, y: d.y, t0: now, pd }); d.y = rndIn(-30, -4); d.x = rndIn(0, W + 20); }
+      if (i < active) { cx.moveTo(d.x, d.y); cx.lineTo(d.x + d.len * 0.08, d.y - d.len); }
     });
     cx.stroke();
-    g.splash = g.splash.filter((sp) => now - sp.t0 < 0.45); // 地面で、はねる
+    g.splash = g.splash.filter((sp) => now - sp.t0 < 0.9); // 水たまりの波紋（水たまりの中だけ）
     for (const sp of g.splash) {
-      const q = (now - sp.t0) / 0.45, a = 1 - q;
-      cx.strokeStyle = "rgba(235,242,255," + 0.6 * a + ")"; cx.lineWidth = 1; cx.beginPath(); cx.ellipse(sp.x, sp.y, 2 + 8 * q, 1 + 2 * q, 0, 0, 7); cx.stroke();
-      cx.fillStyle = "rgba(235,242,255," + 0.8 * a + ")"; const up = Math.sin(Math.PI * q) * 7;
-      cx.beginPath(); cx.arc(sp.x - 5 * q, sp.y - up, 1.1, 0, 7); cx.arc(sp.x + 5 * q, sp.y - up * 0.8, 1.1, 0, 7); cx.fill();
+      const q = (now - sp.t0) / 0.9, a = 1 - q, [px, py, rx, ry] = sp.pd;
+      cx.save(); cx.beginPath(); cx.ellipse(px, py, rx, ry, 0, 0, 7); cx.clip();
+      cx.strokeStyle = "rgba(240,246,255," + 0.7 * a + ")"; cx.lineWidth = 1; cx.beginPath(); cx.ellipse(sp.x, sp.y, 2 + 11 * q, 0.7 + 2.6 * q, 0, 0, 7); cx.stroke();
+      if (q > 0.25) { const q2 = (q - 0.25) / 0.75; cx.strokeStyle = "rgba(240,246,255," + 0.45 * (1 - q2) + ")"; cx.beginPath(); cx.ellipse(sp.x, sp.y, 1.5 + 7 * q2, 0.5 + 1.8 * q2, 0, 0, 7); cx.stroke(); }
+      cx.restore();
     }
   }
   function tick() {
