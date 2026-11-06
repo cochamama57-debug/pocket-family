@@ -5093,6 +5093,8 @@
       for (const p of st.wrongPlan) { const s = pzWrongSlot(p); if (s >= 0 && !st.slots.includes(p)) { st.slots[s] = p; st.by[s] = "c"; } }
       delete st.wrongPlan; st.wrongAt = Date.now(); saveProfile(); pzRender();
     }
+    // 前の版で、全部そろったのにお祝いが出なかった写真は、開いたときにお祝いする（キャラが最後の1つを置いた場合など）
+    if (!pzLeft()) { pzFinish(); return; }
     const say = isNew
       ? pzP("あの…、わたしの大事な『" + job.name + "』の写真が、バラバラに切れちゃったんです。ひとりで直そうとしたんですけど、ぐちゃぐちゃになっちゃって…。お願いです、元にもどすのを、手伝ってもらえませんか？ オレンジの枠が、わたしが置いたピースです。",
         "あのね、わたしの大事な『" + job.name + "』の写真が、バラバラに切れちゃったの。ひとりで直そうとしたんだけど…ぐちゃぐちゃになっちゃった。お願い、元にもどすの、手伝って？ オレンジの枠が、わたしが置いたピースだよ。")
