@@ -3512,6 +3512,45 @@
       sayScripted(ok ? "連絡先に知らせたよ。わたしは、ここにいるからね。" : "知らせることができなかったよ。電話できそうなら、119か、知っている人に電話してね。わたしは、ここにいるよ。");
     }, 2500);
   }
+  // ---- お散歩（歩数は数えない。誘って、帰ってきたら話を聞く） ----
+  // 11/2 の別の直しで、うっかり消えていた（点検 11/6 で発見：誘いの返事が来ると止まっていた）。元にもどし、言葉は今の決まり（敬語の段階・大人向けの漢字）に
+  function walkLine(kind) {
+    const polite = stageOf(points()) === 0, pi = profile.char === "colon" ? "ピピッ。" : "";
+    if (kind === "go") return pi + (polite ? "行ってらっしゃい！ 気をつけてくださいね。帰ってきたら、お話を聞かせてください。" : "いってらっしゃい！ 気をつけてね。帰ってきたら、お話きかせてね。");
+    return pi + (polite ? "おかえりなさい！ どうでしたか？ 何か見つけましたか？" : "おかえり！ どうだった？ なにか見つけた？");
+  }
+  function walkButton(state) {
+    const row = log.lastElementChild;
+    const bx = row && row.querySelector(".bubble");
+    if (!bx) return;
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "remind-btn";
+    b.textContent = state === "go" ? "🚶 行ってきます" : "🏠 ただいま（歩いてきました）";
+    b.addEventListener("click", () => {
+      b.disabled = true; b.classList.add("done");
+      if (!profile) return;
+      if (state === "go") {
+        profile.walking = true; saveProfile();
+        history.push({ role: "user", content: "（お散歩に出かけた）", ui: "🚶 行ってきます" }); save();
+        bubble("me", "🚶 行ってきます");
+        sayScripted(walkLine("go"));
+        showFace("wave", 2000);
+        history[history.length - 1].walk = "back"; save();
+        walkButton("back");
+      } else {
+        profile.walking = false; saveProfile();
+        history.push({ role: "user", content: "（お散歩から帰ってきた）", ui: "🏠 ただいま" }); save();
+        bubble("me", "🏠 ただいま");
+        sayScripted(walkLine("back"));
+        showFace("happy", 1800);
+        afterActivity("walk");
+      }
+    });
+    bx.appendChild(b);
+    log.scrollTop = log.scrollHeight;
+  }
+
   // 会話の中で「どちらか分からない」ときに出す、大きな助けてボタン
   function helpInvite() {
     const row = log.lastElementChild;
