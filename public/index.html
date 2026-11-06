@@ -1036,6 +1036,7 @@
     <div class="st-rows" id="stRows"></div>
     <p class="st-msg" id="stMsg"></p>
     <div class="st-tray" id="stTray"></div>
+    <button type="button" class="hm-sub" id="stLevelNow" hidden></button>
     <div class="pz-end" id="stEnd" hidden>
       <button type="button" class="big-btn" id="stNext">つぎの4つも手伝う</button>
       <button type="button" class="hm-sub" id="stLevel">むずかしさを変える</button>
@@ -5348,6 +5349,8 @@
       tray.appendChild(b);
     });
     setPhrases($("stMsg"), st.tray.length ? "下の字は、|空いているマスに|入れてください。" : "");
+    const lv = $("stLevelNow"); lv.hidden = st.ok.every(Boolean); delete lv.dataset.sure;
+    lv.textContent = "むずかしさ：" + (ST_LEVELS[st.level] || ST_LEVELS.n).name + "　→ 変える";
   }
   function stGet(s) { const st = stState(); return s.t === "c" ? st.rows[s.r][s.i] : st.tray[s.k]; }
   function stSet(s, ch) { const st = stState(); if (s.t === "c") st.rows[s.r][s.i] = ch; else if (ch) st.tray[s.k] = ch; else st.tray.splice(s.k, 1); }
@@ -5445,7 +5448,7 @@
   let stPickLevel = false;
   function stLevelPicker() {
     stPickLevel = false; sts = { sel: null, solvedNow: 0, lastAt: Date.now(), picking: true };
-    $("stChar").src = faceSrc(profile.char, "normal"); $("stEnd").hidden = true; $("stTray").textContent = ""; $("stMsg").textContent = "";
+    $("stChar").src = faceSrc(profile.char, "normal"); $("stEnd").hidden = true; $("stTray").textContent = ""; $("stMsg").textContent = ""; $("stLevelNow").hidden = true;
     const box = $("stRows"); box.textContent = "";
     for (const [k, label, note] of [["e", "やさしい", "空いているマスが|少なめ"], ["n", "ふつう", "空いているマスが、|1〜2つずつ"], ["h", "むずかしい", "むずかしめの熟語。|空いているマスが多く、|関係ない字も|まざっている。|ヒントは4秒で消えます"]]) {
       const b = document.createElement("button"); b.type = "button"; b.className = "big-btn st-level";
@@ -5466,6 +5469,12 @@
   $("stQuit").addEventListener("click", closeStudy);
   $("stNext").addEventListener("click", () => { $("st").hidden = true; sts = null; openStudy(); });
   $("stLevel").addEventListener("click", () => { stPickLevel = true; $("st").hidden = true; sts = null; openStudy(); });
+  // とちゅうでも、むずかしさを変えられる（作者：むずかしいを選ぶと、ずっとむずかしいになる）。今の4つはやめる（2回押し）
+  $("stLevelNow").addEventListener("click", () => {
+    const b = $("stLevelNow");
+    if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "もう一度押すと、今の4つをやめて、選び直します"; return; }
+    profile.study = null; saveProfile(); stPickLevel = true; $("st").hidden = true; sts = null; openStudy();
+  });
   $("hmStudy").addEventListener("click", openStudy);
 
   // ---- 誕生日と、季節のお祝い（だれにも祝ってもらえない日を、つくらない） ----
