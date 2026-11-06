@@ -1257,7 +1257,8 @@
     updateHearts();
     if (after > before) {
       afterVoice(() => {
-        sayScripted(LEVEL_UP[profile.char][after]);
+        { const c = callName(), lu = LEVEL_UP[profile.char][after];
+          sayScripted(c ? lu.replace(/あなた/g, c) : lu.replace("あなたの口ぐせ", "口ぐせ").replace("あなたのこと、", "いろんなこと、")); } // 呼び名がないときは「あなた」と言わない
         clearInterval(talkTimer);
         showFace("banzai", 2600);
         avatar.classList.add("happy");
@@ -1313,7 +1314,7 @@
     for (const m of history) if (m.d === undefined) m.d = today(); // 日付の線のため（前からある会話には "?" が付いている）
     try {
       // 写真そのものは残さない（容量のため）。「写真を見せた」という印だけ残す
-      const slim = history.slice(-MAX_KEEP).map(m => ({ role: m.role, content: m.content, photo: m.photo ? true : undefined, song: typeof m.song === "string" ? m.song : undefined, find: typeof m.find === "string" ? m.find.slice(0, 40) : undefined, remind: m.remind && typeof m.remind === "object" ? m.remind : undefined, walk: m.walk === "go" || m.walk === "back" ? m.walk : undefined, gift: Number.isInteger(m.gift) ? m.gift : undefined, react: REACTS.includes(m.react) ? m.react : undefined, med: m.med ? 1 : undefined, say: typeof m.say === "string" ? m.say : undefined, d: typeof m.d === "string" ? m.d : undefined, ds: m.ds ? 1 : undefined, df: m.df ? 1 : undefined, dd: m.dd && typeof m.dd === "object" ? { title: String(m.dd.title || "").slice(0, 20), body: String(m.dd.body || "").slice(0, 10000), kind: m.dd.kind === "memoir" ? "memoir" : "diary" } : undefined }));
+      const slim = history.slice(-MAX_KEEP).map(m => ({ role: m.role, content: m.content, photo: m.photo ? true : undefined, song: typeof m.song === "string" ? m.song : undefined, find: typeof m.find === "string" ? m.find.slice(0, 40) : undefined, remind: m.remind && typeof m.remind === "object" ? m.remind : undefined, walk: m.walk === "go" || m.walk === "back" ? m.walk : undefined, gift: Number.isInteger(m.gift) ? m.gift : undefined, react: REACTS.includes(m.react) ? m.react : undefined, med: m.med ? 1 : undefined, say: typeof m.say === "string" ? m.say : undefined, d: typeof m.d === "string" ? m.d : undefined, ds: m.ds ? 1 : undefined, df: m.df ? 1 : undefined, dd: m.dd && typeof m.dd === "object" ? { title: String(m.dd.title || "").slice(0, 20), body: String(m.dd.body || "").slice(0, 10000), kind: m.dd.kind === "memoir" ? "memoir" : "diary", mood: m.dd.mood === "hard" ? "hard" : m.dd.mood ? "normal" : undefined, note: typeof m.dd.note === "string" ? m.dd.note.slice(0, 200) : undefined, moreQ: typeof m.dd.moreQ === "string" ? m.dd.moreQ.slice(0, 80) : undefined } : undefined, ui: typeof m.ui === "string" ? m.ui.slice(0, 200) : undefined }));
       localStorage.setItem(STORE_KEY, JSON.stringify(slim));
     } catch {
       if (canSave) {
@@ -1558,14 +1559,15 @@
   }
   function render() {
     log.textContent = ""; sepDate = ""; rendering = true;
+    const lastDraft = [...history].reverse().find(x => x.dd && x.role === "assistant"); // 日記の途中なら、いちばん新しい下書きにボタンを付け直す
     for (const m of history) {
       dateSep(m.d);
       if (m.say) voiceAlt.set(shown(m), m.say);
-      bubble(m.role === "user" ? "me" : "her", shown(m), undefined, m.role === "assistant" ? m : undefined);
+      bubble(m.role === "user" ? "me" : "her", m.ui || shown(m), undefined, m.role === "assistant" ? m : undefined);
       if (m.song) songInvite(m.song);
       if (m.find) findInvite(m.find);
       if (m.remind) remindBubble(m);
-      if (m.dd) { const bx = log.lastElementChild && log.lastElementChild.querySelector(".bubble"); if (bx) bx.appendChild(diaryCard(m.dd)); }
+      if (m.dd) { const bx = log.lastElementChild && log.lastElementChild.querySelector(".bubble"); if (bx) { bx.appendChild(diaryCard(m.dd)); if (profile && profile.diaryMode && m === lastDraft && m.content && !/しまっておき/.test(m.content)) draftActs(bx, m.dd); } }
       if (Number.isInteger(m.gift) && profile && gifts()[m.gift]) { const bx = log.lastElementChild && log.lastElementChild.querySelector(".bubble"); if (bx) bx.appendChild(giftCard(gifts()[m.gift])); }
       if (m.walk === "go" && !profile?.walking) { /* 終わった誘いは、ボタンを出さない */ }
       else if (m.walk === "back" && profile?.walking && m === history.filter(x => x.walk === "back").pop()) walkButton("back");
@@ -2620,7 +2622,7 @@
     const title = currentSong.title;
     setTimeout(() => {
       closePlayer();
-      history.push({ role: "user", content: "（『" + title + "』をいっしょに楽しんだ）" });
+      history.push({ role: "user", content: "（『" + title + "』をいっしょに楽しんだ）", ui: "🎵 『" + title + "』を楽しんだよ" });
       save();
       bubble("me", "🎵 『" + title + "』を楽しんだよ");
       sayScripted(line);
@@ -3576,7 +3578,7 @@
     if (stash && CHARS[stash.char] && typeof stash.name === "string") {
       Object.assign(profile, stash);
       delete profile.others[target];
-      try { history = JSON.parse(localStorage.getItem(chatKey(target)) || "[]").filter(m => m && typeof m.content === "string"); } catch { history = []; }
+      try { history = JSON.parse(localStorage.getItem(chatKey(target)) || "[]").filter(m => m && typeof m.content === "string"); for (const m of history) if (typeof m.d !== "string") m.d = "?"; } catch { history = []; }
       save();
       markDay();
       saveProfile();
@@ -3630,7 +3632,7 @@
       for (const k of CHAR_FIELDS) delete profile[k];
       Object.assign(profile, st);
       delete profile.others[prev];
-      try { history = JSON.parse(localStorage.getItem(chatKey(prev)) || "[]").filter(m => m && typeof m.content === "string"); } catch { history = []; }
+      try { history = JSON.parse(localStorage.getItem(chatKey(prev)) || "[]").filter(m => m && typeof m.content === "string"); for (const m of history) if (typeof m.d !== "string") m.d = "?"; } catch { history = []; }
       save();
       saveProfile();
       applyChar();
@@ -3909,7 +3911,7 @@
   function gifts() { if (!Array.isArray(profile.gifts)) profile.gifts = []; return profile.gifts; }
   // 描くもの：思い出ノート・ペット・好きな歌から1つ
   function giftSubject() {
-    const call = callName() || "あなた";
+    const call = callName() || "大好きな家族";
     const g = growth(), cands = [];
     for (const n of g.notes || []) cands.push(call + "と、" + n);
     for (const pt of pets()) cands.push(call + "と、" + pt.kind + (pt.name ? "の" + pt.name : ""));
@@ -4094,13 +4096,18 @@
     const box = log.lastElementChild && log.lastElementChild.querySelector(".bubble");
     if (!box) return;
     box.appendChild(diaryCard(draft, dm.day || today()));
+    draftActs(box, draft);
+    log.scrollTop = log.scrollHeight;
+  }
+  // 日記の下書きの「これで保存／直してほしい／もう少し話す」（読み込み直したときも、付け直す）
+  function draftActs(box, draft) {
+    const polite = stageOf(points()) === 0, pi = profile.char === "chamu" ? "" : "ピピッ。";
     const acts = document.createElement("div"); acts.className = "diary-acts";
     const btn = (label, cls, fn) => { const b = document.createElement("button"); b.type = "button"; b.textContent = label; if (cls) b.className = cls; b.addEventListener("click", () => { acts.remove(); fn(); }, { once: true }); acts.appendChild(b); };
     btn("これで保存", "go", () => saveDiary(draft));
     btn("直してほしい", "", () => { diaryFixDraft = draft; sayScripted(pi + (polite ? "どこを、どんなふうに直しましょうか？ 下に書いて教えてください。" : "どこを、どう直す？ 下に書いて教えてね。")); input.focus(); });
-    btn("もう少し話す", "", () => { profile.diaryMode.turns = 0; saveProfile(); sayScripted(pi + (polite ? "はい、続きを聞かせてください。" : "うん、続きを聞かせて！")); input.focus(); });
+    btn("もう少し話す", "", () => { if (profile.diaryMode) { profile.diaryMode.turns = 0; saveProfile(); } sayScripted(pi + (polite ? "はい、続きを聞かせてください。" : "うん、続きを聞かせて！")); input.focus(); });
     box.appendChild(acts);
-    log.scrollTop = log.scrollHeight;
   }
   function saveDiary(draft) {
     if (!profile) return;
@@ -4988,7 +4995,7 @@
   function pzMsgDefault() {
     pzs.sel = null; pzs.judge = null; $("pzJudge").hidden = true;
     $("pzBig").style.backgroundImage = "none";
-    pzMsg(pzTray().length ? "下のピースを|1つ選んで、|上の絵の、|置きたい場所を|押してください。" : "オレンジの枠のピースを|押して、|合っているか|見てあげてください。");
+    pzMsg(pzTray().length ? "下のピースを|1つ選んで、|上の絵の、|置きたい場所を|押してください。|オレンジの枠は、|" + profile.name + "が|置いたピースです。" : "オレンジの枠のピースを|押して、|合っているか|見てあげてください。");
   }
   function pzRender() {
     const st = pzState(); if (!st || !pzs) return;
@@ -5122,7 +5129,7 @@
     const sp = document.createElement("div"); sp.className = "pz-shine"; sp.setAttribute("aria-hidden", "true");
     for (let i = 0; i < 16; i++) { const k = document.createElement("i"); k.textContent = i % 3 ? "✨" : "⭐"; k.style.left = (4 + Math.random() * 88) + "%"; k.style.top = (6 + Math.random() * 82) + "%"; k.style.animationDelay = (Math.random() * 2.4) + "s"; k.style.fontSize = (18 + Math.random() * 18) + "px"; sp.appendChild(k); }
     b.appendChild(sp);
-    history.push({ role: "user", content: "（" + profile.name + "の、バラバラに切れた『" + job.name + "』の写真を、いっしょに元どおりにした。" + (fixes ? profile.name + "の間違いを" + fixes + "か所、見つけて直してあげた" : "") + "）" });
+    history.push({ role: "user", content: "（" + profile.name + "の、バラバラに切れた『" + job.name + "』の写真を、いっしょに元どおりにした。" + (fixes ? profile.name + "の間違いを" + fixes + "か所、見つけて直してあげた" : "") + "）", ui: "🧩 『" + job.name + "』の写真を、元にもどしたよ" });
     history.push({ role: "assistant", content: pzP("写真を直してくれて、本当に、ありがとうございました！", "写真、直してくれて、ほんとうにありがとう！") });
     save(); mirrorOff = true; bubble("me", "🧩 『" + job.name + "』の写真を、元にもどしたよ"); bubble("her", history[history.length - 1].content); mirrorOff = false;
     pzSay(pzP("写真が、元どおりになりました！ " + (call ? call + "のおかげです。" : "") + "本当に、ありがとうございます！ この写真は、「手伝う」の中に飾っておきますね。",
@@ -5167,7 +5174,7 @@
         "あのね、" + pzOwner(job) + "の大事な『" + job.name + "』の写真が、バラバラに切れちゃったの。ひとりで直そうとしたんだけど…ぐちゃぐちゃになっちゃった。お願い、元にもどすの、手伝って？ オレンジの枠が、わたしが置いたピースだよ。")
       : pzLine("resume", pzLeft()) + (pzWrongs().length ? pzP("オレンジの枠のピース、合っているか見てもらえますか？", "オレンジの枠のピース、合ってるか見てくれる？") : "");
     // おしゃべりのAIにも、いま手伝っていることが分かるように
-    history.push({ role: "user", content: "（" + profile.name + "に頼まれて、バラバラに切れた『" + job.name + "』の写真を元にもどすのを手伝い" + (isNew ? "始めた" : "に来た") + "）" });
+    history.push({ role: "user", content: "（" + profile.name + "に頼まれて、バラバラに切れた『" + job.name + "』の写真を元にもどすのを手伝い" + (isNew ? "始めた" : "に来た") + "）", ui: "🧩 『" + job.name + "』の写真を直すのを手伝う" });
     history.push({ role: "assistant", content: say }); save();
     bubble("me", "🧩 『" + job.name + "』の写真を直すのを手伝う");
     pzSay(say, isNew ? "sad" : "happy");
@@ -5447,7 +5454,7 @@
     sfx("fanfare"); confetti(["📚", "✨", "💮", "🌟"], 40, true);
     const mine = sts;
     afterVoice(() => { if (sts !== mine || $("st").hidden) return; stSay(pzP("4つとも、できました！ " + (callName() ? callName() + "のおかげで、" : "") + "わたし、かしこくなりました。本当に、ありがとうございます！", "4つとも、できたー！ " + (callName() ? callName() + "のおかげで、" : "") + "わたし、かしこくなったよ。ほんとうに、ありがとう！") + (left ? myWord(stageOf(points()) === 0 ? " あれ？ 字が" + left + "つ、あまっていますね…。わたし、よけいな字まで持ってきちゃってたみたいです。えへへ。" : " あれ？ 字が" + left + "つ、あまってる…。わたし、よけいな字まで持ってきちゃってたみたい。えへへ。") : ""), "banzai"); }, 2500); // 熟語の説明を話し終わってから
-    history.push({ role: "user", content: "（" + profile.name + "の四字熟語の勉強を手伝った：" + words.join("・") + "）" });
+    history.push({ role: "user", content: "（" + profile.name + "の四字熟語の勉強を手伝った：" + words.join("・") + "）", ui: "📚 四字熟語の勉強を手伝ったよ（" + words.join("・") + "）" });
     history.push({ role: "assistant", content: pzP("勉強を手伝ってくれて、ありがとうございました！", "勉強、手伝ってくれて、ありがとう！") }); save();
     mirrorOff = true; bubble("me", "📚 四字熟語の勉強を手伝ったよ（" + words.join("・") + "）"); bubble("her", history[history.length - 1].content); mirrorOff = false;
     afterActivity("help");
@@ -5479,7 +5486,7 @@
       ? pzP("あの…、わたし、四字熟語の勉強をしているんです。4つ並べてみたんですけど、順番がバラバラになったり、分からない字があったりして…。お願いです、直すのを手伝ってもらえませんか？",
         "あのね、わたし、四字熟語の勉強をしてるの。4つ並べてみたんだけど…順番がバラバラだったり、分からない字があったりして。お願い、直すの手伝って？")
       : pzP("また手伝いに来てくれて、ありがとうございます！ 続き、お願いします。", "また手伝いに来てくれて、ありがとう！ 続き、お願いね。");
-    history.push({ role: "user", content: "（" + profile.name + "に頼まれて、四字熟語の勉強を手伝い" + (isNew ? "始めた" : "に来た") + "）" });
+    history.push({ role: "user", content: "（" + profile.name + "に頼まれて、四字熟語の勉強を手伝い" + (isNew ? "始めた" : "に来た") + "）", ui: "📚 勉強を手伝う" });
     history.push({ role: "assistant", content: say }); save();
     bubble("me", "📚 勉強を手伝う"); bubble("her", say);
     stSay(say);
@@ -5865,7 +5872,7 @@
   // クリスマス：プレゼントの箱を渡す →「開ける」で、キャラが描いた絵が出てくる
   function offerPresent(s, lines) {
     if (!scAlive(s)) return;
-    const call = callName() || "あなた";
+    const call = callName() || "大好きな家族";
     s.drawing = requestDrawing("メリークリスマス！ " + call + "と" + profile.name + "が、飾ったクリスマスツリーのそばで、いっしょに楽しむ夜"); // 「お祝い」だけだと誕生日の絵になることがあった // 箱を開けるまでに描いておく
     const bx = $("scBox"); bx.src = "events/box_closed.png"; bx.style.opacity = "1";
     try { bx.animate([{ transform: "translateY(30vh) scale(.3) rotate(-12deg)", opacity: 0 }, { transform: "translateY(-2vh) scale(1.08) rotate(4deg)", opacity: 1, offset: .7 }, { transform: "translateY(0) scale(1) rotate(0)", opacity: 1 }], { duration: 800, easing: "cubic-bezier(.2,.8,.3,1)", fill: "forwards" }); } catch {}
