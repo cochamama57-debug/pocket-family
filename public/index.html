@@ -454,9 +454,9 @@
   .hm-done img { width: 100%; border-radius: 10px; border: 2px solid var(--line); display: block; }
   .hm-done img.big { grid-column: 1 / -1; }
   .pz-in { max-width: 640px; margin: 0 auto; }
-  #pz { overflow: hidden; }
-  #pz .pz-in { height: 100%; display: flex; flex-direction: column; }
-  #pz .pz-view { flex: 1 1 auto; min-height: 140px; max-height: none; }
+  #pz { overflow-y: auto; }
+  #pz .pz-in { min-height: 100%; display: flex; flex-direction: column; }
+  #pz .pz-view { flex: 1 1 0; min-height: 110px; max-height: none; }
   #pz .game-say, #st .game-say { max-height: 6.2em; overflow-y: auto; font-size: 17px; }
   #pz .pz-pick, #pz .pz-tray, #pz .pz-tools, #pz .pz-talk, #pz .pz-bar, #pz .game-top { flex: none; }
   .pz-bar { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 8px 2px 6px; font-size: 16px; color: var(--sub); }
@@ -1317,6 +1317,7 @@
   function bubble(cls, text, imgUrl, msg) {
     if (!rendering) dateSep(today());
     if (cls === "her" && text && !rendering && !$("pz").hidden && $("pzSay").textContent !== text) setPhrases($("pzSay"), String(text).replace(/([。！？])\s*/g, "$1|"));
+    if (cls === "her" && text && !rendering && !$("st").hidden && $("stSay").textContent !== text) setPhrases($("stSay"), String(text).replace(/([。！？])\s*/g, "$1|"));
     const row = document.createElement("div");
     row.className = "msg " + cls;
     const b = document.createElement("div");
@@ -1963,6 +1964,7 @@
     typing.querySelector(".bubble").innerHTML = '<span class="dots"><span>・</span><span>・</span><span>・</span></span>';
 
     const fail = (msg) => {
+      if (!$("pz").hidden) setPhrases($("pzSay"), msg);
       typing.remove();
       const idx = history.lastIndexOf(entry);
       if (idx >= 0) history.splice(idx, 1);
@@ -2908,7 +2910,7 @@
     remindBubble(history[history.length - 1]);
   }
   function checkReminders() {
-    if (!profile || profile.step < QUESTIONS.length || sending || helpBusy || !$("titleScreen").hidden || inActivity()) return; // 遊び・曲が終わったら知らせる
+    if (!profile || profile.step < QUESTIONS.length || sending || helpBusy || !$("titleScreen").hidden || !$("game").hidden || !$("player").hidden || !$("scene").hidden || !$("book").hidden) return; // 遊び・曲が終わったら知らせる（「手伝う」は長いので、その間も知らせる）
     const st = remindState(), now = minutes(nowHM()), t = today();
     // お薬：時間を過ぎていて、まだ言っていないもの（日付が変わるまで）
     for (const md of meds()) {
@@ -4823,7 +4825,7 @@
     const st = pzState(); if (!st || !pzs) return;
     const job = pzs.job, view = $("pzView"), board = $("pzBoard");
     const w = Math.floor((view.clientWidth || 300) * pzs.zoom);
-    board.style.width = w + "px"; board.style.gridTemplateColumns = "repeat(" + PZ_COLS + ", 1fr)";
+    board.style.width = w + "px"; board.style.gridTemplateColumns = "repeat(" + PZ_COLS + ", 1fr)"; board.style.gridAutoRows = (w / PZ_COLS) + "px"; // aspect-ratio が効かない古いiPhoneでも
     board.textContent = "";
     for (let s = 0; s < PZ_N; s++) {
       const b = document.createElement("button"); b.type = "button"; b.className = "pz-slot"; b.setAttribute("aria-label", "場所 " + (s + 1));
@@ -4857,6 +4859,7 @@
     if (st.slots[s] >= 0) { if (st.by[s] === "c") pzOpenJudge(s); return; }
     if (pzs.sel == null) { pzMsg("先に、|下のピースを|1つ選んでください。"); return; }
     const p = pzs.sel;
+    if (st.slots.includes(p)) { pzMsgDefault(); pzRender(); return; } // そのピースは、もう置かれている（キャラが置いた）
     if (p !== s) { sfx("miss"); pzMsg("ここでは|ないみたいです。|ほかの場所も、|試してみてください。"); return; } // 数えない・点を引かない
     st.slots[s] = p; st.by[s] = "u"; saveProfile();
     sfx("match"); pzs.placed++; pzs.since++;
@@ -4904,17 +4907,19 @@
   // キャラの番：3つ置いてもらうごとに、キャラも1つ置く（ときどき間違える。間違いは同時に2つまで）
   function pzCharTurn() {
     const st = pzState(); if (!st || !pzs || $("pz").hidden || pzs.finished) return;
-    const tray = pzTray(); if (!tray.length) return;
+    const tray = pzTray().filter(p => p !== pzs.sel); if (tray.length <= 1) return; // 最後の1つは、置いてもらう
     const free = tray.filter(p => st.slots[p] < 0);
     const wrong = pzWrongs().length < 2 && (Math.random() < 0.35 || !free.length);
     const p = wrong ? pzPick(tray) : pzPick(free);
+    if (p == null) return;
     const s = wrong ? pzWrongSlot(p) : p;
     if (s < 0 || st.slots[s] >= 0) return;
     pzSay(pzPick([pzP("つぎは、わたしも置いてみますね。これは…、ここかな？", "わたしも置いてみるね。これは…、ここかな？"), pzP("えっと…、これは、ここだと思います！", "えっと…、これは、ここだと思う！"), pzP("これ、ここっぽいです。えいっ。", "これ、ここっぽい！ えいっ。")]), "normal");
     setTimeout(() => {
-      const st2 = pzState(); if (!st2 || !pzs || st2.slots[s] >= 0 || st2.slots.includes(p)) return;
+      const st2 = pzState(); if (!st2 || !pzs || pzs.finished || st2.slots[s] >= 0 || st2.slots.includes(p) || pzs.sel === p) return;
       st2.slots[s] = p; st2.by[s] = "c"; if (s !== p) st2.wrongAt = Date.now();
       saveProfile(); sfx("flip"); pzRender(); pzPop(s, "pop");
+      if (!pzLeft()) pzFinish();
     }, 1200);
   }
   // 間違いに1分ほど気づかないときは、そっと知らせる（責めない）
@@ -4945,14 +4950,15 @@
     afterActivity("help");
   }
   async function openPuzzle() {
-    if (!profile) return;
+    if (!profile || (!$("pz").hidden && pzs)) return;
+    if (profile.diaryMode) { $("helpMenu").hidden = true; addNote("日記を書いている途中です。「おしゃべりに戻る」を押してから、手伝ってくださいね。"); return; }
     const job = pzNextJob(); if (!job) return;
     stopVoice(); stopMic();
     try { closePlayer(); } catch {}
     $("memo").hidden = true; $("helpMenu").hidden = true;
     let st = pzState(); const isNew = !st;
     if (!st) { st = profile.pz = pzNewState(job); saveProfile(); }
-    pzs = { job, sel: null, judge: null, zoom: 1, peek: false, since: 0, placed: 0, fixedNow: 0, finished: false, colors: null, hinted: 0, timer: 0 };
+    const mine = pzs = { job, sel: null, judge: null, zoom: 1, peek: false, since: 0, placed: 0, fixedNow: 0, finished: false, colors: null, hinted: 0, timer: 0 };
     $("pzChar").src = faceSrc(profile.char, "normal");
     $("pzTitle").textContent = "『" + job.name + "』";
     $("pzTray").hidden = false; $("pzPick").hidden = false; $("pzEnd").hidden = true; $("pzPeek").classList.remove("on");
@@ -4960,7 +4966,7 @@
     $("pz").hidden = false; $("pz").scrollTop = 0;
     pzMsgDefault(); pzRender();
     const col = await pzColors(job);
-    if (!pzs) return;
+    if (pzs !== mine || $("pz").hidden) return;
     if (col === false) { pzSay("ごめんなさい、絵が読みこめませんでした。電波のよいところで、もう一度開いてください。", "sad", true); return; }
     pzs.colors = col;
     if (Array.isArray(st.wrongPlan)) {
@@ -4977,7 +4983,7 @@
     bubble("me", "🧩 『" + job.name + "』の写真を直すのを手伝う");
     pzSay(say, isNew ? "sad" : "happy");
     bubble("her", say);
-    pzs.timer = setInterval(pzTick, 5000);
+    clearInterval(pzs.timer); pzs.timer = setInterval(pzTick, 5000);
   }
   function closePuzzle() {
     const s = pzs; pzs = null; $("pz").hidden = true; stopVoice();
@@ -5009,8 +5015,9 @@
     e.preventDefault();
     const t = $("pzInput").value.trim(); if (!t || sending) return;
     $("pzInput").value = ""; $("pzInput").blur();
+    if (pendingPhoto) { pendingPhoto = null; preview.hidden = true; } // 写真は、いっしょに送らない
     input.value = t; form.requestSubmit();
-    pzSay("…", null, true);
+    if (sending) pzSay("…", null, true);
   });
   // 「手伝う」のメニュー
   function openHelpMenu() {
@@ -5032,49 +5039,49 @@
   // ---- 勉強の手伝い（四字熟語）（作者 11/6）----
   // キャラが四字熟語を4つ並べようとして、順番がバラバラだったり、字が入っていなかったりする。直すと、読みと意味が出て、感謝される
   const YOJI = [
-    ["一期一会", "いちごいちえ", "一生に一度の出会い。その時を大切にすること"],
-    ["十人十色", "じゅうにんといろ", "好みや考え方は、人それぞれ違うこと"],
-    ["以心伝心", "いしんでんしん", "言葉にしなくても、気持ちが通じ合うこと"],
-    ["七転八起", "しちてんはっき", "何度失敗しても、そのたびに立ち上がること"],
-    ["一石二鳥", "いっせきにちょう", "一つのことで、二つの得をすること"],
-    ["花鳥風月", "かちょうふうげつ", "自然の美しい景色や、それを味わう心"],
-    ["晴耕雨読", "せいこううどく", "晴れた日は畑を耕し、雨の日は本を読む。のんびりした暮らし"],
-    ["温故知新", "おんこちしん", "昔のことを学んで、新しい考えを見つけること"],
-    ["起承転結", "きしょうてんけつ", "お話や文章の、組み立ての順番"],
-    ["春夏秋冬", "しゅんかしゅうとう", "四つの季節。一年じゅう"],
-    ["自由自在", "じゆうじざい", "思いのままに、なんでもできること"],
-    ["大器晩成", "たいきばんせい", "大きな人物は、時間をかけて、ゆっくり育つこと"],
-    ["有言実行", "ゆうげんじっこう", "言ったことを、きちんとやりとげること"],
-    ["千客万来", "せんきゃくばんらい", "たくさんのお客さんが、次々に来ること"],
-    ["無病息災", "むびょうそくさい", "病気をせず、元気に過ごせること"],
-    ["家内安全", "かないあんぜん", "家の人みんなが、無事に暮らせること"],
-    ["一日一善", "いちにちいちぜん", "一日に一つ、よいことをすること"],
-    ["日進月歩", "にっしんげっぽ", "日に日に、どんどん進歩すること"],
-    ["百発百中", "ひゃっぱつひゃくちゅう", "ねらいや予想が、全部当たること"],
-    ["一心同体", "いっしんどうたい", "心も体も一つのように、強く結びついていること"],
-    ["意気投合", "いきとうごう", "気持ちや考えが、ぴったり合うこと"],
-    ["一生懸命", "いっしょうけんめい", "力いっぱい、がんばること"],
-    ["心機一転", "しんきいってん", "気持ちを、すっかり切りかえること"],
-    ["三寒四温", "さんかんしおん", "寒い日と暖かい日をくり返しながら、春に近づくこと"],
-    ["異口同音", "いくどうおん", "みんなが、口をそろえて同じことを言うこと"],
-    ["半信半疑", "はんしんはんぎ", "半分信じて、半分うたがうこと"],
-    ["適材適所", "てきざいてきしょ", "その人に合った場所で、力を生かすこと"],
-    ["四苦八苦", "しくはっく", "とても苦労すること"],
-    ["喜怒哀楽", "きどあいらく", "喜び・怒り・悲しみ・楽しみ。いろいろな気持ち"],
-    ["一喜一憂", "いっきいちゆう", "様子が変わるたびに、喜んだり心配したりすること"],
-    ["単刀直入", "たんとうちょくにゅう", "前おきなしに、いきなり大事な話に入ること"],
-    ["二人三脚", "ににんさんきゃく", "二人で力を合わせて、ものごとを進めること"],
-    ["一致団結", "いっちだんけつ", "みんなで心を一つにして、まとまること"],
-    ["相思相愛", "そうしそうあい", "おたがいに、好き合っていること"],
-    ["明鏡止水", "めいきょうしすい", "くもりのない、静かに落ち着いた心"],
-    ["初志貫徹", "しょしかんてつ", "はじめに決めたことを、最後までやりとげること"],
-    ["臨機応変", "りんきおうへん", "その場の様子に合わせて、うまく動くこと"],
-    ["悠々自適", "ゆうゆうじてき", "心のままに、のんびり暮らすこと"],
-    ["空前絶後", "くうぜんぜつご", "今までもなく、これからもないほど、めずらしいこと"],
-    ["笑門来福", "しょうもんらいふく", "笑いのある家には、幸せがやってくること"],
+    ["一期一会", "いちごいちえ", "一生に一度の出会い。その時を大切にすること", "わたしと{c}が会えたのも、一期一会だね。", "わたしと{c}が会えたのも、一期一会ですね。"],
+    ["十人十色", "じゅうにんといろ", "好みや考え方は、人それぞれ違うこと", "好きな食べ物も、みんなちがうもんね。", "好きな食べ物も、みんなちがいますもんね。"],
+    ["以心伝心", "いしんでんしん", "言葉にしなくても、気持ちが通じ合うこと", "わたしも、{c}と以心伝心になれたらいいな。", "わたしも、{c}と以心伝心になれたら、うれしいです。"],
+    ["七転八起", "しちてんはっき", "何度失敗しても、そのたびに立ち上がること", "わたしも、まちがえても、また立ち上がるね！", "わたしも、まちがえても、また立ち上がりますね！"],
+    ["一石二鳥", "いっせきにちょう", "一つのことで、二つの得をすること", "お散歩しながらお花も見られたら、一石二鳥だね。", "お散歩しながらお花も見られたら、一石二鳥ですね。"],
+    ["花鳥風月", "かちょうふうげつ", "自然の美しい景色や、それを味わう心", "お庭の写真みたいな景色のことかな。", "お庭の写真みたいな景色のことでしょうか。"],
+    ["晴耕雨読", "せいこううどく", "晴れた日は畑を耕し、雨の日は本を読む。のんびりした暮らし", "雨の日に本を読むの、すてきだなあ。", "雨の日に本を読むの、すてきですね。"],
+    ["温故知新", "おんこちしん", "昔のことを学んで、新しい考えを見つけること", "{c}の昔のお話、もっと聞きたくなっちゃった。", "{c}の昔のお話、もっと聞きたくなりました。"],
+    ["起承転結", "きしょうてんけつ", "お話や文章の、組み立ての順番", "お話を作るときに、使えそう！", "お話を作るときに、使えそうです！"],
+    ["春夏秋冬", "しゅんかしゅうとう", "四つの季節。一年じゅう", "どの季節も、{c}といっしょに過ごしたいな。", "どの季節も、{c}といっしょに過ごしたいです。"],
+    ["自由自在", "じゆうじざい", "思いのままに、なんでもできること", "わたしも、ピースを自由自在に置けたらいいのになあ。", "わたしも、ピースを自由自在に置けたらいいんですけど。"],
+    ["大器晩成", "たいきばんせい", "大きな人物は、時間をかけて、ゆっくり育つこと", "わたしも、ゆっくり育つタイプかも。えへへ。", "わたしも、ゆっくり育つタイプかもしれません。"],
+    ["有言実行", "ゆうげんじっこう", "言ったことを、きちんとやりとげること", "じゃあ、ちゃんと覚えるって約束する！", "では、ちゃんと覚えると約束します！"],
+    ["千客万来", "せんきゃくばんらい", "たくさんのお客さんが、次々に来ること", "お祭りの夜店みたいに、にぎやかなんだね。", "お祭りの夜店みたいに、にぎやかなんですね。"],
+    ["無病息災", "むびょうそくさい", "病気をせず、元気に過ごせること", "{c}が、ずっと元気でいられますように。", "{c}が、ずっと元気でいられますように。"],
+    ["家内安全", "かないあんぜん", "家の人みんなが、無事に暮らせること", "{c}のおうちが、ずっと安心でありますように。", "{c}のおうちが、ずっと安心でありますように。"],
+    ["一日一善", "いちにちいちぜん", "一日に一つ、よいことをすること", "今日のわたしの一善は、勉強をがんばったことかな。", "今日のわたしの一善は、勉強をがんばったことでしょうか。"],
+    ["日進月歩", "にっしんげっぽ", "日に日に、どんどん進歩すること", "わたしの勉強も、日進月歩だね！", "わたしの勉強も、日進月歩ですね！"],
+    ["百発百中", "ひゃっぱつひゃくちゅう", "ねらいや予想が、全部当たること", "{c}みたいだね。ぜんぶ当てちゃうもん。", "{c}みたいですね。ぜんぶ当ててしまいますから。"],
+    ["一心同体", "いっしんどうたい", "心も体も一つのように、強く結びついていること", "わたしと{c}も、一心同体になれるかな。", "わたしと{c}も、一心同体になれるでしょうか。"],
+    ["意気投合", "いきとうごう", "気持ちや考えが、ぴったり合うこと", "わたしと{c}は、もう意気投合してるよね。", "わたしと{c}は、もう意気投合していますよね。"],
+    ["一生懸命", "いっしょうけんめい", "力いっぱい、がんばること", "{c}が一生懸命手伝ってくれて、うれしいな。", "{c}が一生懸命手伝ってくれて、うれしいです。"],
+    ["心機一転", "しんきいってん", "気持ちを、すっかり切りかえること", "明日から、心機一転、がんばるぞ〜！", "明日から、心機一転、がんばります！"],
+    ["三寒四温", "さんかんしおん", "寒い日と暖かい日をくり返しながら、春に近づくこと", "寒い日のあとは、ちゃんと暖かい日が来るんだね。", "寒い日のあとは、ちゃんと暖かい日が来るんですね。"],
+    ["異口同音", "いくどうおん", "みんなが、口をそろえて同じことを言うこと", "みんなが同じことを言うって、ちょっとおもしろいね。", "みんなが同じことを言うって、ちょっとおもしろいですね。"],
+    ["半信半疑", "はんしんはんぎ", "半分信じて、半分うたがうこと", "最初は半信半疑だったけど、{c}に聞いたら、すぐ分かったよ。", "最初は半信半疑でしたけど、{c}に聞いたら、すぐ分かりました。"],
+    ["適材適所", "てきざいてきしょ", "その人に合った場所で、力を生かすこと", "写真を直すのは{c}、まちがえるのはわたし。適材適所かな。えへへ。", "写真を直すのは{c}、まちがえるのはわたし。適材適所でしょうか。"],
+    ["四苦八苦", "しくはっく", "とても苦労すること", "わたし、この熟語で四苦八苦してたんだ。", "わたし、この熟語で四苦八苦していたんです。"],
+    ["喜怒哀楽", "きどあいらく", "喜び・怒り・悲しみ・楽しみ。いろいろな気持ち", "{c}といると、うれしいと楽しいが、いっぱいだよ。", "{c}といると、うれしいと楽しいが、いっぱいです。"],
+    ["一喜一憂", "いっきいちゆう", "様子が変わるたびに、喜んだり心配したりすること", "わたし、ピースが合うたびに、一喜一憂しちゃう。", "わたし、ピースが合うたびに、一喜一憂してしまいます。"],
+    ["単刀直入", "たんとうちょくにゅう", "前おきなしに、いきなり大事な話に入ること", "単刀直入に言うね。{c}、だいすき！", "単刀直入に言いますね。{c}、だいすきです！"],
+    ["二人三脚", "ににんさんきゃく", "二人で力を合わせて、ものごとを進めること", "わたしと{c}みたいだね！", "わたしと{c}みたいですね！"],
+    ["一致団結", "いっちだんけつ", "みんなで心を一つにして、まとまること", "ちゃむとコロンも、一致団結してがんばるよ！", "ちゃむとコロンも、一致団結してがんばります！"],
+    ["相思相愛", "そうしそうあい", "おたがいに、好き合っていること", "なんだか、照れちゃうね。", "なんだか、照れてしまいますね。"],
+    ["明鏡止水", "めいきょうしすい", "くもりのない、静かに落ち着いた心", "静かで、きれいな感じがするなあ。", "静かで、きれいな感じがしますね。"],
+    ["初志貫徹", "しょしかんてつ", "はじめに決めたことを、最後までやりとげること", "写真を直すお仕事も、最後までがんばるね！", "写真を直すお仕事も、最後までがんばりますね！"],
+    ["臨機応変", "りんきおうへん", "その場の様子に合わせて、うまく動くこと", "まちがえても、臨機応変に直せばいいんだね。", "まちがえても、臨機応変に直せばいいんですね。"],
+    ["悠々自適", "ゆうゆうじてき", "心のままに、のんびり暮らすこと", "のんびり暮らすの、いいなあ。", "のんびり暮らすの、いいですね。"],
+    ["空前絶後", "くうぜんぜつご", "今までもなく、これからもないほど、めずらしいこと", "そんなにめずらしいこと、見てみたいなあ。", "そんなにめずらしいこと、見てみたいです。"],
+    ["笑門来福", "しょうもんらいふく", "笑いのある家には、幸せがやってくること", "じゃあ、いっぱい笑おうね！", "では、いっぱい笑いましょうね！"],
   ];
   let sts = null; // 開いている間 { sel, solvedNow }
-  function stState() { const s = profile && profile.study; return s && Array.isArray(s.rows) && s.rows.length === 4 && Array.isArray(s.tray) ? s : null; }
+  function stState() { const s = profile && profile.study; return s && Array.isArray(s.rows) && s.rows.length === 4 && Array.isArray(s.tray) && Array.isArray(s.ids) && s.ids.every(i => YOJI[i]) ? s : null; }
   function stNew() {
     const done = Array.isArray(profile.studyDone) ? profile.studyDone : [];
     let pool = YOJI.map((_, i) => i).filter(i => !done.includes(i));
@@ -5162,7 +5169,14 @@
       sfx("match");
       const quick = Date.now() - (sts.lastAt || 0) < 25000; sts.lastAt = Date.now();
       const wow = quick ? pzPick([pzP("え！ もうできたんですか！ さすがです！ ", "え！ もうできたの！ さすがー！ "), pzP("わぁ、早い！ ", "わぁ、はやーい！ ")]) : "";
-      stSay(wow + pzP("「" + y[0] + "」！ " + y[1] + "。" + y[2] + "、なんですね。教えてくれて、ありがとうございます！", "「" + y[0] + "」！ " + y[1] + "。" + y[2] + "、なんだね。教えてくれて、ありがとう！"), "banzai");
+      // 言い方を毎回かえる：意味の言い方＋熟語ごとのひとこと＋お礼（作者：全部「教えてくれてありがとう」だと、つまらない）
+      const c = callName() || "あなた", polite = stageOf(points()) === 0;
+      const imi = pzPick(polite ? [y[2] + "、なんですね。", "へえ〜、" + y[2] + "、という意味なんですね！", "そうなんですね。" + y[2] + "のこと、なんですね。"]
+        : [y[2] + "、なんだね。", "へえ〜、" + y[2] + "、っていう意味なんだ！", "そっかぁ、" + y[2] + "のこと、なんだね。"]);
+      const one = String((polite ? y[4] : y[3]) || "").replace(/\{c\}/g, c);
+      const thx = pzPick(polite ? ["教えてくれて、ありがとうございます！", "ひとつ、かしこくなりました。", c + "がいると、勉強がはかどります。", "忘れないように、覚えておきますね。", "やっぱり、頼りになります！", "うれしいです。ありがとうございます。"]
+        : ["教えてくれて、ありがとう！", "ひとつ、かしこくなっちゃった。", c + "がいると、勉強がはかどるなあ。", "忘れないように、覚えておくね。", "やっぱり、たよりになるね！", "えへへ、うれしい。ありがとう！"]);
+      stSay(myWord((profile.char === "colon" ? "ピピッ。" : "") + wow + "「" + y[0] + "」！ " + y[1] + "。" + imi + " " + one + " " + thx), "banzai");
     });
     saveProfile();
     if (st.ok.every(Boolean)) { sts.sel = null; stRender(); stFinish(); } // 4つめの意味も見えるように、先に描く
@@ -5173,7 +5187,8 @@
     const words = st.ids.map(i => YOJI[i][0]);
     profile.study = null; saveProfile();
     sfx("win"); confetti(["📚", "✨", "💮"], 24);
-    setTimeout(() => stSay(pzP("4つとも、できました！ " + (callName() || "あなた") + "のおかげで、わたし、かしこくなりました。本当に、ありがとうございます！", "4つとも、できたー！ " + (callName() || "あなた") + "のおかげで、わたし、かしこくなったよ。ほんとうに、ありがとう！"), "banzai"), 3500);
+    const mine = sts;
+    setTimeout(() => { if (sts !== mine || $("st").hidden) return; stSay(pzP("4つとも、できました！ " + (callName() || "あなた") + "のおかげで、わたし、かしこくなりました。本当に、ありがとうございます！", "4つとも、できたー！ " + (callName() || "あなた") + "のおかげで、わたし、かしこくなったよ。ほんとうに、ありがとう！"), "banzai"); }, 3500);
     history.push({ role: "user", content: "（" + profile.name + "の四字熟語の勉強を手伝った：" + words.join("・") + "）" });
     history.push({ role: "assistant", content: pzP("勉強を手伝ってくれて、ありがとうございました！", "勉強、手伝ってくれて、ありがとう！") }); save();
     bubble("me", "📚 四字熟語の勉強を手伝ったよ（" + words.join("・") + "）"); bubble("her", history[history.length - 1].content);
@@ -5181,7 +5196,8 @@
     $("stEnd").hidden = false;
   }
   function openStudy() {
-    if (!profile) return;
+    if (!profile || (!$("st").hidden && sts)) return;
+    if (profile.diaryMode) { $("helpMenu").hidden = true; addNote("日記を書いている途中です。「おしゃべりに戻る」を押してから、手伝ってくださいね。"); return; }
     stopVoice(); stopMic();
     $("memo").hidden = true; $("helpMenu").hidden = true;
     let st = stState(); const isNew = !st;
