@@ -32,7 +32,7 @@ export default async function handler(req, res) {
   // 前は「颯太 Sota」を1.26倍（11/6）、その前は FISH_VOICE_CHAMU（しおり）
   const CHAMU_VOICE = "d738c70d206149e69f8e3b6fc8af9d96";
   // 声えらびの見本づくり（一時的。作者 11/7「アニメ声すぎる・ぼーっとした感じに」。決まったら外す）。Fish Official の声だけ
-  const TRIAL = new Set(["c496c7d0e93640a59a0befd78b47f39e", "d738c70d206149e69f8e3b6fc8af9d96", "59a78821a8924989b70d2a63d588e8eb"]);
+  const TRIAL = new Set(["c496c7d0e93640a59a0befd78b47f39e", "d738c70d206149e69f8e3b6fc8af9d96", "59a78821a8924989b70d2a63d588e8eb", "297a6fd278df47c3b9da9bfdf55ac89a", "bf5634e34ee5489991fe687ad0d202c5", "b2d9d8db057042688a5e318b8f405bc2"]);
   const trial = typeof body?.trial === "string" && TRIAL.has(body.trial) ? body.trial : "";
   const trialSpeed = trial && typeof body?.trialSpeed === "number" ? Math.max(0.5, Math.min(1.2, body.trialSpeed)) : 0;
   const voice = trial || (char === "chamu" ? CHAMU_VOICE : process.env.FISH_VOICE_COLON);
