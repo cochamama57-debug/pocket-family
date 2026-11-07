@@ -2024,6 +2024,7 @@
     const timer = setTimeout(() => ctrl.abort(), 60000);
     try {
       const payload = {
+        id: device().id, secret: device().secret, // 使いすぎの守り：端末ごとに1日の回数を数える
         messages: history.filter(m => !m.med).slice(-60).map(m => ({ role: m.role, content: m.content })),
         profile: profile ? profileForServer() : null,
         // 曲の誘いを休んでいる間は、自分から曲の話をしたときだけ曲を渡す（渡さないと、AIは曲に誘わない）

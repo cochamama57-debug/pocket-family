@@ -11,10 +11,10 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "publ
 const types = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".png": "image/png", ".svg": "image/svg+xml", ".mp3": "audio/mpeg", ".json": "application/json", ".webmanifest": "application/manifest+json" };
 
 http
-  .createServer(async (req, res) => {
+  .createServer(async (req, res) => { try {
     const url = new URL(req.url, "http://localhost");
     const apiName = url.pathname.startsWith("/api/") ? url.pathname.slice(5) : null;
-    if (apiName && handlers[apiName]) {
+    if (apiName && Object.hasOwn(handlers, apiName)) { // 自分で持っている名前だけ（__proto__ などで止まらないように。Claude Security F2）
       let raw = "";
       for await (const chunk of req) {
         raw += chunk;
@@ -60,5 +60,5 @@ http
       res.statusCode = 404;
       res.end("not found");
     }
-  })
+  } catch { try { if (!res.headersSent) res.statusCode = 500; res.end(); } catch {} } }) // 例外が出ても、サーバーは止めない（Claude Security F2）
   .listen(process.env.PORT || 3000, "127.0.0.1", () => console.log("http://localhost:" + (process.env.PORT || 3000)));

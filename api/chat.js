@@ -3,6 +3,11 @@
 import {
   MODEL, CHARACTERS, HEART, cleanProfile, profileBlock, cleanText, nowBlock, validDate, fromOurPage, rateLimited, clientIp, readBody, reply, getClient, replyApiError,
 } from "../lib/shared.js";
+import { ensureDevice, dailyGate } from "../lib/store.js";
+// 使いすぎの守り（Claude Security 11/7 の指摘 F1）：登録した端末ごと・全体の1日の上限を、記録置き場（Redis）で数える。
+// 端末の登録はだれでもできるので、全体の上限がお金の守りになる（上限に来たら、その日はおしゃべりをお休み）
+const CHAT_DEVICE_DAILY = 300;
+const CHAT_ALL_DAILY = 2000;
 
 // いっしょに歌える曲（オーナーの自作曲）。曲の一覧は画面側から受け取る
 function cleanSongs(v) {
@@ -172,6 +177,10 @@ export default async function handler(req, res) {
   }
 
   const body = readBody(req);
+  // はじめての端末も話せるように、ここで登録してから数える（記録置き場がないとき＝手元の試しでは、通す）
+  try { await ensureDevice(body?.id, body?.secret); } catch {}
+  const gate = await dailyGate("chat", body?.id, body?.secret, CHAT_DEVICE_DAILY, CHAT_ALL_DAILY);
+  if (!gate.ok) return reply(res, 429, { error: "daily", message: gate.reason === "daily" ? "今日は、たくさんお話ししましたね。また明日、お話ししましょう。" : "うまくつながりませんでした。少し待ってから、もう一度送ってください。" });
   const messages = cleanHistory(body?.messages);
   if (!messages) return reply(res, 400, { error: "bad_request", message: "うまく受け取れませんでした。もう一度送ってください。" });
 
