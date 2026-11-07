@@ -5,6 +5,24 @@
 // 決まり：薬・住所・電話番号などが入った文は、外の声サービスに送らない（スマホの読み上げにまかせる）。
 import { fromOurPage, rateLimited, clientIp, readBody, cleanText } from "../lib/shared.js";
 import { dailyGate } from "../lib/store.js";
+import { createHash } from "crypto";
+
+// 声えらびの見本づくり（一時的・11/7）：作者の録音をお手本にして話す（Fish の references は MessagePack で送る決まり）。
+// 決めた1つの録音（ハッシュが一致するもの）だけ受け付ける。録音そのものはリポジトリに入れない
+const TRIAL_REF_SHA = "c433a9bf58ac24e826d1e0f43bc751c7c581fe77fd5da8a0d486ce0c3044a910";
+function mp(v) {
+  if (v === null || v === undefined) return Buffer.from([0xc0]);
+  if (typeof v === "boolean") return Buffer.from([v ? 0xc3 : 0xc2]);
+  if (typeof v === "number") {
+    if (Number.isInteger(v) && v >= 0 && v < 0x100000000) { const b = Buffer.alloc(5); b[0] = 0xce; b.writeUInt32BE(v, 1); return b; }
+    const b = Buffer.alloc(9); b[0] = 0xcb; b.writeDoubleBE(v, 1); return b;
+  }
+  if (typeof v === "string") { const d = Buffer.from(v, "utf8"); const h = Buffer.alloc(5); h[0] = 0xdb; h.writeUInt32BE(d.length, 1); return Buffer.concat([h, d]); }
+  if (Buffer.isBuffer(v)) { const h = Buffer.alloc(5); h[0] = 0xc6; h.writeUInt32BE(v.length, 1); return Buffer.concat([h, v]); }
+  if (Array.isArray(v)) { const h = Buffer.alloc(5); h[0] = 0xdd; h.writeUInt32BE(v.length, 1); return Buffer.concat([h, ...v.map(mp)]); }
+  const ks = Object.keys(v).filter((k) => v[k] !== undefined); const h = Buffer.alloc(5); h[0] = 0xdf; h.writeUInt32BE(ks.length, 1);
+  return Buffer.concat([h, ...ks.flatMap((k) => [mp(k), mp(v[k])])]);
+}
 const DEVICE_DAILY = 1000; // 1台あたり1日に読み上げる回数の上限
 
 const MODEL = process.env.PF_VOICE_MODEL || "s2.1-pro-free";
@@ -44,8 +62,19 @@ export default async function handler(req, res) {
   const gate = await dailyGate("voice", body?.id, body?.secret, DEVICE_DAILY);
   if (!gate.ok) return noVoice(res);
 
+  // 一時的：お手本の録音（決めた1つだけ）
+  let refAudio = null;
+  if (typeof body?.trialRef === "string" && body.trialRef.length < 1500000) {
+    const b = Buffer.from(body.trialRef, "base64");
+    if (createHash("sha256").update(b).digest("hex") === TRIAL_REF_SHA) refAudio = b;
+  }
   try {
-    const r = await fetch("https://api.fish.audio/v1/tts", {
+    const r = refAudio ? await fetch("https://api.fish.audio/v1/tts", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + key, "Content-Type": "application/msgpack", model: MODEL },
+      body: mp({ text, references: [{ audio: refAudio, text: cleanText(body?.trialRefText, 200) || "" }], format: "mp3", mp3_bitrate: 64, latency: "balanced", language: "ja", prosody: { speed: trialSpeed || 0.8 } }),
+      signal: AbortSignal.timeout(20000),
+    }) : await fetch("https://api.fish.audio/v1/tts", {
       method: "POST",
       headers: { Authorization: "Bearer " + key, "Content-Type": "application/json", model: MODEL },
       // 声を高くして子どもらしくする（画面で速く再生して高くするので、ここではそのぶんゆっくり話させる）。ちゃむ＝1.26倍（そうた・見本A・作者 11/6）。話す速さは、おっとりした食いしん坊らしく、ゆっくりに（0.794→0.73→0.67、作者 11/6）、コロン＝1.25倍
