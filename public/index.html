@@ -260,6 +260,14 @@
   .diary-card h4 { margin: 2px 0 6px; font-size: 20px; }
   .diary-card .db { white-space: pre-wrap; font-size: 18px; line-height: 1.8; }
   .diary-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .ed-form { display: grid; gap: 8px; margin: 6px 0 12px; }
+  .ed-form label { font-size: 15px; color: var(--sub); font-weight: 700; }
+  .ed-form input, .ed-form textarea { font: inherit; font-size: 18px; line-height: 1.7; padding: 8px 10px; border: 2px solid var(--line); border-radius: 12px; background: #fff; color: var(--ink); width: 100%; box-sizing: border-box; }
+  .ed-form textarea { min-height: 14em; resize: vertical; }
+  .ed-form .ed-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+  .ed-form .ed-btns button { font: inherit; font-size: 17px; font-weight: 700; min-height: 48px; padding: 4px 16px; border-radius: 14px; border: 2px solid var(--line); background: #fff; color: var(--ink); }
+  .ed-form .ed-btns button.go { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .ed-form .ed-msg { font-size: 15px; color: #9a5a20; }
   .diary-acts button { font: inherit; font-size: 17px; font-weight: 700; min-height: 48px; padding: 4px 14px; border-radius: 14px; border: 2px solid var(--line); background: #fff; color: var(--ink); }
   .diary-acts button.go { background: var(--accent); border-color: var(--accent); color: #fff; }
   .diary-list { display: grid; gap: 14px; margin-bottom: 14px; }
@@ -3919,7 +3927,7 @@
     { pic: helpDemo, h: "助けて",
       p: ["困ったときは、", "上の赤い「助けて」を", "長押ししてくださいね。", "8秒たつと、", "登録した連絡先に", "LINEでお知らせします。", "間違えて押したときは、", "「いらない」を押せば", "止められます。", "連絡先", "（友人や家族など、", "連絡を受け取って", "くれる人）は、", "「📖 ノート」から", "登録できます。"] },
     { pic: '<div class="tour-pic">📔</div>', h: "日記",
-      p: ["「📖 ノート」の", "「日記」で、", "「今日の日記を書く」を", "押してください。", "今日のことを", "話すだけで、", "AIファミリーが", "あなたの言葉で", "日記に", "まとめます。", "昔の思い出は、", "「思い出話を書く」から、", "子どものころ・", "仕事・家族などに", "分けて", "書きとめられます。", "「これで保存」を押すと、", "日記帳の本に", "入ります。", "本には、", "写真も", "入れられます。", "おしゃべりに", "戻るときは、", "「おしゃべりに戻る」を", "押してください。"] },
+      p: ["「📖 ノート」の", "「日記」で、", "「今日の日記を書く」を", "押してください。", "今日のことを", "話すだけで、", "AIファミリーが", "あなたの言葉で", "日記に", "まとめます。", "昔の思い出は、", "「思い出話を書く」から、", "子どものころ・", "仕事・家族などに", "分けて", "書きとめられます。", "「これで保存」を押すと、", "日記帳の本に", "入ります。", "本には、", "写真も", "入れられます。", "前の日記は、", "「✏️ 自分で直す」で", "書き直したり、", "「💬 続きを書く」で", "書き足したり", "できます。", "おしゃべりに", "戻るときは、", "「おしゃべりに戻る」を", "押してください。"] },
     { pic: '<div class="tour-pic">🤝</div>', h: "手伝う",
       p: ["上の「🤝 手伝う」から、", "AIファミリーの", "困りごとを", "手伝えます。", "バラバラに切れた", "大事な写真を", "ジグソーのように", "元にもどしたり、", "四字熟語の勉強を", "見てあげたり。", "AIファミリーは", "ときどき", "間違えるので、", "見つけて", "直してあげてくださいね。", "とても", "よろこびます。"] },
     { pic: '<div class="tour-pic">🎵</div>', h: "歌う",
@@ -4297,9 +4305,32 @@
     input.focus();
   }
   function endDiary() { if (!profile) return; profile.diaryMode = null; diaryFixDraft = null; saveProfile(); updateDiaryBar(); }
+  // 「（11月7日に書き足し）」「（11月7日に書き直し）」
+  function updLabel(d, date) { return d.updated && d.updated !== date ? "（" + Number(d.updated.slice(5, 7)) + "月" + Number(d.updated.slice(8)) + "日に" + (d.updKind === "edit" ? "書き直し" : "書き足し") + "）" : ""; }
+  // 自分で直す（題名と文章を、その場で書きかえる。AIは使わない）。モニターさん 11/7「過去の日記を書き直したい」
+  function editForm(d, onDone) {
+    const f = document.createElement("div"); f.className = "ed-form";
+    const lt = document.createElement("label"); lt.textContent = "題名";
+    const ti = document.createElement("input"); ti.type = "text"; ti.maxLength = 40; ti.value = d.title || "";
+    const lb = document.createElement("label"); lb.textContent = "文章";
+    const ta = document.createElement("textarea"); ta.maxLength = 10000; ta.value = d.body || "";
+    const msg = document.createElement("p"); msg.className = "ed-msg"; msg.hidden = true;
+    const bs = document.createElement("div"); bs.className = "ed-btns";
+    const ok = document.createElement("button"); ok.type = "button"; ok.className = "go"; ok.textContent = "保存する";
+    const no = document.createElement("button"); no.type = "button"; no.textContent = "やめる";
+    ok.addEventListener("click", () => {
+      const t = ti.value.trim().slice(0, 40), b = ta.value.replace(/\s+$/, "").slice(0, 10000);
+      if (!b.trim()) { msg.hidden = false; msg.textContent = "文章が空っぽです。消したいときは、ノートの日記の「消す」を使ってください。"; return; }
+      if (t !== (d.title || "") || b !== (d.body || "")) { if (t) d.title = t; d.body = b; d.updated = today(); d.updKind = "edit"; saveDiaries(); }
+      onDone(true);
+    });
+    no.addEventListener("click", () => onDone(false));
+    bs.append(ok, no); f.append(lt, ti, lb, ta, msg, bs);
+    return f;
+  }
   function diaryCard(d, date) {
     const c = document.createElement("div"); c.className = "diary-card";
-    const dt = document.createElement("div"); dt.className = "dt"; dt.textContent = (date ? jpFullDate(date) + "　" : "") + (d.kind === "memoir" ? "思い出話" : "日記") + (d.updated && d.updated !== date ? "（" + Number(d.updated.slice(5, 7)) + "月" + Number(d.updated.slice(8)) + "日に書き足し）" : "");
+    const dt = document.createElement("div"); dt.className = "dt"; dt.textContent = (date ? jpFullDate(date) + "　" : "") + (d.kind === "memoir" ? "思い出話" : "日記") + updLabel(d, date);
     const h = document.createElement("h4"); h.textContent = d.title || "";
     const b = document.createElement("div"); b.className = "db"; b.textContent = d.body || "";
     c.append(dt, h, b);
@@ -4354,7 +4385,7 @@
     const good = draft.mood !== "hard" && typeof draft.note === "string" ? draft.note.slice(0, 80) : "";
     // moreQ：孫が、この話の続きで聞きたいこと（1〜2日あとに、ポケファミから「続き、聞かせて？」と誘う）
     const more = draft.moreQ ? { moreQ: draft.moreQ.slice(0, 50), moreBy: profile.char, moreAsked: undefined } : { moreQ: undefined, moreAsked: undefined };
-    if (cont) { cont.body = draft.body; cont.updated = today(); if (good) cont.good = good; Object.assign(cont, more); }  // 題名はそのまま  // 書き足した文章で、置きかえる
+    if (cont) { cont.body = draft.body; cont.updated = today(); cont.updKind = "add"; if (good) cont.good = good; Object.assign(cont, more); }  // 題名はそのまま  // 書き足した文章で、置きかえる
     else list.push(Object.assign({ id: Date.now().toString(36), date: (dm && dm.day) || today(), kind: draft.kind, era: draft.kind === "memoir" && dm && ERA_Q[dm.era] ? dm.era : undefined, title: draft.title, body: draft.body, good: good || undefined, by: good ? profile.name : undefined }, more));
     profile.lastMood = { date: (dm && dm.day) || today(), mood: draft.mood || "normal" }; // あしたの朝、つらかった日のあとは、そっと声をかける
     if (list.length > 300) list.splice(0, list.length - 300);
@@ -4477,9 +4508,16 @@
         if (del.dataset.armed !== "1") { del.dataset.armed = "1"; del.textContent = "もう一度押すと消えます"; setTimeout(() => { del.dataset.armed = ""; del.textContent = "消す"; }, 3000); return; }
         const list = diaries(), i = list.indexOf(d); if (i >= 0) list.splice(i, 1); saveDiaries(); renderDiaryTab();
       });
-      const more = document.createElement("button"); more.type = "button"; more.textContent = "続きを書く";
+      const more = document.createElement("button"); more.type = "button"; more.textContent = "💬 続きを書く";
       more.addEventListener("click", () => startDiary(d.kind, false, d.id));
-      acts.append(more, sh, del); c.appendChild(acts); box.appendChild(c);
+      const ed = document.createElement("button"); ed.type = "button"; ed.textContent = "✏️ 自分で直す";
+      ed.addEventListener("click", () => {
+        const hide = [c.querySelector("h4"), db, acts, c.querySelector(".fold-btn")].filter(Boolean);
+        hide.forEach((x) => (x.hidden = true));
+        const f = editForm(d, (saved) => { if (saved) renderDiaryTab(); else { f.remove(); hide.forEach((x) => (x.hidden = false)); } });
+        c.querySelector(".dt").after(f); f.querySelector("textarea").focus();
+      });
+      acts.append(ed, more, sh, del); c.appendChild(acts); box.appendChild(c);
     }
   }
   // ---- 日記帳を「本」として読む（表紙・もくじ・1ページずつ。思い出話は、ころ別にまとめる） ----
@@ -4526,7 +4564,7 @@
     order.forEach((d, i) => {
       const p = page();
       p.appendChild(el("div", "ph", d.kind === "memoir" ? "思い出話・" + eraOf(d) : "毎日の日記"));
-      p.appendChild(el("div", "pd", jpFullDate(d.date) + (d.updated && d.updated !== d.date ? "（" + Number(d.updated.slice(5, 7)) + "月" + Number(d.updated.slice(8)) + "日に書き足し）" : "")));
+      p.appendChild(el("div", "pd", jpFullDate(d.date) + updLabel(d, d.date)));
       const h = el("h3"); setPhrases(h, phr(d.title || "")); p.appendChild(h);
       if (d.drawing && Array.isArray(d.drawing.shapes)) p.appendChild(giftCard(d.drawing));
       if (d.good) { const g = el("p", "good-note"); setPhrases(g, "🌼 " + (d.by || profile.name) + "が|見つけた、|いいこと：|" + phr(d.good)); p.appendChild(g); }
@@ -4534,6 +4572,17 @@
       p.appendChild(el("div", "pb", d.body || ""));
       const pbtn = el("div"); p.appendChild(pbtn);
       fillPhoto(d, pic, pbtn);
+      const eb = el("div", "bk-photo-btns");
+      const ed = el("button", "", "✏️ 自分で直す"); ed.type = "button";
+      ed.addEventListener("click", () => {
+        stopReading();
+        const hide = [h, p.querySelector(".pb"), eb]; hide.forEach((x) => (x.hidden = true));
+        const f = editForm(d, (saved) => { if (saved) openBook(d.id); else { f.remove(); hide.forEach((x) => (x.hidden = false)); } });
+        h.before(f); f.querySelector("textarea").focus();
+      });
+      const more = el("button", "", "💬 続きを書く"); more.type = "button";
+      more.addEventListener("click", () => { stopReading(); $("book").hidden = true; startDiary(d.kind, false, d.id); });
+      eb.append(ed, more); p.appendChild(eb);
       p.appendChild(el("div", "pn", "― " + (startAt + i + 1) + " ―"));
     });
     // おわり
