@@ -2936,7 +2936,7 @@
     } catch { return null; }
   }
   // 長い返事は、文の区切りで小分けにして声にする（最初のひと区切りができたら、すぐ話し始めて、話している間に続きを作る）
-  const CHAMU_RATE = 1.68; // ちゃむの声の高さ：じん（おじさんの声）を高く＝見本2c（作者 11/7。前は、そうたを1.26倍）。サーバーの話す速さ 0.5 と組み
+  const CHAMU_RATE = 1.09; // ちゃむの声の高さ：作者の録音をお手本にした声を少し高く＝見本K（作者 11/7）。サーバーの話す速さ 1.03 と組み（前は、じん1.68倍・そうた1.26倍）
   function voiceChunks(text) {
     // 古いiPhone（iOS 16.3以前）でも動くように、後読みの正規表現は使わない。「」の中の「！」では切らない
     const parts = (String(text).replace(/\s*\n+\s*/g, "\n").match(/[^。！？!?\n]*[。！？!?\n]+[」』）)]*|[^。！？!?\n]+$/g) || []).map(p => p.trim()).filter(Boolean);
@@ -2969,7 +2969,7 @@
         voiceUrl = url;
         voiceEl.src = voiceUrl;
         // 声を少し高くして子どもらしく（音の高さも上がるように再生する）
-        const rate = profile.char === "chamu" ? CHAMU_RATE : 1.25; // ちゃむは「じん・高く」（見本2c・作者 11/7）、コロンは「あかり・少し高く」
+        const rate = profile.char === "chamu" ? CHAMU_RATE : 1.25; // ちゃむは作者の録音をお手本に少し高く（見本K・作者 11/7）、コロンは「あかり・少し高く」
         try { voiceEl.preservesPitch = false; voiceEl.webkitPreservesPitch = false; voiceEl.mozPreservesPitch = false; } catch {}
         voiceEl.defaultPlaybackRate = rate; voiceEl.playbackRate = rate;
         await voiceEl.play();

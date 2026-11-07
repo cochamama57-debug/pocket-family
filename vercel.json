@@ -20,6 +20,10 @@
     },
     "api/diary.js": {
       "maxDuration": 60
+    },
+    "api/voice.js": {
+      "maxDuration": 30,
+      "includeFiles": "private/**"
     }
   }
 }

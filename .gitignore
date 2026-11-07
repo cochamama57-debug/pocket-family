@@ -7,6 +7,9 @@ node_modules/
 # テストの画面写真をうっかり入れない
 /*.png
 
+# キャラの声のお手本の録音（作者の声。公開するリポジトリには入れない。Vercelには送る＝.vercelignore には書かない）
+private/
+
 # 公開用：曲の音声（作者の作品）と、Claude Security の点検結果は入れない
 public/songs/*.mp3
 public/events/*.mp3
