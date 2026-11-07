@@ -365,7 +365,9 @@
   .song-list li.empty { padding: 8px 12px; }
   .fav-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px !important; }
   .fav-row img { width: 96px; height: 54px; object-fit: cover; border-radius: 8px; flex: none; }
-  .fav-row .t { flex: 1; font-size: 17px; line-height: 1.4; }
+  .fav-row { flex-wrap: wrap; } /* 曲名が細くなりすぎないように、ボタンは入らなければ次の行の右へ（11/7） */
+  .fav-row .t { flex: 1 1 150px; min-width: 0; font-size: 17px; line-height: 1.4; overflow-wrap: anywhere; }
+  .fav-row button { margin-left: auto; }
   .fav-row .t small { display: block; color: var(--sub); font-size: 14px; }
   .fav-row button { flex: none; width: auto !important; font-size: 16px !important; min-height: 44px !important; padding: 0 12px !important; border: 1px solid var(--line) !important; border-radius: 999px; background: #fff !important; }
   .fav-row button.addit { background: var(--mic) !important; color: #fff !important; border-color: var(--mic) !important; font-weight: 700; }
