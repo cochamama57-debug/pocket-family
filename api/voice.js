@@ -30,9 +30,13 @@ export default async function handler(req, res) {
   const key = process.env.FISH_API_KEY;
   // ちゃむ＝男の子の声：Fish Official「颯太 Sota」を高くする（見本A・作者 11/6。モニターさん「男の子に聞こえない」）。前は FISH_VOICE_CHAMU（しおり）
   const CHAMU_VOICE = "c496c7d0e93640a59a0befd78b47f39e";
-  const voice = char === "chamu" ? CHAMU_VOICE : process.env.FISH_VOICE_COLON;
+  // 声えらびの見本づくり（一時的。作者 11/7「アニメ声すぎる・ぼーっとした感じに」。決まったら外す）。Fish Official の声だけ
+  const TRIAL = new Set(["c496c7d0e93640a59a0befd78b47f39e", "d738c70d206149e69f8e3b6fc8af9d96", "59a78821a8924989b70d2a63d588e8eb"]);
+  const trial = typeof body?.trial === "string" && TRIAL.has(body.trial) ? body.trial : "";
+  const trialSpeed = trial && typeof body?.trialSpeed === "number" ? Math.max(0.5, Math.min(1.2, body.trialSpeed)) : 0;
+  const voice = trial || (char === "chamu" ? CHAMU_VOICE : process.env.FISH_VOICE_COLON);
   // ちゃむは、明るい話し方に（Fish S2 の話し方の札。言葉としては読まれない。見本2・作者 11/6「話し方が暗い」）
-  const style = char === "chamu" ? "[cheerful] " : "";
+  const style = trial ? "" : char === "chamu" ? "[cheerful] " : "";
   if (!key || !voice) return noVoice(res);
   // 登録した端末だけ。1日の回数の上限つき（だめなときは、画面がスマホの読み上げで代わりに話す）
   const gate = await dailyGate("voice", body?.id, body?.secret, DEVICE_DAILY);
@@ -43,7 +47,7 @@ export default async function handler(req, res) {
       method: "POST",
       headers: { Authorization: "Bearer " + key, "Content-Type": "application/json", model: MODEL },
       // 声を高くして子どもらしくする（画面で速く再生して高くするので、ここではそのぶんゆっくり話させる）。ちゃむ＝1.26倍（そうた・見本A・作者 11/6）。話す速さは、おっとりした食いしん坊らしく、ゆっくりに（0.794→0.73→0.67、作者 11/6）、コロン＝1.25倍
-      body: JSON.stringify({ text: style + text, reference_id: voice, format: "mp3", mp3_bitrate: 64, latency: "balanced", language: "ja", prosody: { speed: char === "chamu" ? 0.67 : 0.8 } }),
+      body: JSON.stringify({ text: style + text, reference_id: voice, format: "mp3", mp3_bitrate: 64, latency: "balanced", language: "ja", prosody: { speed: trialSpeed || (char === "chamu" ? 0.67 : 0.8) } }),
       signal: AbortSignal.timeout(15000),
     });
     if (!r.ok) {
