@@ -1,6 +1,8 @@
 node_modules/
 .env
 .env.*
+# 値が空の設定の見本だけは共有する
+!.env.example
 .vercel/
 .DS_Store
 
