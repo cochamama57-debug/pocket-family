@@ -65,11 +65,11 @@ export default async function handler(req, res) {
   if (!gate.ok) return noVoice(res);
 
   try {
-    // ちゃむ：画面で1.09倍に高くして再生するので、ここでは 1.12 ÷ 1.09 ≒ 1.03 の速さで話させる（見本K＝少し速め）
+    // ちゃむ：画面で1.12倍に高くして再生するので、ここでは 1.18 ÷ 1.12 ≒ 1.05 の速さで話させる（見本Kより、ほんの少し高く・速く・作者 11/7）
     const r = ref ? await fetch("https://api.fish.audio/v1/tts", {
       method: "POST",
       headers: { Authorization: "Bearer " + key, "Content-Type": "application/msgpack", model: MODEL },
-      body: mp({ text, references: [{ audio: ref, text: CHAMU_REF_TEXT }], format: "mp3", mp3_bitrate: 64, latency: "balanced", language: "ja", prosody: { speed: 1.03 } }),
+      body: mp({ text, references: [{ audio: ref, text: CHAMU_REF_TEXT }], format: "mp3", mp3_bitrate: 64, latency: "balanced", language: "ja", prosody: { speed: 1.05 } }),
       signal: AbortSignal.timeout(20000),
     }) : await fetch("https://api.fish.audio/v1/tts", {
       method: "POST",
