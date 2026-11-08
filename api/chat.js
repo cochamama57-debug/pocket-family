@@ -168,6 +168,14 @@ function cleanHistory(raw) {
   return msgs;
 }
 
+// 夜11時〜朝4時の話し方（作者 11/8：夜中は「まだ起きてるの？」「お仕事？」のように、責めずに気づかう）
+function nightNote() {
+  const h = Number(new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Tokyo", hour: "numeric", hour12: false }).format(new Date())) % 24;
+  if (h >= 23) return "\n夜おそい時間。「おやすみ」と言われたら、やさしく「おやすみなさい」と返す。";
+  if (h < 4) return "\n夜中の時間。相手がまだ起きていることを、責めない。「早く寝て」「寝なさい」とは言わない。眠れないのか、お仕事なのかを気づかい、そばにいる気持ちを伝える。夜中でも「おはよう」とは言わない。";
+  return "";
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") return reply(res, 405, { error: "method" });
   if (!fromOurPage(req)) return reply(res, 403, { error: "forbidden" });
@@ -251,7 +259,7 @@ export default async function handler(req, res) {
         { type: "text", text: WALK_RULE },
         { type: "text", text: songBlock(songs) },
         ...(mode ? [] : [{ type: "text", text: FIND_RULE }]),
-        { type: "text", text: nowBlock() },
+        { type: "text", text: nowBlock() + nightNote() },
         { type: "text", text: profileBlock(profile) },
         { type: "text", text: QUESTION_RULE },
       ],

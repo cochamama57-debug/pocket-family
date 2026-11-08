@@ -1338,7 +1338,7 @@
     try { localStorage.setItem(PROFILE_KEY, JSON.stringify(profile)); } catch {}
   }
   function save() {
-    for (const m of history) if (m.d === undefined) m.d = today(); // 日付の線のため（前からある会話には "?" が付いている）
+    for (const m of history) if (m.d === undefined) m.d = diaryDay(); // 日付の線のため（日記と同じく、朝4時で次の日）（前からある会話には "?" が付いている）
     try {
       // 写真そのものは残さない（容量のため）。「写真を見せた」という印だけ残す
       const slim = history.slice(-MAX_KEEP).map(m => ({ role: m.role, content: m.content, photo: m.photo ? true : undefined, song: typeof m.song === "string" ? m.song : undefined, find: typeof m.find === "string" ? m.find.slice(0, 40) : undefined, remind: m.remind && typeof m.remind === "object" ? m.remind : undefined, walk: m.walk === "go" || m.walk === "back" ? m.walk : undefined, gift: Number.isInteger(m.gift) ? m.gift : undefined, react: REACTS.includes(m.react) ? m.react : undefined, med: m.med ? 1 : undefined, say: typeof m.say === "string" ? m.say : undefined, d: typeof m.d === "string" ? m.d : undefined, ds: m.ds ? 1 : undefined, df: m.df ? 1 : undefined, dd: m.dd && typeof m.dd === "object" ? { title: String(m.dd.title || "").slice(0, 20), body: String(m.dd.body || "").slice(0, 10000), kind: m.dd.kind === "memoir" ? "memoir" : "diary", mood: m.dd.mood === "hard" ? "hard" : m.dd.mood ? "normal" : undefined, note: typeof m.dd.note === "string" ? m.dd.note.slice(0, 200) : undefined, moreQ: typeof m.dd.moreQ === "string" ? m.dd.moreQ.slice(0, 80) : undefined } : undefined, ui: typeof m.ui === "string" ? m.ui.slice(0, 200) : undefined }));
@@ -1363,7 +1363,7 @@
     log.appendChild(el);
   }
   function bubble(cls, text, imgUrl, msg) {
-    if (!rendering) dateSep(today());
+    if (!rendering) dateSep(diaryDay());
     if (cls === "her" && text && !rendering && !mirrorOff && !$("pz").hidden && $("pzSay").textContent !== text) setPhrases($("pzSay"), String(text).replace(/([。！？])\s*/g, "$1|"));
     if (cls === "her" && text && !rendering && !mirrorOff && !$("st").hidden && $("stSay").textContent !== text) setPhrases($("stSay"), String(text).replace(/([。！？])\s*/g, "$1|"));
     const row = document.createElement("div");
@@ -1761,7 +1761,8 @@
       + "<li>" + L("話し終わったら、|<b>「まとめる」</b>を|押すと、|" + nm + "が|あなたの言葉で|" + (memoir ? "思い出話に" : "日記に") + "|まとめます。") + "</li>"
       + "<li>" + L("下書きを見て、|<b>「これで保存」</b>を|押してください。|直したいときは|「直してほしい」、|話し足りないときは|「もう少し話す」を|押してください。") + "</li>"
       + "<li>" + L("保存すると、|日記帳の本に入ります。|<b>「📖 本」</b>で、|いつでも読めます。|本では、|写真を入れたり、|" + nm + "に|声で読んでもらったり|できます。") + "</li>"
-      + "<li>" + L("前の日記は、|本のページの|<b>「✏️ 自分で直す」</b>で、|題名や文章を|書き直せます。|<b>「💬 続きを書く」</b>を押すと、|" + nm + "と話しながら、|続きを書き足せます。") + "</li>"
+      + "<li>" + L("前の日記は、|本のページの|<b>「✏️ 自分で直す」</b>で、|日付・題名・文章を|書き直せます。|<b>「💬 続きを書く」</b>を|押すと、|" + nm + "と話しながら、|続きを書き足せます。") + "</li>"
+      + (memoir ? "" : "<li>" + L("夜12時から|朝4時までに|書き始めた日記は、|前の日の日記に|なります。|日付は、|<b>「✏️ 自分で直す」</b>で|変えられます。") + "</li>")
       + "<li>" + L("書くのをやめて|おしゃべりに戻るときは、|<b>「おしゃべりに戻る」</b>を|押してください。") + "</li>"
       + "</ol>"
       + '<span class="tip">' + L("🎤 声で話すときは、|キーボードの|" + where + "の|マイクを押して、|ゆっくり話してください。") + "</span>";
@@ -3936,7 +3937,7 @@
     { pic: helpDemo, h: "助けて",
       p: ["困ったときは、", "上の赤い「助けて」を", "長押ししてくださいね。", "8秒たつと、", "登録した連絡先に", "LINEでお知らせします。", "間違えて押したときは、", "「いらない」を押せば", "止められます。", "連絡先", "（友人や家族など、", "連絡を受け取って", "くれる人）は、", "「📖 ノート」から", "登録できます。"] },
     { pic: '<div class="tour-pic">📔</div>', h: "日記",
-      p: ["「📖 ノート」の", "「日記」で、", "「今日の日記を書く」を", "押してください。", "今日のことを", "話すだけで、", "AIファミリーが", "あなたの言葉で", "日記に", "まとめます。", "昔の思い出は、", "「思い出話を書く」から、", "子どものころ・", "仕事・家族などに", "分けて", "書きとめられます。", "「これで保存」を押すと、", "日記帳の本に", "入ります。", "本には、", "写真も", "入れられます。", "前の日記は、", "「✏️ 自分で直す」で", "書き直したり、", "「💬 続きを書く」で", "書き足したり", "できます。", "おしゃべりに", "戻るときは、", "「おしゃべりに戻る」を", "押してください。"] },
+      p: ["「📖 ノート」の", "「日記」で、", "「今日の日記を書く」を", "押してください。", "今日のことを", "話すだけで、", "AIファミリーが", "あなたの言葉で", "日記に", "まとめます。", "昔の思い出は、", "「思い出話を書く」から、", "子どものころ・", "仕事・家族などに", "分けて", "書きとめられます。", "「これで保存」を押すと、", "日記帳の本に", "入ります。", "本には、", "写真も", "入れられます。", "前の日記は、", "「✏️ 自分で直す」で", "日付や文章を", "書き直したり、", "「💬 続きを書く」で", "書き足したり", "できます。", "夜12時から", "朝4時までに", "書き始めた日記は、", "前の日の日記に", "なります。", "おしゃべりに", "戻るときは、", "「おしゃべりに戻る」を", "押してください。"] },
     { pic: '<div class="tour-pic">🤝</div>', h: "手伝う",
       p: ["上の「🤝 手伝う」から、", "AIファミリーの", "困りごとを", "手伝えます。", "バラバラに切れた", "大事な写真を", "ジグソーのように", "元にもどしたり、", "四字熟語の勉強を", "見てあげたり。", "AIファミリーは", "ときどき", "間違えるので、", "見つけて", "直してあげてくださいね。", "とても", "よろこびます。"] },
     { pic: '<div class="tour-pic">🎵</div>', h: "歌う",
@@ -4060,9 +4061,12 @@
     const pick = (a, b) => (polite ? a : b);
     if (last && gap > 2 * 86400000) return pi + pick("おひさしぶりです！ 会えて、うれしいです。", "ひさしぶり！ 会いたかったよ〜。");
     const lm = profile.lastMood, yest = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); })();
-    if (h >= 5 && h < 11 && lm && lm.mood === "hard" && lm.date === yest && !lm.asked) { lm.asked = true; greetGentle = true; return pi + pick("おはようございます。きのうは、ゆっくり休めましたか？ 今日は、のんびりいきましょうね。", "おはよう。きのうは、ゆっくり休めた？ 今日は、のんびりいこうね。"); }
-    if (h >= 5 && h < 10) return pi + pick("おはようございます！ よく眠れましたか？", "おはよう！ よく眠れた？");
-    if (h >= 21 || h < 5) return pi + pick("今日はどうでしたか？ そろそろ、おやすみの時間でしょうか。", "今日はどうだった？ そろそろ、おやすみの時間かな？");
+    if (h >= 4 && h < 11 && lm && lm.mood === "hard" && lm.date === yest && !lm.asked) { lm.asked = true; greetGentle = true; return pi + pick("おはようございます。きのうは、ゆっくり休めましたか？ 今日は、のんびりいきましょうね。", "おはよう。きのうは、ゆっくり休めた？ 今日は、のんびりいこうね。"); }
+    if (h >= 4 && h < 10) return pi + pick("おはようございます！ よく眠れましたか？", "おはよう！ よく眠れた？");
+    // 夜中（12時〜朝4時）：責めずに、そばにいる（「寝なさい」とは言わない。作者 11/8）
+    if (h < 4) { const k = Math.floor(Math.random() * 3); return pi + pick(["まだ起きていたんですね。眠れないのでしょうか？", "遅くまで、お仕事ですか？ おつかれさまです。", "夜ふかしさんですね。いっしょに起きていますよ。"][k], ["まだ起きてたの？ 眠れないのかな？", "遅くまでお仕事？ おつかれさま。", "夜ふかしさんだね。いっしょに起きてるよ。"][k]); }
+    if (h >= 23) return pi + pick("もうこんな時間ですね。今日もいっしょにいてくれて、ありがとうございます。おやすみなさい。", "もうこんな時間だね。今日もいっしょにいてくれて、ありがとう。おやすみなさい。");
+    if (h >= 21) return pi + pick("今日はどうでしたか？ そろそろ、おやすみの時間でしょうか。", "今日はどうだった？ そろそろ、おやすみの時間かな？");
     if (h >= 17) return pi + pick("おかえりなさい！ 今日はどうでしたか？", "おかえり！ 今日はどうだった？");
     return pi + pick("おかえりなさい！ 待っていました。", "おかえり！ 待ってたよ。");
   }
@@ -4096,7 +4100,7 @@
     const thx = helpThanksLine();
     if (thx) setTimeout(() => afterVoice(() => { if (!inActivity()) { helpThanksLine(true); sayScripted(thx); showFace("happy", 2400); } }, 1500), 900); // 言えたときに「言った」と記録
     const h = new Date().getHours();
-    if (h >= 5 && h < 11 && profile.morningSong !== today() && !greetGentle) afterVoice(morningSong, 3800); // つらかった日の翌朝は、歌に誘わない
+    if (h >= 4 && h < 11 && profile.morningSong !== today() && !greetGentle) afterVoice(morningSong, 3800); // つらかった日の翌朝は、歌に誘わない
   }
   function morningSong() {
     if (!profile || inActivity() || profile.diaryMode || helpBusy || profile.morningSong === today() || !profile.birthday || bdayAsking || songRest()) return;
@@ -6487,7 +6491,7 @@
   function songYes() { profile.songNo = 0; saveProfile(); }
   function pickSong() {
     const h = new Date().getHours(), list = allSongs().filter(x => x.file);
-    const want = h >= 5 && h < 10 ? "おはよう" : h >= 20 || h < 5 ? "おやすみ" : null;
+    const want = h >= 4 && h < 10 ? "おはよう" : h >= 20 || h < 4 ? "おやすみ" : null;
     return (want && list.find(x => x.tag === want)) || list[Math.floor(Math.random() * list.length)];
   }
   function invite() {
