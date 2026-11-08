@@ -481,7 +481,7 @@
   .pz-in { max-width: 640px; margin: 0 auto; }
   #pz { overflow-y: auto; }
   #pz .pz-in { min-height: 100%; display: flex; flex-direction: column; }
-  #pz .pz-view { flex: 1 1 0; min-height: 110px; max-height: none; }
+  #pz .pz-view { flex: 1 1 0; min-height: 110px; max-height: none; } /* 高さの上限は pzRender で絵に合わせる */
   #pz .game-say, #st .game-say { max-height: 6.2em; overflow-y: auto; font-size: 17px; }
   #pz .pz-pick, #pz .pz-tray, #pz .pz-tools, #pz .pz-talk, #pz .pz-bar, #pz .game-top { flex: none; }
   .pz-bar { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 8px 2px 6px; font-size: 16px; color: var(--sub); }
@@ -505,7 +505,7 @@
   @media (prefers-reduced-motion: reduce) { .pz-shine::before, .pz-shine i { animation: none; } }
   .pz-ghost { position: absolute; inset: 0; background-size: 100% 100%; opacity: .9; pointer-events: none; }
   .pz-tools { display: flex; gap: 8px; margin: 8px 0; }
-  .pz-tools button { flex: 1; min-height: 48px; font: inherit; font-size: 16px; color: var(--ink); background: #fff; border: 2px solid var(--line); border-radius: 12px; }
+  .pz-tools button { flex: 1; min-height: 48px; white-space: nowrap; padding: 0 4px; font: inherit; font-size: 16px; color: var(--ink); background: #fff; border: 2px solid var(--line); border-radius: 12px; }
   .pz-tools button.on { background: #fff3d6; border-color: #e0b04a; }
   .pz-pick { display: flex; gap: 10px; align-items: center; background: #fff; border: 2px solid var(--line); border-radius: 14px; padding: 6px 8px; min-height: 92px; }
   .pz-big { flex: none; width: 80px; height: 80px; border-radius: 8px; background: #f3e9d8 no-repeat; box-shadow: inset 0 0 0 2px var(--line); }
@@ -5315,6 +5315,7 @@
     const job = pzs.job, view = $("pzView"), board = $("pzBoard");
     const w = Math.floor((view.clientWidth || 300) * pzs.zoom);
     board.style.width = w + "px"; board.style.gridTemplateColumns = "repeat(" + PZ_COLS + ", 1fr)"; board.style.gridAutoRows = (w / PZ_COLS) + "px"; // aspect-ratio が効かない古いiPhoneでも
+    view.style.maxHeight = Math.ceil(w / PZ_COLS * PZ_ROWS + (view.offsetHeight - view.clientHeight) + (view.scrollWidth > view.clientWidth ? 16 : 0)) + "px"; // 絵より高くしない（11/8 Androidで、下に空いた段が出た）
     board.textContent = "";
     for (let s = 0; s < PZ_N; s++) {
       const b = document.createElement("button"); b.type = "button"; b.className = "pz-slot"; b.setAttribute("aria-label", "場所 " + (s + 1));
@@ -5535,7 +5536,7 @@
   }
   $("pzIn").addEventListener("click", () => pzZoom(1));
   $("pzOut").addEventListener("click", () => pzZoom(-1));
-  $("pzPeek").addEventListener("click", () => { if (!pzs || pzs.finished) return; pzs.peek = !pzs.peek; $("pzPeek").classList.toggle("on", pzs.peek); $("pzPeek").textContent = pzs.peek ? "🖼 見本を消す" : "🖼 見本"; pzRender(); });
+  $("pzPeek").addEventListener("click", () => { if (!pzs || pzs.finished) return; pzs.peek = !pzs.peek; $("pzPeek").classList.toggle("on", pzs.peek); $("pzPeek").textContent = pzs.peek ? "見本を消す" : "🖼 見本"; pzRender(); });
   $("pzNo").addEventListener("click", () => pzJudge(true));
   $("pzYes").addEventListener("click", () => pzJudge(false));
   $("pzClose").addEventListener("click", closePuzzle);
