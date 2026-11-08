@@ -522,6 +522,8 @@
   .pz-talk input { flex: 1; min-width: 0; font: inherit; font-size: 18px; padding: 10px; border: 2px solid var(--line); border-radius: 12px; min-height: 50px; }
   .pz-talk button { flex: none; min-width: 72px; font: inherit; font-size: 17px; font-weight: 700; color: #fff; background: #e07b3c; border: 0; border-radius: 12px; }
   @media (max-height: 760px) { .pz-big { width: 72px; height: 72px; } .pz-pick { min-height: 84px; } .pz-tray button { width: 66px; height: 66px; } .pz-tools button { min-height: 44px; } #pz .game-top img { width: 52px; height: 52px; } }
+  /* 小さい画面・文字を大きくしているスマホ（11/8 Androidで、絵が小さく、説明が大きかった）：絵に場所をゆずる */
+  @media (max-height: 820px), (max-width: 375px) { #pz .game-say { max-height: 5.1em; font-size: 16px; } .pz-pick { min-height: 0; padding: 4px 8px; } .pz-pick-r p { font-size: 15px; line-height: 1.4; } .pz-big { width: 60px; height: 60px; } .pz-tools { margin: 6px 0; } .pz-tools button { min-height: 40px; } .pz-tray { padding: 6px 2px 8px; margin-top: 4px; } .pz-tray button { width: 60px; height: 60px; } .pz-talk input { min-height: 44px; font-size: 17px; padding: 8px; } .pz-bar { margin: 4px 2px 4px; } }
   .st-rows { display: flex; flex-direction: column; gap: 10px; }
   .st-level { display: flex; flex-direction: column; align-items: center; gap: 2px; margin: 0; }
   .st-level small { font-size: 15px; font-weight: 400; opacity: .9; }
@@ -5305,8 +5307,8 @@
   function pzMsg(t) { setPhrases($("pzMsg"), t); }
   function pzMsgDefault() {
     pzs.sel = null; pzs.judge = null; $("pzJudge").hidden = true;
-    $("pzBig").style.backgroundImage = "none";
-    pzMsg(pzTray().length ? "下のピースを|1つ選んで、|上の絵の、|置きたい場所を|押してください。|オレンジの枠は、|" + profile.name + "が|置いたピースです。" : "オレンジの枠のピースを|押して、|合っているか|見てあげてください。");
+    $("pzBig").style.backgroundImage = "none"; $("pzBig").hidden = true; // ピースを選んでいないときは、空の四角を出さない（11/8 Androidで絵が小さくなった）
+    pzMsg(pzTray().length ? "下のピースを|1つ選んで、|置きたい場所を|押してください。|オレンジの枠は、|" + profile.name + "の|ピースです。" : "オレンジの枠のピースを|押して、|合っているか|見てあげてください。");
   }
   function pzRender() {
     const st = pzState(); if (!st || !pzs) return;
@@ -5335,8 +5337,8 @@
   function pzSelect(p) {
     if (!pzs || pzs.finished) return;
     pzs.sel = p; pzs.judge = null; $("pzJudge").hidden = true; pzs.selAt = Date.now();
-    pzPieceStyle($("pzBig"), p, pzs.job);
-    pzMsg("このピースを置く場所を、|上の絵の中で|押してください。|（「＋ 大きく」で|絵を大きくできます）");
+    pzPieceStyle($("pzBig"), p, pzs.job); $("pzBig").hidden = false;
+    pzMsg("このピースを置く場所を、|上の絵で|押してください。");
     sfx("flip");
     pzRender();
   }
@@ -5372,7 +5374,7 @@
   function pzOpenJudge(s) {
     const st = pzState(); if (!st) return;
     pzs.judge = s; pzs.sel = null;
-    pzPieceStyle($("pzBig"), st.slots[s], pzs.job);
+    pzPieceStyle($("pzBig"), st.slots[s], pzs.job); $("pzBig").hidden = false;
     pzMsg(profile.name + "が|置いたピースです。|ここで|合っていますか？");
     $("pzJudge").hidden = false;
     pzRender();
