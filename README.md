@@ -6,7 +6,7 @@
 > Built with Claude: Japan 2026（ハッカソン）作品。開発期間 2026-11-02 〜 2026-11-08。
 >
 > - アプリ：https://pocket-family-eight.vercel.app
-> - デモ動画：（準備中）
+> - デモ動画：https://youtu.be/0CgIdOnjLAM
 
 ## どんなアプリ？
 
