@@ -1168,6 +1168,11 @@
     const d = new Date();
     return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
   }
+  // 日記の日付：夜12時〜朝4時に書く日記は、前の日の日記（モニターさん：夜中に書くと、次の日の日付になってしまう）
+  function diaryDay() {
+    const d = new Date(); if (d.getHours() < 4) d.setDate(d.getDate() - 1);
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
   function growth() {
     if (!profile.grow || typeof profile.grow !== "object") profile.grow = {};
     const g = profile.grow;
@@ -4296,7 +4301,7 @@
     history[history.length - 1].ds = 1; // 日記の時間の始まりの印（読み直しても、ここから数える）
     if (cont) { history[history.length - 1].dd = { title: cont.title, body: cont.body, kind: cont.kind }; const bx = log.lastElementChild && log.lastElementChild.querySelector(".bubble"); if (bx) bx.appendChild(diaryCard(cont, cont.date)); }
     save();
-    profile.diaryMode = { kind: kind === "memoir" ? "memoir" : "diary", turns: 0, cont: cont ? cont.id : undefined, day: today(), era: kind === "memoir" ? (cont ? cont.era : ERA_Q[era] ? era : undefined) : undefined };
+    profile.diaryMode = { kind: kind === "memoir" ? "memoir" : "diary", turns: 0, cont: cont ? cont.id : undefined, day: diaryDay(), era: kind === "memoir" ? (cont ? cont.era : ERA_Q[era] ? era : undefined) : undefined };
     saveProfile(); updateDiaryBar();
     if (kind === "memoir" && !cont && !ERA_Q[era]) {
       const bx = log.lastElementChild && log.lastElementChild.querySelector(".bubble");
@@ -4314,6 +4319,8 @@
   // 自分で直す（題名と文章を、その場で書きかえる。AIは使わない）。モニターさん 11/7「過去の日記を書き直したい」
   function editForm(d, onDone) {
     const f = document.createElement("div"); f.className = "ed-form";
+    const ld = document.createElement("label"); ld.textContent = "日付";
+    const di = document.createElement("input"); di.type = "date"; di.value = /^\d{4}-\d{2}-\d{2}$/.test(d.date || "") ? d.date : diaryDay(); di.max = today();
     const lt = document.createElement("label"); lt.textContent = "題名";
     const ti = document.createElement("input"); ti.type = "text"; ti.maxLength = 40; ti.value = d.title || "";
     const lb = document.createElement("label"); lb.textContent = "文章";
@@ -4325,11 +4332,16 @@
     ok.addEventListener("click", () => {
       const t = ti.value.trim().slice(0, 40), b = ta.value.replace(/\s+$/, "").slice(0, 10000);
       if (!b.trim()) { msg.hidden = false; msg.textContent = "文章が空っぽです。消したいときは、ノートの日記の「消す」を使ってください。"; return; }
-      if (t !== (d.title || "") || b !== (d.body || "")) { if (t) d.title = t; d.body = b; d.updated = today(); d.updKind = "edit"; saveDiaries(); }
+      const nd = /^\d{4}-\d{2}-\d{2}$/.test(di.value) && di.value <= today() ? di.value : d.date;
+      if (t !== (d.title || "") || b !== (d.body || "") || nd !== d.date) {
+        if (t) d.title = t; d.body = b; d.updated = today(); d.updKind = "edit";
+        if (nd !== d.date) { d.date = nd; diaries().sort((x, y) => String(x.date).localeCompare(String(y.date))); }
+        saveDiaries();
+      }
       onDone(true);
     });
     no.addEventListener("click", () => onDone(false));
-    bs.append(ok, no); f.append(lt, ti, lb, ta, msg, bs);
+    bs.append(ok, no); f.append(ld, di, lt, ti, lb, ta, msg, bs);
     return f;
   }
   function diaryCard(d, date) {
@@ -4354,7 +4366,7 @@
     try {
       const d = device();
       const r = await fetch("/api/diary", { method: "POST", signal: ctrl.signal, headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: d.id, secret: d.secret, kind: dm.kind, messages: msgs.slice(-160), base: dm.cont ? contBase(dm.cont) : undefined, call: callName(), charName: profile.name, char: profile.char, polite: stageOf(points()) === 0, date: dm.day || today(), draft: prev ? prev.title + "\n" + prev.body : undefined, fix: fix || undefined }) });
+        body: JSON.stringify({ id: d.id, secret: d.secret, kind: dm.kind, messages: msgs.slice(-160), base: dm.cont ? contBase(dm.cont) : undefined, call: callName(), charName: profile.name, char: profile.char, polite: stageOf(points()) === 0, date: dm.day || diaryDay(), draft: prev ? prev.title + "\n" + prev.body : undefined, fix: fix || undefined }) });
       data = await r.json().catch(() => ({}));
     } catch {}
     clearTimeout(timer);
@@ -4368,7 +4380,7 @@
     bubble("her", text); talkFace(text); speak(text);
     const box = log.lastElementChild && log.lastElementChild.querySelector(".bubble");
     if (!box) return;
-    box.appendChild(diaryCard(draft, dm.day || today()));
+    box.appendChild(diaryCard(draft, dm.day || diaryDay()));
     draftActs(box, draft);
     log.scrollTop = log.scrollHeight;
   }
@@ -4390,8 +4402,8 @@
     // moreQ：孫が、この話の続きで聞きたいこと（1〜2日あとに、ポケファミから「続き、聞かせて？」と誘う）
     const more = draft.moreQ ? { moreQ: draft.moreQ.slice(0, 50), moreBy: profile.char, moreAsked: undefined } : { moreQ: undefined, moreAsked: undefined };
     if (cont) { cont.body = draft.body; cont.updated = today(); cont.updKind = "add"; if (good) cont.good = good; Object.assign(cont, more); }  // 題名はそのまま  // 書き足した文章で、置きかえる
-    else list.push(Object.assign({ id: Date.now().toString(36), date: (dm && dm.day) || today(), kind: draft.kind, era: draft.kind === "memoir" && dm && ERA_Q[dm.era] ? dm.era : undefined, title: draft.title, body: draft.body, good: good || undefined, by: good ? profile.name : undefined }, more));
-    profile.lastMood = { date: (dm && dm.day) || today(), mood: draft.mood || "normal" }; // あしたの朝、つらかった日のあとは、そっと声をかける
+    else list.push(Object.assign({ id: Date.now().toString(36), date: (dm && dm.day) || diaryDay(), kind: draft.kind, era: draft.kind === "memoir" && dm && ERA_Q[dm.era] ? dm.era : undefined, title: draft.title, body: draft.body, good: good || undefined, by: good ? profile.name : undefined }, more));
+    profile.lastMood = { date: (dm && dm.day) || diaryDay(), mood: draft.mood || "normal" }; // あしたの朝、つらかった日のあとは、そっと声をかける
     if (list.length > 300) list.splice(0, list.length - 300);
     saveDiaries();
     addScore("diary"); saveProfile(); updateHearts();
@@ -6457,7 +6469,7 @@
     return ERAS.slice(0, 5).find(e => !done.has(e)) || null;
   }
   function inviteKinds() {
-    const h = new Date().getHours(), wroteToday = diaries().some(d => d.date === today());
+    const h = new Date().getHours(), wroteToday = diaries().some(d => d.date === diaryDay());
     return (songRest() ? [] : ["song"]).concat(["teach", "teach", "study"]).concat(pzNextJob() ? ["puzzle", "puzzle"] : []).concat(h >= 17 && !wroteToday ? ["diary", "diary", "diary"] : []).concat(pendingMore() ? ["more", "more", "more", "more"] : []).concat(nextEra() ? ["memoir"] : []).concat(recallable() ? ["recall", "recall"] : []);
   }
   // 「教えて！」の話題（孫が、おばあちゃん・おじいちゃんに聞くように）
@@ -6554,7 +6566,7 @@
     }
     setTimeout(() => showFace("wave", 1800), 300);
     const dm = profile.diaryMode;
-    if (dm && dm.day && dm.day !== today()) setTimeout(() => {
+    if (dm && dm.day && dm.day !== diaryDay()) setTimeout(() => {
       if (!profile || !profile.diaryMode) return;
       const polite = stageOf(points()) === 0, pi = profile.char === "chamu" ? "" : "ピピッ。";
       sayScripted(pi + (polite ? "そういえば、" + Number(dm.day.slice(5, 7)) + "月" + Number(dm.day.slice(8)) + "日の日記が、書きかけです。下の「まとめる」を押すと、日記にできます。書かないときは「おしゃべりに戻る」を押してくださいね。" : "そういえば、" + Number(dm.day.slice(5, 7)) + "月" + Number(dm.day.slice(8)) + "日の日記、書きかけだよ。下の「まとめる」で日記にできるよ。書かないなら「おしゃべりに戻る」を押してね。"));
