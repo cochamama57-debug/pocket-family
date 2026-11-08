@@ -2920,8 +2920,10 @@
   }
   ["touchend", "click"].forEach(ev => document.addEventListener(ev, unlockVoice, { passive: true }));
   let voicePending = 0;
+  // スマホの読み上げが話している間（Androidでは speechSynthesis.speaking が「話し中」のまま戻らないことがあるので、自分で数える。11/8 Androidで四字熟語の声が出なかった）
+  let ttsUntil = 0;
   function stopVoice() {
-    voiceSeq++; voicePending = 0;
+    voiceSeq++; voicePending = 0; ttsUntil = 0;
     try { voiceEl.pause(); } catch {}
     try { window.speechSynthesis && speechSynthesis.cancel(); } catch {}
   }
@@ -2934,6 +2936,8 @@
       u.rate = profile && profile.char === "chamu" ? 0.95 : 1.0;
       const ja = speechSynthesis.getVoices().find(v => /ja[-_]JP/i.test(v.lang));
       if (ja) u.voice = ja;
+      const until = ttsUntil = Date.now() + Math.min(20000, 1500 + String(text).length * 180); // 終わりの知らせが来なくても、この時間で「話し終わった」とみなす
+      u.onend = u.onerror = () => { if (ttsUntil === until) ttsUntil = 0; };
       speechSynthesis.speak(u);
       return u;
     } catch {}
@@ -3006,7 +3010,7 @@
   }
   // 声が、まだ話している途中か（準備中も含む）
   function voiceBusy() {
-    try { return !!voicePending || (!voiceEl.paused && !voiceEl.ended) || !!(window.speechSynthesis && speechSynthesis.speaking); } catch { return false; }
+    try { return !!voicePending || (!voiceEl.paused && !voiceEl.ended) || Date.now() < ttsUntil; } catch { return false; }
   }
 
   // ---- 予定とお薬の時間 ----
