@@ -5336,12 +5336,28 @@
     $("pzBig").style.backgroundImage = "none"; $("pzBig").hidden = true; // ピースを選んでいないときは、空の四角を出さない（11/8 Androidで絵が小さくなった）
     pzMsg(pzTray().length ? "下のピースを|1つ選んで、|置きたい場所を|押してください。|オレンジの枠は、|" + profile.name + "の|ピースです。" : "オレンジの枠のピースを|押して、|合っているか|見てあげてください。");
   }
+  // 枠の大きさが、あとから変わったとき（吹き出しやピースが入って、せまくなったなど）は、6段が全部入るように合わせ直す（11/10）
+  if (window.ResizeObserver) {
+    let pzFitBusy = false;
+    new ResizeObserver(() => {
+      if (!pzs || pzFitBusy || pzs.zoom !== 1) return;
+      const v = $("pzView"), bd = $("pzBoard"); if (!v || !bd || !bd.offsetHeight) return;
+      if (bd.offsetHeight > v.clientHeight + 1 || bd.offsetWidth > v.clientWidth + 1) { pzFitBusy = true; pzRender(); requestAnimationFrame(() => { pzFitBusy = false; }); }
+    }).observe(document.getElementById("pzView"));
+  }
   function pzRender() {
     const st = pzState(); if (!st || !pzs) return;
     const job = pzs.job, view = $("pzView"), board = $("pzBoard");
-    const w = Math.floor((view.clientWidth || 300) * pzs.zoom);
-    board.style.width = w + "px"; board.style.gridTemplateColumns = "repeat(" + PZ_COLS + ", 1fr)"; board.style.gridAutoRows = (w / PZ_COLS) + "px"; // aspect-ratio が効かない古いiPhoneでも
-    view.style.maxHeight = Math.ceil(w / PZ_COLS * PZ_ROWS + (view.offsetHeight - view.clientHeight) + (view.scrollWidth > view.clientWidth ? 16 : 0)) + "px"; // 絵より高くしない（11/8 Androidで、下に空いた段が出た）
+    // 11/10 Androidで6段目が半分しか見えなかった：枠の高さが足りないときは、6段が全部入る大きさにマスを小さくする。
+    // マスは整数の大きさ（はんぱな大きさだと、ピースのあいだに細い線が出ることがある）
+    view.style.maxHeight = "none";
+    const availW = view.clientWidth || 300, availH = view.clientHeight || 0;
+    let cell = Math.floor(availW / PZ_COLS);
+    if (availH > 60) cell = Math.max(16, Math.min(cell, Math.floor(availH / PZ_ROWS)));
+    cell = Math.max(16, Math.floor(cell * pzs.zoom));
+    const w = cell * PZ_COLS;
+    board.style.width = w + "px"; board.style.margin = w < availW ? "0 auto" : "0"; board.style.gridTemplateColumns = "repeat(" + PZ_COLS + ", " + cell + "px)"; board.style.gridAutoRows = cell + "px"; // aspect-ratio が効かない古いiPhoneでも
+    view.style.maxHeight = Math.ceil(cell * PZ_ROWS + (view.offsetHeight - view.clientHeight) + (view.scrollWidth > view.clientWidth ? 16 : 0)) + "px"; // 絵より高くしない（11/8 Androidで、下に空いた段が出た）
     board.textContent = "";
     for (let s = 0; s < PZ_N; s++) {
       const b = document.createElement("button"); b.type = "button"; b.className = "pz-slot"; b.setAttribute("aria-label", "場所 " + (s + 1));
