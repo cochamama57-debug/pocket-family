@@ -2059,7 +2059,7 @@
           const vc = voiceChunks(data.reply);
           pre = fetchVoice(voiceText(vc[0])); // 最初のひと区切りを先に作る（早く話し始められる）
           voiceAhead.clear();
-          if (vc[1]) { const t2 = voiceText(vc[1]); const p2 = fetchVoice(t2); voiceAhead.set(t2, p2); setTimeout(() => { if (voiceAhead.get(t2) === p2) { voiceAhead.delete(t2); p2.then((u) => u && URL.revokeObjectURL(u)); } }, 60000); } // 2つめも同時に作り始める
+          for (const c of vc.slice(1, 5)) { const t2 = voiceText(c); if (voiceAhead.has(t2)) continue; const p2 = fetchVoice(t2); voiceAhead.set(t2, p2); setTimeout(() => { if (voiceAhead.get(t2) === p2) { voiceAhead.delete(t2); p2.then((u) => u && URL.revokeObjectURL(u)); } }, 60000); } // 続きも同時に作り始める（声を作るのは話すより遅いため）
           await Promise.race([pre, new Promise((res) => setTimeout(res, 5000))]);
           if (!profile) { typing.remove(); return; }
         }
@@ -2978,14 +2978,17 @@
     for (const p of parts) {
       const last = out[out.length - 1];
       // 最初のひと区切りは短く（声ができるのが早い＝字と声のあいだが空かない。11/10 作者「声が遅い」）
-      if (last && out.length === 1 ? last.length < 6 && last.length + p.length <= 24 : last && (last.length < 14 || (p.length < 8 && last.length + p.length < 60))) out[out.length - 1] = last + p;
+      if (last && out.length <= 2 ? last.length < (out.length === 1 ? 6 : 8) && last.length + p.length <= 24 : last && (last.length < 14 || (p.length < 8 && last.length + p.length < 60))) out[out.length - 1] = last + p;
       else out.push(p);
     }
     // 最初の一文が長いときは、「、」で前のほうを切り出す
-    if (out.length && out[0].length > 28) {
-      const f = out[0]; let cut = -1;
-      for (let k = 8; k <= 24; k++) if (f[k] === "、") cut = k;
-      if (cut > 0) out.splice(0, 1, f.slice(0, cut + 1), f.slice(cut + 1));
+    // （2つめも長いときは同じように切る。声を作るのは話すより遅いので、前のほうを短くして間をあけない）
+    for (const j of [0, 1]) {
+      if (out[j] && out[j].length > (j ? 24 : 20)) {
+        const f = out[j]; let cut = -1;
+        for (let k = 8; k <= 24; k++) if (f[k] === "、") cut = k;
+        if (cut > 0) out.splice(j, 1, f.slice(0, cut + 1), f.slice(cut + 1));
+      }
     }
     return out.length ? out : [String(text)];
   }
@@ -2999,7 +3002,8 @@
     const my = voiceSeq;
     const chunks = pre && !firstOnly ? [String(text)] : voiceChunks(text);
     voicePending = my;
-    let next = pre || fetchVoice(voiceText(chunks[0])), i = 0;
+    let next = pre || takeVoice(voiceText(chunks[0])), i = 0;
+    for (const c of chunks.slice(1, 5)) { const t2 = voiceText(c); if (!voiceAhead.has(t2)) voiceAhead.set(t2, fetchVoice(t2)); } // 続きも同時に作り始める（あいさつなど、おしゃべり以外のときも）
     try {
       for (; i < chunks.length; i++) {
         const url = await next;
