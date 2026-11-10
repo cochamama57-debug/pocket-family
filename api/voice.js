@@ -10,7 +10,9 @@ import { readFileSync } from "fs";
 // ちゃむの声＝作者の録音を「お手本」にして話す（11/7・見本K）。
 // 録音は private/ にあり、リポジトリには入れない（.gitignore）。Vercel には vercel.json の includeFiles で一緒に送る。
 // Fish Audio は、お手本の録音を本文に入れるとき MessagePack で送る決まり（JSON は不可）。
-const CHAMU_REF_TEXT = "作者、おかえりなさい。今日はどんな一日だった？ぼく、おなかすいちゃったよ。"; // 録音で話した文
+// 録音で話した文も private/ に置く（作者の呼び名が入っているので公開しない。11/10）
+let CHAMU_REF_TEXT = "おかえりなさい。今日はどんな一日だった？ぼく、おなかすいちゃったよ。";
+try { CHAMU_REF_TEXT = readFileSync(new URL("../private/chamu_voice_ref.txt", import.meta.url), "utf8").trim() || CHAMU_REF_TEXT; } catch {}
 let chamuRef; // 読み込みは1回だけ。読めないときは null（いつもの声にもどる）
 function chamuRefAudio() {
   if (chamuRef === undefined) {
