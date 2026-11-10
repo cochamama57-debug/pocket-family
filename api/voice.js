@@ -52,13 +52,16 @@ export default async function handler(req, res) {
   const body = readBody(req);
   const text = cleanText(body?.text, MAX_CHARS);
   const char = body?.char === "chamu" ? "chamu" : "colon";
+  // 一時的（11/10 動画のナレーション用。作り終わったら外す）：Fish公式の美咲・きょうこで、ふつうの速さで話す
+  const NAR = { misaki: "35c8e5ae5239435f8d9c26c86802b86d", kyoko: "b2d9d8db057042688a5e318b8f405bc2" };
+  const nar = body?.char === "nar" && Object.hasOwn(NAR, body?.nar) ? NAR[body.nar] : "";
   if (!text || PRIVATE.test(text)) return noVoice(res);
 
   const key = process.env.FISH_API_KEY;
   // ちゃむ＝作者の録音をお手本に（11/7）。録音が読めないときの予備は Fish Official「颯太 Sota」
   // （前は、じん 1.68倍（11/7 朝）、そうた 1.26倍（11/6）、しおり（〜11/5））
-  const ref = char === "chamu" ? chamuRefAudio() : null;
-  const voice = char === "chamu" ? "c496c7d0e93640a59a0befd78b47f39e" : process.env.FISH_VOICE_COLON;
+  const ref = char === "chamu" && !nar ? chamuRefAudio() : null;
+  const voice = nar || (char === "chamu" ? "c496c7d0e93640a59a0befd78b47f39e" : process.env.FISH_VOICE_COLON);
   if (!key || !voice) return noVoice(res);
   // 登録した端末だけ。1日の回数の上限つき（だめなときは、画面がスマホの読み上げで代わりに話す）
   const gate = await dailyGate("voice", body?.id, body?.secret, DEVICE_DAILY);
@@ -75,7 +78,7 @@ export default async function handler(req, res) {
       method: "POST",
       headers: { Authorization: "Bearer " + key, "Content-Type": "application/json", model: MODEL },
       // 声を高くして子どもらしくする（画面で速く再生して高くするので、ここではそのぶんゆっくり話させる）。ちゃむ＝1.26倍（そうた・見本A・作者 11/6）。話す速さは、おっとりした食いしん坊らしく、ゆっくりに（0.794→0.73→0.67、作者 11/6）、コロン＝1.25倍
-      body: JSON.stringify({ text, reference_id: voice, format: "mp3", mp3_bitrate: 64, latency: "balanced", language: "ja", prosody: { speed: char === "chamu" ? 1.0 : 0.8 } }),
+      body: JSON.stringify({ text, reference_id: voice, format: "mp3", mp3_bitrate: 64, latency: "balanced", language: "ja", prosody: { speed: nar ? 1.0 : char === "chamu" ? 1.0 : 0.8 } }),
       signal: AbortSignal.timeout(15000),
     });
     if (!r.ok) {
