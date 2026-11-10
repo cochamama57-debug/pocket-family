@@ -55,7 +55,8 @@ export default async function handler(req, res) {
   // 一時的（11/10 動画のナレーション用。作り終わったら外す）：Fish公式の美咲・きょうこで、ふつうの速さで話す
   const NAR = { misaki: "35c8e5ae5239435f8d9c26c86802b86d", kyoko: "b2d9d8db057042688a5e318b8f405bc2" };
   const nar = body?.char === "nar" && Object.hasOwn(NAR, body?.nar) ? NAR[body.nar] : "";
-  if (!text || PRIVATE.test(text)) return noVoice(res);
+  if (!text || (!nar && PRIVATE.test(text))) return noVoice(res); // ナレーションは決まった台本の文なので通す
+
 
   const key = process.env.FISH_API_KEY;
   // ちゃむ＝作者の録音をお手本に（11/7）。録音が読めないときの予備は Fish Official「颯太 Sota」
