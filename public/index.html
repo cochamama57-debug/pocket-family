@@ -5169,12 +5169,17 @@
   // 勝負ではなく「キャラのお仕事を手伝う」。キャラはひとりで置いてみて、ところどころ間違えている。
   // オレンジの枠＝キャラが置いたピース。押して「ちがうよ」で直すと、感謝される。30分以上かかる大きさで、続きから再開できる
   const PZ_COLS = 9, PZ_ROWS = 6, PZ_N = PZ_COLS * PZ_ROWS;
-  // 写真は、キャラごとに5枚ずつ（作者：ちゃむもコロンも同じ絵が出る→違う方がいい）。自分の5枚が終わったら、もう1人の写真も手伝える
+  // 写真は、キャラごとに10枚ずつ（11/10）。前は5枚ずつ（作者：ちゃむもコロンも同じ絵が出る→違う方がいい）。自分の5枚が終わったら、もう1人の写真も手伝える
   const PZ_JOBS = [
     { id: "garden", name: "理想のお庭", char: "chamu" }, { id: "house", name: "理想のお家", char: "chamu" }, { id: "travel", name: "理想の旅行", char: "chamu" },
     { id: "seaside", name: "理想の海辺", char: "chamu" }, { id: "festival", name: "理想のお祭り", char: "chamu" },
+    { id: "sweets", name: "スイーツビュッフェ", char: "chamu" }, { id: "mountain", name: "夏の山と虫取り", char: "chamu" }, { id: "farm", name: "理想の牧場", char: "chamu" },
+    { id: "rice", name: "秋の稲刈り", char: "chamu" }, { id: "halloween", name: "理想のハロウィン", char: "chamu" }, // 11/10 作者：10枚ずつに
+
     { id: "concert", name: "森の音楽会", char: "colon" }, { id: "library", name: "理想の図書館", char: "colon" }, { id: "snowtown", name: "雪の日の町", char: "colon" },
     { id: "shops", name: "理想の商店街", char: "colon" }, { id: "hanami", name: "理想のお花見", char: "colon" },
+    { id: "observatory", name: "星空の天文台", char: "colon" }, { id: "aquarium", name: "理想の水族館", char: "colon" }, { id: "amusement", name: "理想の遊園地", char: "colon" },
+    { id: "train", name: "汽車の旅", char: "colon" }, { id: "museum", name: "理想の美術館", char: "colon" },
   ];
   const pzSrc = (job) => "puzzle/" + job.id + ".jpg";
   let pzs = null; // 開いている間の状態
@@ -5489,7 +5494,9 @@
     if (!st) { st = profile.pz = pzNewState(job); saveProfile(); }
     const mine = pzs = { job, sel: null, judge: null, zoom: 1, peek: false, since: 0, placed: 0, fixedNow: 0, finished: false, colors: null, hinted: 0, timer: 0 };
     $("pzChar").src = faceSrc(profile.char, "normal");
-    $("pzTitle").textContent = "『" + job.name + "』";
+    // 題名は言葉の切れ目でだけ改行する（11/10：幅320で「ェ』」だけが次の行に落ちていた）
+    { const t = $("pzTitle"); t.textContent = ""; const parts = job.name === "スイーツビュッフェ" ? ["スイーツ", "ビュッフェ"] : job.name.includes("の") ? [job.name.slice(0, job.name.indexOf("の") + 1), job.name.slice(job.name.indexOf("の") + 1)] : [job.name];
+      parts.forEach((x, i) => { const sp = document.createElement("span"); sp.style.whiteSpace = "nowrap"; sp.textContent = (i === 0 ? "『" : "") + x + (i === parts.length - 1 ? "』" : ""); t.appendChild(sp); }); }
     $("pzTray").hidden = false; $("pzPick").hidden = false; $("pzTools").hidden = false; $("pzEnd").hidden = true; $("pzPeek").classList.remove("on");
     $("pzInput").placeholder = profile.name + "に話しかける";
     $("pz").hidden = false; $("pz").scrollTop = 0;
